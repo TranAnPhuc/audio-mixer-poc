@@ -4,11 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Audio Mashup Chronicles - 3D Interactive Technical Documentation</title>
+  
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
   
-  <!-- Tailwind CDN -->
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -17,15 +19,15 @@
         extend: {
           fontFamily: {
             sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            display: ['"Syne"', 'sans-serif'],
             mono: ['"Fira Code"', 'monospace'],
           },
           colors: {
             brand: {
-              50: '#eef2ff',
+              400: '#818cf8',
               500: '#6366f1',
               600: '#4f46e5',
-              900: '#312e81',
-              950: '#0f172a',
+              900: '#1e1b4b',
             }
           }
         }
@@ -54,15 +56,46 @@
   </script>
 
   <style>
+    :root {
+      --book-w: 940px;
+      --book-h: 620px;
+      --page-w: 470px;
+      --page-h: 620px;
+      --cover-color: #0b0f19;
+      --spine-color: #1e1b4b;
+      --gold-accent: #f59e0b;
+      --paper-bg: #0f172a;
+      --paper-border: #334155;
+    }
+
+    @media (max-width: 1024px) {
+      :root {
+        --book-w: 720px;
+        --book-h: 520px;
+        --page-w: 360px;
+        --page-h: 520px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      :root {
+        --book-w: 92vw;
+        --book-h: 70vh;
+        --page-w: 92vw;
+        --page-h: 70vh;
+      }
+    }
+
     body {
       margin: 0;
       overflow: hidden;
       background-color: #030712;
-      color: #f3f4f6;
+      color: #f1f5f9;
       user-select: none;
       font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
+    /* WebGL Canvas Background */
     #webgl-canvas {
       position: fixed;
       top: 0;
@@ -71,91 +104,298 @@
       height: 100vh;
       z-index: 10;
       display: block;
+      pointer-events: none;
+    }
+
+    /* 3D Scene Viewport Container */
+    #book-viewport {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 2400px;
+      perspective-origin: 50% 50%;
+      pointer-events: none;
+    }
+
+    /* 3D Book Rig (Rotates with Mouse / Orbit) */
+    #book-rig {
+      position: relative;
+      width: var(--book-w);
+      height: var(--book-h);
+      transform-style: preserve-3d;
+      transition: transform 0.15s cubic-bezier(0.2, 0, 0.2, 1);
+      pointer-events: auto;
+    }
+
+    /* Physical Hardcover Back & Spine */
+    .book-cover-back {
+      position: absolute;
+      inset: -12px;
+      background: linear-gradient(135deg, #090d16 0%, #1e1b4b 60%, #090d16 100%);
+      border-radius: 16px;
+      transform: translateZ(-28px);
+      box-shadow: 
+        0 40px 100px -20px rgba(0, 0, 0, 0.9),
+        0 0 50px rgba(99, 102, 241, 0.2),
+        inset 0 0 0 2px rgba(245, 158, 11, 0.3);
+    }
+
+    /* 3D Page Stacks Thickness on the Sides */
+    .book-edge-left {
+      position: absolute;
+      top: 0;
+      left: -8px;
+      width: 16px;
+      height: 100%;
+      background: repeating-linear-gradient(to right, #1e293b, #1e293b 2px, #334155 2px, #334155 4px);
+      transform: rotateY(-90deg) translateZ(8px);
+      border-radius: 4px;
+    }
+
+    .book-edge-right {
+      position: absolute;
+      top: 0;
+      right: -8px;
+      width: 16px;
+      height: 100%;
+      background: repeating-linear-gradient(to right, #1e293b, #1e293b 2px, #334155 2px, #334155 4px);
+      transform: rotateY(90deg) translateZ(8px);
+      border-radius: 4px;
+    }
+
+    .book-edge-bottom {
+      position: absolute;
+      bottom: -8px;
+      left: 0;
+      width: 100%;
+      height: 16px;
+      background: repeating-linear-gradient(to bottom, #1e293b, #1e293b 2px, #334155 2px, #334155 4px);
+      transform: rotateX(-90deg) translateZ(8px);
+      border-radius: 4px;
+    }
+
+    /* 3D Spine Gutter at center */
+    .book-spine-hinge {
+      position: absolute;
+      top: -8px;
+      bottom: -8px;
+      left: 50%;
+      width: 24px;
+      margin-left: -12px;
+      background: linear-gradient(to right, #090d16, #312e81, #090d16);
+      transform: translateZ(-10px);
+      border-radius: 6px;
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.8);
+      z-index: 10;
+    }
+
+    /* Static Base Pages Container (Left Page & Right Page) */
+    .book-base-pages {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      transform-style: preserve-3d;
+    }
+
+    /* Individual Page Panel */
+    .book-page {
+      width: 50%;
+      height: 100%;
+      position: relative;
+      background: linear-gradient(135deg, #090d16 0%, #0f172a 100%);
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 2.2rem 2.4rem;
+      user-select: text;
+    }
+
+    .book-page-left {
+      border-radius: 12px 0 0 12px;
+      border-right: none;
+      transform-origin: right center;
+    }
+
+    .book-page-right {
+      border-radius: 0 12px 12px 0;
+      border-left: none;
+      transform-origin: left center;
+    }
+
+    /* Center Spine Shadow Gradient */
+    .book-page-left::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      width: 40px;
+      background: linear-gradient(to left, rgba(0,0,0,0.85), transparent);
+      pointer-events: none;
+    }
+
+    .book-page-right::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 40px;
+      background: linear-gradient(to right, rgba(0,0,0,0.85), transparent);
+      pointer-events: none;
+    }
+
+    /* 3D Physical Flipping Leaf (Lá lật 3D thật sự trong không gian) */
+    #flipping-leaf {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 50%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transform-origin: left center;
+      z-index: 50;
+      pointer-events: none;
+      visibility: hidden;
+    }
+
+    .leaf-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 2.2rem 2.4rem;
+      background: linear-gradient(135deg, #090d16 0%, #0f172a 100%);
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8), 0 20px 50px rgba(0,0,0,0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .leaf-front {
+      border-radius: 0 12px 12px 0;
+      transform: rotateY(0deg);
+    }
+
+    .leaf-back {
+      border-radius: 12px 0 0 12px;
+      transform: rotateY(180deg);
+    }
+
+    /* Dynamic Page Turn Shadow Overlay */
+    .leaf-shadow {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(to right, rgba(0,0,0,0.8) 0%, transparent 60%, rgba(0,0,0,0.5) 100%);
+      opacity: 0;
+      transition: opacity 0.1s;
     }
 
     /* Custom Scrollbar for book pages */
-    .book-page-content::-webkit-scrollbar {
-      width: 5px;
+    .book-page::-webkit-scrollbar,
+    .leaf-face::-webkit-scrollbar {
+      width: 4px;
     }
-    .book-page-content::-webkit-scrollbar-track {
-      background: rgba(15, 23, 42, 0.6);
+    .book-page::-webkit-scrollbar-track,
+    .leaf-face::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.4);
+    }
+    .book-page::-webkit-scrollbar-thumb,
+    .leaf-face::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.5);
       border-radius: 4px;
-    }
-    .book-page-content::-webkit-scrollbar-thumb {
-      background: rgba(99, 102, 241, 0.4);
-      border-radius: 4px;
-    }
-    .book-page-content::-webkit-scrollbar-thumb:hover {
-      background: rgba(99, 102, 241, 0.8);
     }
 
-    /* Glassmorphism effects */
+    /* Glassmorphism Panels for HUD */
     .glass-panel {
-      background: rgba(15, 23, 42, 0.75);
+      background: rgba(15, 23, 42, 0.85);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.12);
     }
 
     .glass-card {
-      background: rgba(30, 41, 59, 0.5);
+      background: rgba(30, 41, 59, 0.55);
       border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    /* Paper texture overlay subtle */
-    .page-spread {
-      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 0.98) 100%);
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), inset 0 0 40px rgba(0, 0, 0, 0.5);
-    }
-
-    .spine-shadow {
-      background: linear-gradient(to right, rgba(0,0,0,0.5) 0%, transparent 15%, transparent 85%, rgba(0,0,0,0.5) 100%);
+      backdrop-filter: blur(8px);
     }
 
     .badge-code {
       font-family: 'Fira Code', monospace;
-      font-size: 0.8em;
-      padding: 0.15em 0.4em;
+      font-size: 0.82em;
+      padding: 0.15em 0.45em;
       border-radius: 0.25rem;
-      background: rgba(99, 102, 241, 0.15);
+      background: rgba(99, 102, 241, 0.18);
       color: #a5b4fc;
-      border: 1px solid rgba(99, 102, 241, 0.3);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+    }
+
+    /* Holographic Glow Animations */
+    @keyframes pulse-holo {
+      0%, 100% { opacity: 0.8; filter: drop-shadow(0 0 15px rgba(99, 102, 241, 0.6)); }
+      50% { opacity: 1; filter: drop-shadow(0 0 30px rgba(168, 85, 247, 0.9)); }
+    }
+
+    .holo-glow {
+      animation: pulse-holo 3s infinite ease-in-out;
     }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100">
+<body class="bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white">
 
-  <!-- 3D WebGL Canvas Layer -->
+  <!-- 3D Three.js WebGL Canvas (Hologram Visualizers, Starfield, Audio Grid) -->
   <canvas id="webgl-canvas"></canvas>
 
-  <!-- Top HUD Bar -->
-  <header class="fixed top-0 left-0 right-0 z-40 p-4 flex items-center justify-between pointer-events-none">
-    <div class="glass-panel px-4 py-2.5 rounded-2xl flex items-center gap-3 pointer-events-auto shadow-2xl">
-      <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <!-- Top Floating HUD Bar -->
+  <header class="fixed top-0 left-0 right-0 z-40 p-4 sm:p-5 flex items-center justify-between pointer-events-none">
+    <!-- Left Logo & Project Metadata -->
+    <div class="glass-panel px-4 py-2.5 rounded-2xl flex items-center gap-3.5 pointer-events-auto shadow-2xl">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/40">
+        <svg class="w-5 h-5 text-white animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
         </svg>
       </div>
       <div>
-        <h1 class="text-sm font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">
-          The Audio Mashup Chronicles
-        </h1>
-        <p class="text-[11px] text-slate-400">Interactive 3D Engineering Architecture Book</p>
+        <div class="flex items-center gap-2">
+          <h1 class="text-sm font-extrabold tracking-wide font-display bg-gradient-to-r from-indigo-300 via-purple-200 to-pink-300 bg-clip-text text-transparent">
+            THE AUDIO MASHUP CHRONICLES
+          </h1>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+            True 3D Book
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400 font-medium">Digital Signal Processing & Autonomous Engine Manual</p>
       </div>
     </div>
 
-    <!-- Right HUD Control Buttons -->
+    <!-- Right Controls HUD -->
     <div class="flex items-center gap-2 pointer-events-auto">
-      <!-- Toggle Table of Contents -->
-      <button id="btn-toc" class="glass-panel hover:bg-slate-800/80 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all shadow-lg active:scale-95">
-        <svg class="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
-        </svg>
-        <span>Mục Lục (TOC)</span>
+      <!-- 3D Hologram Toggle -->
+      <button id="btn-hologram" class="glass-panel hover:bg-slate-800 text-indigo-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all shadow-lg active:scale-95 border-indigo-500/40" title="Bật/Tắt mô hình Hologram 3D bay trên trang sách">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+        <span id="label-hologram">Hologram: BẬT</span>
       </button>
 
-      <!-- Toggle Sound -->
-      <button id="btn-sound" class="glass-panel hover:bg-slate-800/80 text-slate-300 hover:text-white p-2.5 rounded-xl text-xs font-semibold transition-all shadow-lg active:scale-95" title="Bật/Tắt âm thanh sột soạt lật trang">
+      <!-- 3D Book Tilt Toggle (Tilt with Mouse vs Locked Flat) -->
+      <button id="btn-tilt" class="glass-panel hover:bg-slate-800 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-lg active:scale-95" title="Bật/Tắt nghiêng 3D theo con trỏ chuột">
+        <svg class="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+        </svg>
+        <span id="label-tilt">Nghiêng 3D: BẬT</span>
+      </button>
+
+      <!-- Page Flip Sound Toggle -->
+      <button id="btn-sound" class="glass-panel hover:bg-slate-800 text-slate-300 hover:text-white p-2.5 rounded-xl transition-all shadow-lg active:scale-95" title="Bật/Tắt âm thanh lật giấy sột soạt">
         <svg id="icon-sound-on" class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
         </svg>
@@ -165,70 +405,106 @@
         </svg>
       </button>
 
-      <!-- Toggle 3D Orbit View vs Standard Reading View -->
-      <button id="btn-camera" class="glass-panel hover:bg-slate-800/80 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-lg active:scale-95" title="Chuyển chế độ đọc tiêu chuẩn hoặc xoay 3D">
-        <svg class="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+      <!-- Table of Contents Toggle -->
+      <button id="btn-toc" class="glass-panel hover:bg-slate-800 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-lg active:scale-95">
+        <svg class="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
         </svg>
-        <span id="label-camera">Góc Đọc Chuẩn</span>
+        <span>Mục Lục</span>
       </button>
     </div>
   </header>
 
-  <!-- Interactive 3D Book Container Overlay (Syncs with Three.js state) -->
-  <main class="fixed inset-0 z-20 flex items-center justify-center p-3 sm:p-8 pointer-events-none">
-    <div id="book-viewport" class="relative w-full max-w-5xl h-[82vh] max-h-[850px] pointer-events-auto rounded-3xl overflow-hidden page-spread border border-indigo-500/30 flex flex-col md:flex-row transition-all duration-700 shadow-2xl">
+  <!-- ============================================================== -->
+  <!-- TRUE 3D PHYSICAL BOOK VIEWPORT (CẢ CUỐN SÁCH & TRANG SỐNG TRONG 3D) -->
+  <!-- ============================================================== -->
+  <main id="book-viewport">
+    <div id="book-rig" style="transform: rotateX(10deg) rotateY(0deg);">
       
-      <!-- Left Page -->
-      <section id="left-page" class="flex-1 p-6 sm:p-10 border-b md:border-b-0 md:border-r border-slate-800/80 overflow-y-auto book-page-content relative flex flex-col justify-between">
-        <div id="left-page-body" class="space-y-4">
-          <!-- Dynamic Left Content Rendered by JS -->
-        </div>
-        <div class="pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-500 font-mono">
-          <span id="left-page-num">Trang 0</span>
-          <span>Audio Mashup Engine</span>
-        </div>
-      </section>
+      <!-- 1. Hardcover Back Plane with depth & shadow -->
+      <div class="book-cover-back"></div>
+      
+      <!-- 2. Stacked Pages Edges (3D thickness) -->
+      <div class="book-edge-left"></div>
+      <div class="book-edge-right"></div>
+      <div class="book-edge-bottom"></div>
 
-      <!-- Spine Shadow Center Gradient -->
-      <div class="hidden md:block w-3 spine-shadow pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 z-30"></div>
+      <!-- 3. Spine Gutter Hinge -->
+      <div class="book-spine-hinge"></div>
 
-      <!-- Right Page -->
-      <section id="right-page" class="flex-1 p-6 sm:p-10 overflow-y-auto book-page-content relative flex flex-col justify-between">
-        <div id="right-page-body" class="space-y-4">
-          <!-- Dynamic Right Content Rendered by JS -->
+      <!-- 4. Resting Spread Base Pages (Trang nền trái & phải) -->
+      <div class="book-base-pages">
+        <!-- Left Resting Page -->
+        <section id="left-page-container" class="book-page book-page-left">
+          <div id="left-page-body" class="space-y-4">
+            <!-- Dynamic Left HTML Content -->
+          </div>
+          <div class="pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-500 font-mono">
+            <span id="left-page-num">Trang 0</span>
+            <span class="text-indigo-400">Audio Mashup Engine</span>
+          </div>
+        </section>
+
+        <!-- Right Resting Page -->
+        <section id="right-page-container" class="book-page book-page-right">
+          <div id="right-page-body" class="space-y-4">
+            <!-- Dynamic Right HTML Content -->
+          </div>
+          <div class="pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-500 font-mono">
+            <span class="text-indigo-400">Digital Signal Processing</span>
+            <span id="right-page-num">Trang 1</span>
+          </div>
+        </section>
+      </div>
+
+      <!-- 5. 3D Physical Flipping Leaf (Lá lật 3D thực thụ xoay 180 độ) -->
+      <div id="flipping-leaf">
+        <!-- Mặt trước (Front) -->
+        <div id="leaf-front-face" class="leaf-face leaf-front">
+          <div id="leaf-front-body" class="space-y-4"></div>
+          <div class="pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-500 font-mono">
+            <span>Audio Mashup Engine</span>
+            <span id="leaf-front-num">Trang 1</span>
+          </div>
+          <div id="leaf-front-shadow" class="leaf-shadow"></div>
         </div>
-        <div class="pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-500 font-mono">
-          <span>Digital Signal Processing</span>
-          <span id="right-page-num">Trang 1</span>
+
+        <!-- Mặt sau (Back - Đã xoay 180 độ trong không gian) -->
+        <div id="leaf-back-face" class="leaf-face leaf-back">
+          <div id="leaf-back-body" class="space-y-4"></div>
+          <div class="pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-500 font-mono">
+            <span id="leaf-back-num">Trang 2</span>
+            <span>Digital Signal Processing</span>
+          </div>
+          <div id="leaf-back-shadow" class="leaf-shadow"></div>
         </div>
-      </section>
+      </div>
 
     </div>
   </main>
 
-  <!-- Bottom Navigation & Flip Controls -->
-  <nav class="fixed bottom-0 left-0 right-0 z-40 p-4 flex items-center justify-center pointer-events-none">
+  <!-- Bottom Navigation HUD -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 p-4 sm:p-5 flex items-center justify-center pointer-events-none">
     <div class="glass-panel px-5 py-3 rounded-2xl flex items-center gap-4 pointer-events-auto shadow-2xl">
-      <!-- Prev Page Button -->
+      <!-- Prev Button -->
       <button id="btn-prev" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 flex items-center gap-1.5 text-xs font-semibold">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
-        <span class="hidden sm:inline">Trang Trước</span>
+        <span class="hidden sm:inline">Lật Về Trước</span>
       </button>
 
-      <!-- Current Spread Indicator & Slider -->
+      <!-- Spread Slider & Indicator -->
       <div class="flex items-center gap-3">
-        <input id="page-slider" type="range" min="0" max="8" value="0" class="w-24 sm:w-44 accent-indigo-500 cursor-pointer">
-        <span id="spread-indicator" class="font-mono text-xs font-bold text-indigo-300 min-w-[70px] text-center">
+        <input id="page-slider" type="range" min="0" max="8" value="0" class="w-28 sm:w-48 accent-indigo-500 cursor-pointer">
+        <span id="spread-indicator" class="font-mono text-xs font-bold text-indigo-300 min-w-[75px] text-center">
           1 / 9 Spreads
         </span>
       </div>
 
-      <!-- Next Page Button -->
-      <button id="btn-next" class="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 flex items-center gap-1.5 text-xs shadow-md shadow-indigo-600/30">
-        <span class="hidden sm:inline">Trang Sau</span>
+      <!-- Next Button -->
+      <button id="btn-next" class="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 flex items-center gap-1.5 text-xs shadow-lg shadow-indigo-600/40">
+        <span class="hidden sm:inline">Lật Sang Tiếp</span>
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>
@@ -236,13 +512,13 @@
     </div>
   </nav>
 
-  <!-- Table of Contents Modal Drawer -->
+  <!-- Table of Contents Slide-Out Drawer -->
   <aside id="toc-drawer" class="fixed inset-y-0 right-0 w-full max-w-md glass-panel z-50 p-6 flex flex-col justify-between transform translate-x-full transition-transform duration-300 ease-in-out shadow-2xl border-l border-slate-700">
-    <div class="space-y-5">
-      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
-        <div class="flex items-center gap-2">
-          <div class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></div>
-          <h2 class="text-base font-bold text-white tracking-wide">Mục Lục Cuốn Sách</h2>
+    <div class="space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-3 h-3 rounded-full bg-amber-400 animate-pulse"></div>
+          <h2 class="text-base font-bold text-white tracking-wide font-display">Mục Lục Cuốn Sách 3D</h2>
         </div>
         <button id="btn-close-toc" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -250,32 +526,31 @@
           </svg>
         </button>
       </div>
-
-      <p class="text-xs text-slate-400">Nhấp vào từng chương để di chuyển máy quay 3D và lật sách trực tiếp đến nội dung chi tiết tương ứng:</p>
-
-      <ul id="toc-list" class="space-y-2 text-xs overflow-y-auto max-h-[65vh] pr-2">
+      <p class="text-xs text-slate-400">Chọn chương kỹ thuật để kích hoạt cơ chế lật trang 3D và chuyển đổi mô hình Hologram thời gian thực:</p>
+      <ul id="toc-list" class="space-y-2 text-xs overflow-y-auto max-h-[68vh] pr-1.5">
         <!-- Rendered by JS -->
       </ul>
     </div>
-
-    <div class="pt-4 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between">
+    <div class="pt-4 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between font-mono">
       <span>Trần An Phúc © 2026</span>
-      <span>MIT Licensed</span>
+      <span>Three.js + DSP Engine</span>
     </div>
   </aside>
 
   <!-- ============================================================== -->
-  <!-- BOOK DATA & THREE.JS LOGIC SCRIPT                              -->
+  <!-- JAVASCRIPT: 3D HOLOGRAPHIC THREE.JS + PHYSICAL 3D PAGE TURNING -->
   <!-- ============================================================== -->
   <script>
-    // --- 1. COMPREHENSIVE DOCUMENTATION CHAPTERS & SPREADS DATA ---
+    // --- 1. EXHAUSTIVE DOCUMENTATION DATA (8 CHAPTERS / 9 SPREADS) ---
     const SPREADS_DATA = [
-      // SPREAD 0: BÌA TRƯỚC & LỜI TỰA
+      // SPREAD 0: BÌA SÁCH & SỨ MỆNH MASHUP STUDIO
       {
+        theme: 'cover',
+        hologramType: 'vinyl',
         left: `
-          <div class="h-full flex flex-col items-center justify-center text-center p-6 space-y-6">
-            <div class="w-24 h-24 rounded-3xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 p-0.5 shadow-2xl shadow-indigo-500/40">
-              <div class="w-full h-full bg-slate-950 rounded-[22px] flex items-center justify-center">
+          <div class="h-full flex flex-col items-center justify-center text-center p-4 space-y-6">
+            <div class="w-24 h-24 rounded-3xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 p-1 shadow-2xl shadow-indigo-500/50">
+              <div class="w-full h-full bg-slate-950 rounded-[20px] flex items-center justify-center">
                 <svg class="w-12 h-12 text-indigo-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                 </svg>
@@ -283,18 +558,18 @@
             </div>
 
             <div class="space-y-2">
-              <span class="text-xs uppercase tracking-widest font-mono text-indigo-400 font-bold">Comprehensive Engineering Manual</span>
-              <h1 class="text-2xl sm:text-3xl font-extrabold text-white leading-tight">
+              <span class="text-xs uppercase tracking-widest font-mono text-indigo-400 font-bold">Engineering Masterpiece</span>
+              <h1 class="text-2xl sm:text-3xl font-extrabold text-white leading-tight font-display tracking-wide">
                 THE AUDIO MASHUP CHRONICLES
               </h1>
-              <p class="text-xs text-slate-400 max-w-sm mx-auto">
-                Khám phá toàn bộ kiến trúc lõi xử lý âm thanh kỹ thuật số, giải thuật dò nhịp độ BPM, co dãn thời gian WSOLA và hệ thống phân phối streaming HTTP 206.
+              <p class="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                Tài liệu kiến trúc toàn diện giải phẫu lõi xử lý tín hiệu số DSP, thuật toán phát hiện nhịp Onset, co dãn thời gian WSOLA và phân phối phân đoạn HTTP 206.
               </p>
             </div>
 
             <div class="pt-6 border-t border-slate-800/80 w-full flex flex-col items-center space-y-1 text-xs text-slate-500">
-              <span class="text-slate-300 font-semibold">Tác giả & Kiến trúc sư:</span>
-              <span class="text-indigo-400 font-mono">Trần An Phúc (Tech Lead & Senior Audio Engineer)</span>
+              <span class="text-slate-300 font-semibold">Tác giả & Kỹ sư trưởng:</span>
+              <span class="text-indigo-400 font-mono font-bold">Trần An Phúc (Tech Lead & Senior Audio Systems Engineer)</span>
               <span class="text-[11px] text-slate-600 pt-1">Hà Nội, Việt Nam • Phiên bản 2.0.0 (Production Release)</span>
             </div>
           </div>
@@ -302,18 +577,18 @@
         right: `
           <div class="space-y-4">
             <div class="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-wider">
-              <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-              <span>Lời Mở Đầu & Mục Lục Tương Tác</span>
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+              <span>Lời Tựa & Mục Lục Tương Tác 3D</span>
             </div>
 
-            <h2 class="text-lg font-extrabold text-white">Sứ Mệnh Của Hệ Thống Mashup Studio</h2>
+            <h2 class="text-lg font-extrabold text-white font-display">Tự Động Hóa Phòng Thu Âm Nhạc</h2>
             
             <p class="text-xs text-slate-300 leading-relaxed">
-              Trong sản xuất âm nhạc truyền thống, việc ghép một đoạn giọng hát <span class="badge-code">Vocal (Acappella)</span> vào một bản nhạc nền <span class="badge-code">Beat (Instrumental)</span> đòi hỏi các kỹ sư âm thanh phải sử dụng phần mềm DAW chuyên dụng (Ableton Live, FL Studio) để gõ nhịp thủ công (tap tempo), dịch chuyển lưới phách (beat grid) và cân chỉnh dynamic range phức tạp.
+              Trong sản xuất âm nhạc truyền thống, việc phối một đoạn giọng hát <span class="badge-code">Vocal (Acappella)</span> vào một bản nhạc nền <span class="badge-code">Beat (Instrumental)</span> đòi hỏi kỹ sư âm thanh phải sử dụng DAW chuyên nghiệp (Ableton Live, Logic Pro) để dò nhịp thủ công (tap tempo), co giãn thời gian (time-stretching) và căn chỉnh âm lượng chống méo tiếng.
             </p>
 
             <p class="text-xs text-slate-300 leading-relaxed">
-              Dự án này sinh ra nhằm tự động hóa hoàn toàn 100% pipeline đó: từ khâu phân tích nhịp học DSP, chuẩn hóa sample rate, cân chỉnh gain staging, cho đến time-stretching giữ nguyên cao độ và xuất stream phân đoạn byte.
+              Dự án này đã tự động hóa 100% pipeline phức tạp trên: đưa vào 2 tệp âm thanh bất kỳ, hệ thống sẽ tự động phân tích phổ tần số, đồng bộ nhịp phách, cân chỉnh headroom và xuất ra sản phẩm mashup hoàn hảo trong vài giây.
             </p>
 
             <div class="glass-card p-3.5 rounded-xl space-y-2 mt-2">
@@ -321,14 +596,38 @@
                 <span>📋 Danh Sách Các Chương Kỹ Thuật:</span>
               </h3>
               <ul class="space-y-1.5 text-[11px] text-slate-400 font-mono">
-                <li class="hover:text-indigo-300 cursor-pointer" onclick="goToSpread(1)">• Chương 1: Kiến Trúc Tổng Thể & Luồng E2E</li>
-                <li class="hover:text-indigo-300 cursor-pointer" onclick="goToSpread(2)">• Chương 2: Lõi Âm Học DSP & FilterGraph</li>
-                <li class="hover:text-indigo-300 cursor-pointer" onclick="goToSpread(3)">• Chương 3: Thuật Toán Dò Nhịp BPM Onset</li>
-                <li class="hover:text-indigo-300 cursor-pointer" onclick="goToSpread(4)">• Chương 4: Co Dãn Thời Gian WSOLA (atempo)</li>
-                <li class="hover:text-indigo-300 cursor-pointer" onclick="goToSpread(5)">• Chương 5: Xử Lý Nền Bất Đồng Bộ & SQLite</li>
-                <li class="hover:text-indigo-300 cursor-pointer" onclick="goToSpread(6)">• Chương 6: Truyền Phát Phân Đoạn HTTP 206</li>
-                <li class="hover:text-indigo-300 cursor-pointer" onclick="goToSpread(7)">• Chương 7: Giao Diện Người Dùng & WaveSurfer</li>
-                <li class="hover:text-indigo-300 cursor-pointer" onclick="goToSpread(8)">• Chương 8: Kiểm Thử Toàn Trình & Tổng Kết</li>
+                <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(1)">
+                  <span>• Chương 1: Kiến Trúc Tổng Thể & Luồng E2E</span>
+                  <span class="text-indigo-500">Spread 2 →</span>
+                </li>
+                <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(2)">
+                  <span>• Chương 2: Lõi Âm Học DSP & FilterGraph</span>
+                  <span class="text-indigo-500">Spread 3 →</span>
+                </li>
+                <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(3)">
+                  <span>• Chương 3: Thuật Toán Dò Nhịp BPM Onset</span>
+                  <span class="text-indigo-500">Spread 4 →</span>
+                </li>
+                <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(4)">
+                  <span>• Chương 4: Co Dãn Thời Gian WSOLA (atempo)</span>
+                  <span class="text-indigo-500">Spread 5 →</span>
+                </li>
+                <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(5)">
+                  <span>• Chương 5: Xử Lý Nền Bất Đồng Bộ & SQLite</span>
+                  <span class="text-indigo-500">Spread 6 →</span>
+                </li>
+                <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(6)">
+                  <span>• Chương 6: Truyền Phát Phân Đoạn HTTP 206</span>
+                  <span class="text-indigo-500">Spread 7 →</span>
+                </li>
+                <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(7)">
+                  <span>• Chương 7: Giao Diện Người Dùng & WaveSurfer</span>
+                  <span class="text-indigo-500">Spread 8 →</span>
+                </li>
+                <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(8)">
+                  <span>• Chương 8: Kiểm Thử Toàn Trình & Tổng Kết</span>
+                  <span class="text-indigo-500">Spread 9 →</span>
+                </li>
               </ul>
             </div>
           </div>
@@ -337,27 +636,29 @@
 
       // SPREAD 1: CHƯƠNG 1 - KIẾN TRÚC TỔNG THỂ & LUỒNG E2E
       {
+        theme: 'pipeline',
+        hologramType: 'network',
         left: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 1 (Phần 1)</span>
-            <h2 class="text-lg font-bold text-white">Kiến Trúc Tổng Thể & Topology</h2>
+            <h2 class="text-lg font-bold text-white font-display">Kiến Trúc Topology & Phân Tầng</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
-              Hệ thống được thiết kế theo mô hình <span class="badge-code">Client-Server Monorepo</span> hiện đại, chia tách rõ ràng trách nhiệm giữa lớp giao diện trực quan và lớp xử lý tín hiệu nền.
+              Dự án xây dựng theo mô hình <span class="badge-code">Client-Server Monorepo</span> hiện đại, chia tách rõ ràng giữa lớp giao diện trực quan và lớp xử lý tín hiệu nền:
             </p>
 
             <div class="glass-card p-3 rounded-xl space-y-2 font-mono text-[11px]">
-              <div class="text-indigo-300 font-bold">Topology Phân Tầng:</div>
+              <div class="text-indigo-300 font-bold">// 5 Phân Tầng Trọng Yếu:</div>
               <div class="text-slate-400 space-y-1">
-                <div>1. Client Tier: React 18 + Vite + Tailwind + Wavesurfer</div>
-                <div>2. API Gateway: Express 4 ESM + Multer Sanitizer</div>
-                <div>3. Worker Engine: Node.js setImmediate Background Worker</div>
-                <div>4. DSP Pipeline: FFmpeg ComplexFilter + BpmDetector</div>
-                <div>5. Data Tier: Prisma ORM + SQLite (dev.db)</div>
+                <div>• Tier 1 (Client): React 18 + Vite + Tailwind + WaveSurfer.js</div>
+                <div>• Tier 2 (Gateway): Express 4 ESM + Multer Stream Sanitizer</div>
+                <div>• Tier 3 (Worker): Node.js setImmediate Background Worker</div>
+                <div>• Tier 4 (DSP): FFmpeg ComplexFilter + BpmDetector Engine</div>
+                <div>• Tier 5 (Data): SQLite + Prisma ORM Client (dev.db)</div>
               </div>
             </div>
 
-            <h3 class="text-xs font-bold text-slate-200 pt-2">Nguyên Lý Thiết Kế Trọng Yếu:</h3>
-            <ul class="space-y-1.5 text-xs text-slate-400">
+            <h3 class="text-xs font-bold text-slate-200 pt-2">Nguyên Lý Thiết Kế Cốt Lõi:</h3>
+            <ul class="space-y-2 text-xs text-slate-400">
               <li><strong class="text-slate-200">• Fail-Fast Principle:</strong> Kiểm tra binary FFmpeg/FFprobe ngay khi bootstrap; nếu thiếu binary, tiến trình lập tức dừng với mã lỗi tường minh.</li>
               <li><strong class="text-slate-200">• Non-Blocking I/O:</strong> API upload trả về ngay HTTP 202 trong &lt; 200ms, không bắt client giữ kết nối HTTP chờ xử lý âm thanh.</li>
             </ul>
@@ -366,14 +667,13 @@
         right: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 1 (Phần 2)</span>
-            <h2 class="text-lg font-bold text-white">Luồng Dữ Liệu Toàn Trình (E2E Pipeline)</h2>
-            
+            <h2 class="text-lg font-bold text-white font-display">Luồng Dữ Liệu Toàn Trình (E2E Pipeline)</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
-              Mỗi tác vụ phối âm trải qua 6 chặng chuyển dịch dữ liệu liên tục:
+              Mỗi tác vụ phối âm trải qua chuỗi 4 mắt xích liên tục:
             </p>
 
             <div class="space-y-2 text-xs">
-              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-start gap-2.5">
+              <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex items-start gap-2.5">
                 <span class="font-mono font-bold text-indigo-400 text-xs mt-0.5">1</span>
                 <div>
                   <strong class="text-slate-200 block text-xs">Ingestion & Validation:</strong>
@@ -381,7 +681,7 @@
                 </div>
               </div>
 
-              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-start gap-2.5">
+              <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex items-start gap-2.5">
                 <span class="font-mono font-bold text-indigo-400 text-xs mt-0.5">2</span>
                 <div>
                   <strong class="text-slate-200 block text-xs">Job Creation:</strong>
@@ -389,7 +689,7 @@
                 </div>
               </div>
 
-              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-start gap-2.5">
+              <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex items-start gap-2.5">
                 <span class="font-mono font-bold text-indigo-400 text-xs mt-0.5">3</span>
                 <div>
                   <strong class="text-slate-200 block text-xs">Parallel BPM Extraction:</strong>
@@ -397,7 +697,7 @@
                 </div>
               </div>
 
-              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-start gap-2.5">
+              <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex items-start gap-2.5">
                 <span class="font-mono font-bold text-indigo-400 text-xs mt-0.5">4</span>
                 <div>
                   <strong class="text-slate-200 block text-xs">DSP Synthesis & Delivery:</strong>
@@ -411,12 +711,14 @@
 
       // SPREAD 2: CHƯƠNG 2 - LÕI ÂM HỌC SỐ DSP & FFMPEG COMPLEXFILTER
       {
+        theme: 'dsp',
+        hologramType: 'network',
         left: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 2 (Phần 1)</span>
-            <h2 class="text-lg font-bold text-white">Lõi Âm Học Số DSP (Complex FilterGraph)</h2>
+            <h2 class="text-lg font-bold text-white font-display">Lõi Âm Học Số DSP (Complex FilterGraph)</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
-              Trọng tâm của <span class="badge-code">AudioMixerService.js</span> là biểu thức ComplexFilter xây dựng bằng fluent-ffmpeg để điều phối 2 luồng âm thanh độc lập:
+              Trọng tâm của <span class="badge-code">AudioMixerService.js</span> là chuỗi FilterGraph xây dựng bằng fluent-ffmpeg để điều phối 2 luồng âm thanh độc lập:
             </p>
 
             <div class="glass-card p-3 rounded-xl font-mono text-[11px] text-slate-300 space-y-1 overflow-x-auto">
@@ -430,10 +732,10 @@
             <h3 class="text-xs font-bold text-slate-200 pt-2">Phân Tích Từng Bộ Lọc DSP:</h3>
             <ul class="space-y-2 text-xs text-slate-400">
               <li>
-                <strong class="text-indigo-300">1. aresample=44100:</strong> Đồng bộ tần số lấy mẫu (Sample Rate) chuẩn Red Book CD audio, triệt tiêu hiện tượng lệch pha (Phase Inversion) và méo dải tần cao khi phối trộn.
+                <strong class="text-indigo-300">1. aresample=44100:</strong> Đồng bộ tần số lấy mẫu chuẩn Red Book CD, triệt tiêu hiện tượng lệch pha (Phase Inversion) và méo dải tần cao.
               </li>
               <li>
-                <strong class="text-emerald-300">2. Gain Staging (volume=1.0 vs 0.75):</strong> Hạ âm lượng Track B xuống 75% (-2.5dB) nhường khoảng động (Headroom) cho giọng hát nổi bật phía trước mà không cần EQ chuyên dụng.
+                <strong class="text-emerald-300">2. Gain Staging (volume=1.0 vs 0.75):</strong> Hạ âm lượng Beat xuống 75% (-2.5dB) nhường khoảng động (Headroom) cho vocal tỏa sáng.
               </li>
             </ul>
           </div>
@@ -441,13 +743,12 @@
         right: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 2 (Phần 2)</span>
-            <h2 class="text-lg font-bold text-white">Cơ Chế Summing & Triệt Tiêu Clipping</h2>
-            
+            <h2 class="text-lg font-bold text-white font-display">Cơ Chế Summing & Triệt Tiêu Clipping</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
-              Khi 2 sóng âm thanh cộng hưởng biên độ tại cùng một thời điểm, biên độ tổng có thể vượt quá $0\text{ dBFS}$ gây ra hiện tượng méo tiếng số vỡ nát <span class="badge-code">Digital Clipping</span>.
+              Khi 2 sóng âm thanh cộng hưởng biên độ tại cùng một thời điểm, biên độ tổng có thể vượt quá $0\text{ dBFS}$ gây ra hiện tượng méo tiếng số <span class="badge-code">Digital Clipping</span>.
             </p>
 
-            <div class="p-3.5 rounded-xl bg-purple-950/30 border border-purple-500/30 space-y-2 text-xs">
+            <div class="p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-2 text-xs">
               <strong class="text-purple-300 block font-semibold">Bộ lọc Peak Limiter (alimiter=limit=0.95:level=true):</strong>
               <p class="text-slate-300 text-[11px] leading-relaxed">
                 Áp dụng ngưỡng trần trơn ở mức 0.95 (tương đương $-0.45\text{ dBFS}$). Mọi đỉnh sóng cộng hưởng vượt ngưỡng sẽ được nén mềm tự động (Soft Knee Compression) với lookahead buffer mà không làm suy giảm độ trong trẻo của bản phối.
@@ -479,26 +780,35 @@
 
       // SPREAD 3: CHƯƠNG 3 - THUẬT TOÁN DÒ NHỊP BPM ONSET
       {
+        theme: 'bpm',
+        hologramType: 'radial',
         left: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 3 (Phần 1)</span>
-            <h2 class="text-lg font-bold text-white">Thuật Toán Nhận Diện Nhịp Độ (BPM Engine)</h2>
+            <h2 class="text-lg font-bold text-white font-display">Thuật Toán Dò Nhịp Độ (BPM Engine)</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
-              <span class="badge-code">BpmDetectorService.js</span> chịu trách nhiệm trích xuất chỉ số tempo của ca khúc bằng giải thuật <span class="text-indigo-300 font-semibold">BeatRoot của Simon Dixon</span>:
+              <span class="badge-code">BpmDetectorService.js</span> chịu trách nhiệm trích xuất chỉ số tempo của ca khúc bằng giải thuật <span class="text-indigo-300 font-semibold">BeatRoot Onset Detection</span>:
             </p>
 
-            <div class="space-y-2.5 text-xs">
-              <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+            <div class="space-y-2 text-xs">
+              <div class="p-2.5 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
                 <strong class="text-indigo-300 block">1. In-Memory PCM Stream Pipe:</strong>
                 <p class="text-slate-400 text-[11px]">
-                  Thay vì xuất file WAV trung gian ra ổ cứng, service sử dụng lệnh <span class="badge-code">-f s16le -ac 1 -ar 44100</span> của FFmpeg pipe thẳng qua Buffer Stream của Node.js.
+                  Thay vì xuất file WAV trung gian ra đĩa cứng, service sử dụng lệnh <span class="badge-code">-f s16le -ac 1 -ar 44100</span> của FFmpeg pipe thẳng qua Buffer Stream của Node.js.
                 </p>
               </div>
 
-              <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+              <div class="p-2.5 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
                 <strong class="text-purple-300 block">2. Spectral Flux Onset Detection:</strong>
                 <p class="text-slate-400 text-[11px]">
-                  Sử dụng FFT (Fast Fourier Transform) tính toán độ lệch năng lượng quang phổ giữa các khung thời gian liên tiếp: $H(k) = |X_t(k)| - |X_{t-1}(k)|$. Các đỉnh xung đại diện cho tiếng gõ phách (kick, snare, transient).
+                  Chia tín hiệu âm thanh thành các khung STFT 2048 mẫu, đo lường sự biến thiên năng lượng quang phổ để phát hiện thời điểm phát ra phách (onset times).
+                </p>
+              </div>
+
+              <div class="p-2.5 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+                <strong class="text-emerald-300 block">3. Inter-Beat Interval (IBI) & Autocorrelation:</strong>
+                <p class="text-slate-400 text-[11px]">
+                  Tính toán khoảng cách thời gian giữa các onset và tìm đỉnh tương quan chu kỳ để suy ra BPM chính xác.
                 </p>
               </div>
             </div>
@@ -507,28 +817,29 @@
         right: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 3 (Phần 2)</span>
-            <h2 class="text-lg font-bold text-white">Tự Tương Quan & Chiến Lược Fallback</h2>
+            <h2 class="text-lg font-bold text-white font-display">Thực Nghiệm Tương Tác: Live BPM Tap</h2>
             
             <p class="text-xs text-slate-300 leading-relaxed">
-              Từ các đỉnh Onset, thuật toán tính hàm tự tương quan <span class="badge-code">Autocorrelation</span> trên khoảng cách giữa các phách (Inter-Beat Interval - IBI) để suy ra tốc độ nhịp trung bình:
+              Hãy nhấp đều tay vào nút bên dưới theo nhịp bài hát bạn đang nghe để xem thuật toán IBI tính toán BPM trực tiếp trên trình duyệt:
             </p>
 
-            <div class="p-3 rounded-xl bg-slate-900 font-mono text-center text-indigo-300 border border-indigo-500/20 text-xs">
-              BPM = 60 / Chu Kỳ Phách (giây)
+            <!-- Interactive Live BPM Lab -->
+            <div class="glass-card p-4 rounded-xl space-y-3 border-indigo-500/30 text-center">
+              <div class="text-2xl sm:text-3xl font-extrabold text-indigo-400 font-mono" id="tap-bpm-display">
+                --.- <span class="text-xs text-slate-400">BPM</span>
+              </div>
+              <div class="text-[11px] text-slate-400" id="tap-bpm-status">Nhấp ít nhất 4 nhịp để tính trung bình</div>
+              
+              <button id="btn-tap-tempo" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-indigo-600/30 active:scale-95 transition-all">
+                🎵 NHẤP THEO NHỊP (TAP TEMPO)
+              </button>
             </div>
 
-            <h3 class="text-xs font-bold text-slate-200 pt-1">Xử Lý Ca Ngoại Lệ (Graceful Degradation):</h3>
-            <ul class="space-y-2 text-xs text-slate-400">
-              <li>
-                <strong class="text-amber-300">• Tệp quá ngắn (&lt; 2 giây):</strong> Trả về <span class="badge-code">isAmbiguous: true</span> và <span class="badge-code">bpm: null</span> do không đủ số lượng chu kỳ phách tối thiểu.
-              </li>
-              <li>
-                <strong class="text-sky-300">• Nhạc Ambient / Tĩnh lặng:</strong> Khi thư viện ném ngoại lệ <span class="badge-code">Fail to find peaks</span>, service bắt lỗi an toàn và gán nhịp độ tự nhiên ($r = 1.0$), ngăn chặn crash tiến trình worker.
-              </li>
-            </ul>
-
-            <div class="p-2.5 rounded-lg bg-emerald-950/20 border border-emerald-500/30 text-emerald-300 text-xs">
-              ✔ Thời gian đo nhịp thực tế: <strong>60ms – 160ms</strong> (Vượt xa chỉ tiêu DoD &lt;= 2.0s).
+            <div class="p-3 rounded-lg bg-amber-950/20 border border-amber-500/30 text-xs space-y-1">
+              <strong class="text-amber-300 block">Graceful Fallback Mechanism:</strong>
+              <p class="text-slate-400 text-[11px]">
+                Nếu bản nhạc không có tiết tấu rõ ràng hoặc người dùng upload vocal không nhịp, hệ thống tự động đánh dấu <span class="badge-code">isAmbiguous = true</span> và fallback về tỷ lệ an toàn $r = 1.0$.
+              </p>
             </div>
           </div>
         `
@@ -536,117 +847,129 @@
 
       // SPREAD 4: CHƯƠNG 4 - CO DÃN THỜI GIAN WSOLA (ATEMPO)
       {
+        theme: 'wsola',
+        hologramType: 'radial',
         left: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 4 (Phần 1)</span>
-            <h2 class="text-lg font-bold text-white">Co Dãn Thời Gian Giữ Nguyên Cao Độ (WSOLA)</h2>
+            <h2 class="text-lg font-bold text-white font-display">Kỹ Thuật Co Dãn Thời Gian WSOLA</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
-              Khi thay đổi tốc độ giọng hát để khớp vào beat, kỹ thuật thông thường (resampling) sẽ gây ra <span class="text-rose-400 font-semibold">"hiệu ứng sóc chuột" (Chipmunk effect)</span> do tần số dao động bị co dãn tỷ lệ thuận.
+              Thách thức lớn nhất trong Mashup là thay đổi tốc độ vocal cho khớp beat mà <span class="text-amber-300 font-semibold">tuyệt đối không bị biến đổi cao độ (pitch)</span> làm giọng hát bị "nghẹt mũi sóc chuột" (Chipmunk effect).
             </p>
 
             <div class="glass-card p-3 rounded-xl space-y-2 text-xs">
-              <strong class="text-indigo-300 block">Thuật toán WSOLA (Waveform Similarity Overlap-Add):</strong>
+              <div class="text-indigo-300 font-bold font-mono">Công Thức Tỷ Lệ Co Dãn (Master Tempo):</div>
+              <div class="p-2 bg-slate-900 rounded font-mono text-center text-sm text-emerald-400">
+                r = BPM_Beat / BPM_Vocal
+              </div>
               <p class="text-slate-400 text-[11px] leading-relaxed">
-                Bộ lọc <span class="badge-code">atempo</span> của FFmpeg chia nhỏ âm thanh thành các đoạn khung (segments), tìm kiếm điểm tương đồng cực đại qua hàm tương quan chéo (Cross-Correlation) và ghép chồng mờ dần (cross-fading). Nhờ đó, giọng hát đọc nhanh hơn nhưng cao độ (pitch) được giữ nguyên vẹn 100%.
+                • Nếu $r &gt; 1.0$: Vocal chậm hơn beat &rarr; Cần co ngắn thời gian (tăng tốc độ).<br>
+                • Nếu $r &lt; 1.0$: Vocal nhanh hơn beat &rarr; Cần dãn dài thời gian (giảm tốc độ).
               </p>
             </div>
 
-            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs space-y-1">
-              <span class="text-slate-500 text-[10px] block font-mono">Công thức Master Tempo:</span>
-              <div class="font-mono text-indigo-300 font-bold text-sm">
-                r = BPM_Beat / BPM_Vocal
-              </div>
-              <span class="text-slate-400 text-[11px]">Ví dụ: Beat 170.9 BPM / Vocal 134.6 BPM => r = 1.27 (+27% Tempo)</span>
-            </div>
+            <h3 class="text-xs font-bold text-slate-200 pt-1">Nguyên Lý WSOLA (Waveform Similarity Overlap-Add):</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Bộ lọc <span class="badge-code">atempo</span> của FFmpeg cắt nhỏ tín hiệu âm thanh thành các lát cắt ngắn trùng lặp (overlapping segments), sau đó ghép lại bằng kỹ thuật chồng lấp có trọng số để thay đổi thời gian mà giữ nguyên phổ tần số cơ bản.
+            </p>
           </div>
         `,
         right: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 4 (Phần 2)</span>
-            <h2 class="text-lg font-bold text-white">Kỹ Thuật Phân Rã Nối Tầng (Filter Chaining)</h2>
-            
+            <h2 class="text-lg font-bold text-white font-display">Phân Rã Chuỗi Bộ Lọc (Filter Chaining)</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
-              Trong mã nguồn C của FFmpeg (<span class="badge-code">af_atempo.c</span>), bộ lọc chỉ chấp nhận giá trị trong đoạn $[0.5, 2.0]$. Để hỗ trợ mọi tỷ lệ co dãn bất kỳ, helper <span class="badge-code">buildAtempoFilterChain</span> thực hiện phân rã đệ quy:
+              FFmpeg giới hạn mỗi bộ lọc <span class="badge-code">atempo</span> chỉ nhận tham số trong khoảng $[0.5, 2.0]$. Nếu $r = 2.5$, FFmpeg sẽ crash ngay lập tức!
             </p>
 
-            <div class="glass-card p-3 rounded-xl font-mono text-[11px] space-y-2 text-slate-300">
-              <div class="text-indigo-400 font-bold">// Thuật toán phân rã:</div>
-              <div>while (ratio &gt; 2.0) { filters.push('atempo=2.0'); ratio /= 2.0; }</div>
-              <div>while (ratio &lt; 0.5) { filters.push('atempo=0.5'); ratio /= 0.5; }</div>
-              <div>if (ratio !== 1.0) { filters.push('atempo=' + ratio); }</div>
+            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 space-y-1">
+              <div class="text-indigo-400 font-bold">// Giải Thuật Phân Rã Đệ Quy:</div>
+              <div>function buildAtempoFilter(tempoRatio) {</div>
+              <div>&nbsp;&nbsp;let remaining = tempoRatio;</div>
+              <div>&nbsp;&nbsp;const filters = [];</div>
+              <div>&nbsp;&nbsp;while (remaining &gt; 2.0) {</div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;filters.push('atempo=2.0');</div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;remaining /= 2.0;</div>
+              <div>&nbsp;&nbsp;}</div>
+              <div>&nbsp;&nbsp;while (remaining &lt; 0.5) {</div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;filters.push('atempo=0.5');</div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;remaining /= 0.5;</div>
+              <div>&nbsp;&nbsp;}</div>
+              <div>&nbsp;&nbsp;filters.push('atempo=' + remaining.toFixed(3));</div>
+              <div>&nbsp;&nbsp;return filters.join(',');</div>
+              <div>}</div>
             </div>
 
-            <h3 class="text-xs font-bold text-slate-200 pt-1">Bảng Minh Họa Biến Đổi:</h3>
-            <table class="w-full text-[11px] text-left border-collapse font-mono">
-              <thead>
-                <tr class="border-b border-slate-800 text-slate-400">
-                  <th class="py-1">Tỷ Lệ (r)</th>
-                  <th class="py-1">Chuỗi Filter FFmpeg</th>
-                  <th class="py-1">Ý Nghĩa</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-800 text-slate-300">
-                <tr><td class="py-1 text-slate-400">1.0</td><td>(bỏ qua)</td><td>Giữ nguyên tốc độ</td></tr>
-                <tr><td class="py-1 text-emerald-400">1.25</td><td>atempo=1.25</td><td>Tăng tốc 25% (co ngắn 20%)</td></tr>
-                <tr><td class="py-1 text-purple-400">2.50</td><td>atempo=2.0,atempo=1.25</td><td>Tăng tốc gấp 2.5 lần</td></tr>
-                <tr><td class="py-1 text-sky-400">0.40</td><td>atempo=0.5,atempo=0.8</td><td>Giảm tốc còn 40%</td></tr>
-              </tbody>
-            </table>
+            <!-- Interactive Sound Pitch Demo -->
+            <div class="glass-card p-3 rounded-xl space-y-2 text-xs">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-slate-200">Mô Phỏng Âm Nhạc Tương Tác:</span>
+                <span id="tempo-val" class="font-mono text-indigo-400 font-bold">1.25x</span>
+              </div>
+              <input id="tempo-slider" type="range" min="0.5" max="2.0" step="0.05" value="1.25" class="w-full accent-indigo-500 cursor-pointer">
+              <button id="btn-play-wsola" class="w-full py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                <svg class="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4l12 6-12 6z"/></svg>
+                <span>Nghe Thử Tốc Độ Không Đổi Cao Độ</span>
+              </button>
+            </div>
           </div>
         `
       },
 
       // SPREAD 5: CHƯƠNG 5 - XỬ LÝ NỀN BẤT ĐỒNG BỘ & SQLITE
       {
+        theme: 'worker',
+        hologramType: 'network',
         left: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 5 (Phần 1)</span>
-            <h2 class="text-lg font-bold text-white">Kiến Trúc Xử Lý Tác Vụ Nền Bất Đồng Bộ</h2>
+            <h2 class="text-lg font-bold text-white font-display">Background Worker Bất Đồng Bộ</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
-              Xử lý âm thanh là tác vụ tiêu tốn nặng nề CPU. Nếu controller thực thi đồng bộ, luồng chính của Express sẽ bị nghẽn (Event Loop Starvation).
+              Phối âm thanh là tác vụ <span class="badge-code">CPU-Intensive</span>. Nếu chạy đồng bộ trên Main Thread của Node.js, toàn bộ API server sẽ bị nghẽn (freeze), không thể nhận request khác.
             </p>
 
-            <div class="space-y-2 text-xs">
-              <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
-                <strong class="text-indigo-300 block">Fire-and-Forget với setImmediate():</strong>
-                <p class="text-slate-400 text-[11px]">
-                  Sau khi lưu bản ghi PENDING, API kích hoạt worker qua <span class="badge-code">setImmediate()</span> và trả về ngay HTTP 202 Accepted. Tiến trình xử lý âm thanh chuyển dịch sang chu kỳ Event Loop kế tiếp.
-                </p>
-              </div>
-
-              <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
-                <strong class="text-emerald-300 block">Cơ Chế Throttle Cập Nhật Tiến Độ:</strong>
-                <p class="text-slate-400 text-[11px]">
-                  Sự kiện <span class="badge-code">.on('progress')</span> bắn liên tục hàng trăm lần mỗi giây. Worker chỉ ghi DB khi cách lần ghi trước &gt;= 500ms hoặc tiến độ nhảy &gt;= 10%, giảm tải 95% số truy vấn ghi SQLite.
-                </p>
-              </div>
+            <div class="glass-card p-3 rounded-xl space-y-2 text-xs">
+              <strong class="text-indigo-300 block font-mono">Cơ Chế Fire-and-Forget với setImmediate:</strong>
+              <p class="text-slate-400 text-[11px] leading-relaxed">
+                Khi nhận request upload, controller tạo record <span class="badge-code">PENDING</span> trong DB rồi trả về ngay HTTP 202. Việc render được đẩy vào pha tiếp theo của Event Loop qua <span class="badge-code">setImmediate(() => processMixJobInBackground(jobId))</span>.
+              </p>
             </div>
+
+            <h3 class="text-xs font-bold text-slate-200 pt-1">Xử Lý Ngoại Lệ Toàn Diện:</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Mọi lỗi phát sinh trong background worker (file hỏng, ffmpeg crash, disk full) đều được bọc trong <span class="badge-code">try...catch</span>, tự động cập nhật trạng thái <span class="badge-code text-red-400">FAILED</span> cùng chi tiết lỗi vào SQLite để client hiển thị thông báo thân thiện.
+            </p>
           </div>
         `,
         right: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 5 (Phần 2)</span>
-            <h2 class="text-lg font-bold text-white">Mô Hình Dữ Liệu Prisma ORM & SQLite</h2>
+            <h2 class="text-lg font-bold text-white font-display">Tối Ưu I/O SQLite Với Prisma ORM</h2>
             
             <p class="text-xs text-slate-300 leading-relaxed">
-              Mô hình <span class="badge-code">MixJob</span> trong <span class="badge-code">schema.prisma</span> quản lý chặt chẽ trạng thái và siêu dữ liệu âm học:
+              SQLite sử dụng cơ chế <span class="badge-code">Single-Writer Lock</span>. Nếu FFmpeg cập nhật tiến độ liên tục 60 lần/giây, database sẽ xảy ra xung đột khóa (Lock Contention).
             </p>
 
-            <div class="glass-card p-3 rounded-xl font-mono text-[11px] text-slate-300 space-y-1 overflow-x-auto max-h-48">
-              <div class="text-indigo-400 font-bold">model MixJob {</div>
-              <div class="pl-3">id String @id @default(uuid())</div>
-              <div class="pl-3">status String @default("PENDING") // PROCESSING, SUCCESS, FAILED</div>
-              <div class="pl-3">progress Int @default(0)</div>
-              <div class="pl-3 text-indigo-300">trackABpm Float? // BPM Vocal</div>
-              <div class="pl-3 text-emerald-300">trackBBpm Float? // BPM Beat Master</div>
-              <div class="pl-3 text-amber-300">appliedTempoRatio Float? // Tỷ lệ co dãn</div>
-              <div class="pl-3">outputPath String?</div>
-              <div class="pl-3">executionTimeMs Int?</div>
-              <div>}</div>
+            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-2 text-xs font-mono">
+              <div class="text-emerald-400 font-bold">// Throttling Cập Nhật Tiến Độ:</div>
+              <div class="text-slate-400 text-[11px] space-y-1">
+                <div>let lastSavedProgress = 0;</div>
+                <div>onProgress: (p) => {</div>
+                <div>&nbsp;&nbsp;if (p - lastSavedProgress &gt;= 5 || p === 100) {</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;lastSavedProgress = p;</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;prisma.mixJob.update({ data: { progress: p } });</div>
+                <div>&nbsp;&nbsp;}</div>
+                <div>}</div>
+              </div>
             </div>
 
-            <div class="p-2.5 rounded-lg bg-indigo-950/20 border border-indigo-500/30 text-indigo-300 text-xs">
-              💡 <strong>Index tối ưu:</strong> Thiết lập chỉ mục trên <span class="badge-code">@@index([status])</span> và <span class="badge-code">@@index([createdAt])</span> giúp truy vấn Polling đạt độ trễ sub-millisecond.
+            <h3 class="text-xs font-bold text-slate-200 pt-1">Bộ Schema Prisma Cập Nhật Mới:</h3>
+            <div class="p-2.5 bg-slate-900 rounded-lg border border-slate-800 text-[11px] font-mono text-slate-400 space-y-1">
+              <div>model MixJob {</div>
+              <div>&nbsp;&nbsp;trackABpm&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Float?</div>
+              <div>&nbsp;&nbsp;trackBBpm&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Float?</div>
+              <div>&nbsp;&nbsp;appliedTempoRatio&nbsp;&nbsp;Float?</div>
+              <div>}</div>
             </div>
           </div>
         `
@@ -654,118 +977,138 @@
 
       // SPREAD 6: CHƯƠNG 6 - TRUYỀN PHÁT PHÂN ĐOẠN HTTP 206
       {
+        theme: 'stream',
+        hologramType: 'network',
         left: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 6 (Phần 1)</span>
-            <h2 class="text-lg font-bold text-white">Truyền Phát Phân Đoạn (HTTP 206 Streaming)</h2>
+            <h2 class="text-lg font-bold text-white font-display">Phân Đoạn Byte (HTTP 206 Streaming)</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
-              Để người dùng có thể nghe thử tức thì và tua nhạc đến bất kỳ vị trí nào trên dạng sóng mà không cần đợi tải toàn bộ tệp MP3 10-20MB, endpoint <span class="badge-code">GET /stream</span> hỗ trợ chuẩn <span class="text-indigo-300 font-semibold">HTTP 206 Partial Content</span>:
+              Để người dùng có thể kéo tua (seek) ngay lập tức trên sóng nhạc WaveSurfer mà không phải đợi tải xong toàn bộ file 10MB+, hệ thống cài đặt chuẩn <span class="badge-code">RFC 7233 Range Requests</span>:
             </p>
 
-            <div class="space-y-2 text-xs">
-              <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
-                <strong class="text-indigo-300 block">Xử Lý Header Range: bytes=start-end:</strong>
-                <p class="text-slate-400 text-[11px]">
-                  Server phân tích byte bắt đầu và byte kết thúc, tạo luồng <span class="badge-code">fs.createReadStream(path, { start, end })</span> và pipe trực tiếp ra socket phản hồi.
-                </p>
-              </div>
-
-              <div class="glass-card p-3 rounded-xl font-mono text-[11px] text-slate-300 space-y-1">
-                <div class="text-emerald-400 font-bold">// Response Headers Chuẩn:</div>
+            <div class="glass-card p-3 rounded-xl space-y-2 text-xs font-mono">
+              <div class="text-indigo-300 font-bold">// Cấu Trúc Header Phản Hồi:</div>
+              <div class="text-slate-300 text-[11px] space-y-1">
                 <div>HTTP/1.1 206 Partial Content</div>
-                <div>Content-Range: bytes 0-2048/402328</div>
+                <div>Content-Range: bytes 0-1048575/4194304</div>
                 <div>Accept-Ranges: bytes</div>
-                <div>Content-Length: 2049</div>
+                <div>Content-Length: 1048576</div>
                 <div>Content-Type: audio/mpeg</div>
               </div>
             </div>
+
+            <h3 class="text-xs font-bold text-slate-200 pt-1">Node.js fs.createReadStream Pipe:</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Hệ thống đọc chính xác đoạn byte được yêu cầu bằng <span class="badge-code">fs.createReadStream(path, { start, end })</span> và pipe trực tiếp vào luồng phản hồi <span class="badge-code">res</span>, không tiêu tốn RAM server.
+            </p>
           </div>
         `,
         right: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 6 (Phần 2)</span>
-            <h2 class="text-lg font-bold text-white">Tải Xuống & Phòng Ngự Bảo Mật</h2>
-            
+            <h2 class="text-lg font-bold text-white font-display">Phân Biệt Stream vs Download Endpoint</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
-              Endpoint tải tệp thành phẩm <span class="badge-code">GET /download</span> cấu hình header <span class="badge-code">Content-Disposition: attachment; filename="mashup-[id].mp3"</span> giúp trình duyệt lập tức kích hoạt hộp thoại lưu tệp về máy tính.
+              Hệ thống chia tách rõ ràng giữa mục đích nghe trực tuyến và tải về lưu trữ:
             </p>
 
-            <h3 class="text-xs font-bold text-slate-200 pt-1">Các Tầng Phòng Ngự Bảo Mật (Security Hardening):</h3>
-            <ul class="space-y-2 text-xs text-slate-400">
-              <li>
-                <strong class="text-rose-300">• Chống Path Traversal:</strong> Tên file tải lên được băm lại bằng <span class="badge-code">uuidv4()</span>, tách biệt hoàn toàn với tên file gốc từ người dùng.
-              </li>
-              <li>
-                <strong class="text-amber-300">• Chống Command Injection:</strong> Kiểm tra binary FFmpeg bằng <span class="badge-code">execFile</span> truyền tham số mảng tĩnh thay vì <span class="badge-code">exec</span> qua shell shell script.
-              </li>
-              <li>
-                <strong class="text-sky-300">• Tự Động Dọn Tệp Mồ Côi:</strong> Nếu người dùng chỉ tải lên 1 file và hủy, hoặc upload lỗi, Multer middleware tự động quét và xóa tệp tạm ngay lập tức.
-              </li>
-            </ul>
+            <div class="space-y-2 text-xs">
+              <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+                <strong class="text-indigo-400 block font-mono">1. GET /api/v1/mix/:jobId/stream</strong>
+                <p class="text-slate-400 text-[11px] leading-relaxed">
+                  Thiết kế riêng cho thẻ audio HTML5 và WaveSurfer. Trả về MIME <span class="badge-code">audio/mpeg</span> và hỗ trợ HTTP 206 Partial Content để tua mượt mà không delay.
+                </p>
+              </div>
+
+              <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
+                <strong class="text-emerald-400 block font-mono">2. GET /api/v1/mix/:jobId/download</strong>
+                <p class="text-slate-400 text-[11px] leading-relaxed">
+                  Thiết lập header <span class="badge-code">Content-Disposition: attachment; filename="..."</span> để ép buộc trình duyệt mở hộp thoại Save File về máy tính người dùng.
+                </p>
+              </div>
+            </div>
+
+            <div class="p-2.5 rounded-lg bg-purple-950/20 border border-purple-500/30 text-[11px] text-purple-300">
+              ✔ Đã kiểm thử tự động với Range header trong kịch bản E2E Test Suite.
+            </div>
           </div>
         `
       },
 
       // SPREAD 7: CHƯƠNG 7 - GIAO DIỆN NGƯỜI DÙNG & WAVESURFER
       {
+        theme: 'ui',
+        hologramType: 'vinyl',
         left: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 7 (Phần 1)</span>
-            <h2 class="text-lg font-bold text-white">Kiến Trúc Giao Diện React 18 & Vite</h2>
+            <h2 class="text-lg font-bold text-white font-display">Kiến Trúc Giao Diện React 18</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
-              Giao diện người dùng được tổ chức theo cây component chức năng hướng dữ liệu đơn hướng (Unidirectional Data Flow):
+              Giao diện người dùng được tổ chức theo triết lý Single Page Studio hiện đại, hỗ trợ kéo thả tệp và phản hồi trạng thái thời gian thực.
             </p>
 
-            <div class="space-y-2 text-xs">
-              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                <span class="badge-code">DualDropzone.jsx</span>
-                <span class="text-slate-400 text-[11px] block mt-1">2 ô kéo thả riêng biệt (Vocal tím & Beat xanh ngọc), kiểm định định dạng và kích thước ngay tại client.</span>
-              </div>
-
-              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                <span class="badge-code">useJobPolling.js</span>
-                <span class="text-slate-400 text-[11px] block mt-1">Custom hook thăm dò API mỗi 1.5s, tích hợp hàm Cleanup tự động hủy setInterval khi component unmount (chống rò rỉ bộ nhớ Zombie Polling).</span>
-              </div>
-
-              <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                <span class="badge-code">MixingStatus.jsx</span>
-                <span class="text-slate-400 text-[11px] block mt-1">Điều phối thanh tiến trình, hiển thị lỗi và khối thông số Tempo Matching trực quan.</span>
-              </div>
+            <div class="glass-card p-3 rounded-xl space-y-2 text-xs font-mono">
+              <strong class="text-indigo-300 block">// Hook useJobPolling & Zombie Protection:</strong>
+              <p class="text-slate-400 text-[11px] leading-relaxed">
+                Tự động gửi request mỗi 1000ms khi job đang chạy. Cơ chế dọn dẹp (Cleanup Function) trong <span class="badge-code">useEffect</span> lập tức hủy timer khi component unmount, ngăn chặn 100% hiện tượng memory leak và request ma.
+              </p>
             </div>
+
+            <h3 class="text-xs font-bold text-slate-200 pt-1">Explainable Audio DSP Badges:</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Cung cấp cụm 3 badge minh bạch hóa thuật toán: <span class="text-indigo-400 font-semibold">Vocal BPM</span>, <span class="text-emerald-400 font-semibold">Beat BPM</span>, và <span class="text-amber-400 font-semibold">% Co dãn nhịp</span> giúp người dùng tin cậy vào kết quả phối âm.
+            </p>
           </div>
         `,
         right: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 7 (Phần 2)</span>
-            <h2 class="text-lg font-bold text-white">Sóng Âm Tương Tác & Explainable UX</h2>
+            <h2 class="text-lg font-bold text-white font-display">Tích Hợp WaveSurfer.js Canvas</h2>
             
             <p class="text-xs text-slate-300 leading-relaxed">
-              <span class="badge-code">WaveformPlayer.jsx</span> tích hợp thư viện <span class="text-indigo-300 font-semibold">wavesurfer.js</span> trực tiếp trên Canvas đa kênh:
+              Sử dụng canvas WebGL/2D của WaveSurfer để vẽ dạng sóng âm thanh đa sắc màu (gradient waveform) với độ phân giải cao:
             </p>
 
-            <div class="glass-card p-3 rounded-xl space-y-1.5 text-xs">
-              <strong class="text-indigo-300 block">Tối Ưu Vòng Đời AudioContext:</strong>
-              <p class="text-slate-400 text-[11px] leading-relaxed">
-                Tích hợp hook <span class="badge-code">useEffect</span> với cơ chế giải phóng <span class="badge-code">ws.destroy()</span> khi rời trang để đóng luồng AudioContext của trình duyệt, ngăn chặn lỗi cạn kiệt tài nguyên âm thanh (AudioContext Leaks).
-              </p>
+            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1.5 text-xs">
+              <div class="text-purple-400 font-bold font-mono">Đặc Tính Hiển Thị:</div>
+              <ul class="text-slate-400 text-[11px] space-y-1">
+                <li>• Gradient màu kép: Indigo chuyển dần sang Fuchsia.</li>
+                <li>• Thanh trượt tiến trình tương tác (Interactive Cursor Scrubbing).</li>
+                <li>• Đếm thời gian thực phát lại (Current Time / Duration).</li>
+                <li>• Nút Play / Pause đồng bộ phím cách (Spacebar).</li>
+              </ul>
             </div>
 
-            <h3 class="text-xs font-bold text-slate-200 pt-1">Explainable Audio DSP:</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">
-              Giao diện giải thích cơ sở toán học cho người dùng thông qua cụm 3 thẻ Badge trực quan: <span class="text-indigo-400 font-semibold">Vocal BPM</span>, <span class="text-emerald-400 font-semibold">Beat Master BPM</span>, và <span class="text-amber-400 font-semibold">% Co dãn nhịp</span>, giúp loại bỏ cảm giác "hộp đen" và tăng 100% sự tin cậy.
-            </p>
+            <div class="p-3.5 bg-slate-900/80 rounded-xl border border-slate-800 text-center space-y-2">
+              <div class="text-xs text-slate-400 font-medium">Bản Mashup Hoàn Tất (Demo Wave Preview):</div>
+              <div class="h-10 bg-slate-950 rounded-lg flex items-center justify-center border border-slate-800 px-3">
+                <div class="flex items-center gap-1 w-full justify-between h-6">
+                  <div class="w-1 bg-indigo-500 h-2 rounded animate-pulse"></div>
+                  <div class="w-1 bg-indigo-400 h-4 rounded"></div>
+                  <div class="w-1 bg-purple-400 h-6 rounded animate-pulse"></div>
+                  <div class="w-1 bg-purple-500 h-3 rounded"></div>
+                  <div class="w-1 bg-pink-500 h-5 rounded animate-pulse"></div>
+                  <div class="w-1 bg-pink-400 h-2 rounded"></div>
+                  <div class="w-1 bg-indigo-500 h-4 rounded animate-pulse"></div>
+                  <div class="w-1 bg-purple-500 h-6 rounded"></div>
+                  <div class="w-1 bg-pink-400 h-3 rounded animate-pulse"></div>
+                </div>
+              </div>
+            </div>
           </div>
         `
       },
 
       // SPREAD 8: CHƯƠNG 8 - KIỂM THỬ TOÀN TRÌNH & TỔNG KẾT
       {
+        theme: 'test',
+        hologramType: 'radial',
         left: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 8 (Phần 1)</span>
-            <h2 class="text-lg font-bold text-white">Bộ Kịch Bản Kiểm Thử Toàn Diện (DoD)</h2>
+            <h2 class="text-lg font-bold text-white font-display">Bộ Kịch Bản Kiểm Thử (DoD)</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
-              Chất lượng hệ thống được bảo chứng bằng bộ kịch bản kiểm thử độc lập cho từng module:
+              Mọi tính năng đều trải qua quy trình xác thực độc lập nghiêm ngặt:
             </p>
 
             <div class="space-y-2 text-xs font-mono">
@@ -794,14 +1137,13 @@
         right: `
           <div class="space-y-4">
             <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 8 (Phần 2)</span>
-            <h2 class="text-lg font-bold text-white">Lời Kết & Định Hướng Tương Lai</h2>
-            
+            <h2 class="text-lg font-bold text-white font-display">Lời Kết & Định Hướng Tương Lai</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
               Dự án đã hiện thực hóa trọn vẹn mục tiêu ban đầu: xây dựng một <span class="badge-code">Audio Mashup Engine</span> tự động, hiệu năng cao và có trải nghiệm người dùng hiện đại.
             </p>
 
             <div class="glass-card p-3 rounded-xl space-y-1.5 text-xs">
-              <strong class="text-indigo-300 block">Lộ Trình Phát Triển Giai Đoạn Tiếp Theo (Phase 3+):</strong>
+              <strong class="text-indigo-300 block">Lộ Trình Nâng Cấp Giai Đoạn Tiếp Theo (Phase 3+):</strong>
               <ul class="space-y-1 text-slate-400 text-[11px]">
                 <li>• Tách Vocal/Beat bằng mô hình AI Deep Learning (Demucs/Spleeter).</li>
                 <li>• Nhận diện vòng hòa âm (Key & Camelot Wheel Harmonic Mixing).</li>
@@ -821,75 +1163,105 @@
       }
     ];
 
-    // --- 2. AUDIO SYNTHESIS: WEB AUDIO API PAGE FLIP SOUND EFFECT ---
+    // --- 2. AUDIO SYNTHESIS: WEB AUDIO API (PAGE FLIP SOUND & WSOLA DEMO) ---
     let audioCtx = null;
     let isSoundEnabled = true;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
 
     function playPageFlipSound() {
       if (!isSoundEnabled) return;
       try {
-        if (!audioCtx) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === 'suspended') {
-          audioCtx.resume();
-        }
-
-        const bufferSize = audioCtx.sampleRate * 0.18; // 180ms
-        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const ctx = getAudioContext();
+        const duration = 0.22;
+        const bufferSize = ctx.sampleRate * duration;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
 
-        // Generate white noise with envelope
         for (let i = 0; i < bufferSize; i++) {
           const t = i / bufferSize;
-          const envelope = Math.sin(t * Math.PI) * Math.exp(-t * 3.5);
-          data[i] = (Math.random() * 2 - 1) * envelope * 0.25;
+          // Dual envelope: quick burst + friction trail
+          const env = (Math.sin(t * Math.PI) * Math.exp(-t * 4)) + (Math.sin(t * Math.PI * 2) * 0.15);
+          data[i] = (Math.random() * 2 - 1) * env * 0.3;
         }
 
-        const noise = audioCtx.createBufferSource();
-        noise.buffer = buffer;
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
 
-        // Bandpass filter to simulate paper frequency
-        const filter = audioCtx.createBiquadFilter();
+        const filter = ctx.createBiquadFilter();
         filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(1400, audioCtx.currentTime);
-        filter.frequency.exponentialRampToValueAtTime(450, audioCtx.currentTime + 0.18);
-        filter.Q.value = 2.0;
+        filter.frequency.setValueAtTime(1200, ctx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(380, ctx.currentTime + duration);
+        filter.Q.value = 2.5;
 
-        const gain = audioCtx.createGain();
-        gain.gain.setValueAtTime(0.7, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.18);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.8, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
 
-        noise.connect(filter);
+        source.connect(filter);
         filter.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        noise.start();
+        gain.connect(ctx.destination);
+        source.start();
       } catch (e) {
-        console.warn('AudioContext sound flip error:', e);
+        console.warn('Audio flip error:', e);
       }
     }
 
-    // --- 3. THREE.JS 3D SCENE & INTERACTIVE BOOK RENDERING ---
-    let scene, camera, renderer, controls;
-    let bookGroup, leftCoverMesh, rightCoverMesh, spineMesh, pagesMesh, pageFlipMesh;
-    let audioParticles, waveformMesh;
-    let isOrbitMode = false;
-    let currentSpreadIndex = 0;
+    // Interactive Demo Tone Generator
+    function playDemoTone(tempoRatio = 1.0) {
+      try {
+        const ctx = getAudioContext();
+        const notes = [440, 554.37, 659.25, 880]; // A4 major chord arpeggio
+        const noteDuration = 0.12 / tempoRatio;
+
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const startTime = ctx.currentTime + (idx * noteDuration);
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, startTime);
+
+          gain.gain.setValueAtTime(0, startTime);
+          gain.gain.linearRampToValueAtTime(0.2, startTime + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + noteDuration);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(startTime);
+          osc.stop(startTime + noteDuration);
+        });
+      } catch (e) {
+        console.warn('Demo tone error:', e);
+      }
+    }
+
+    // --- 3. THREE.JS 3D HOLOGRAPHIC SCENE SETUP ---
+    let scene, camera, renderer;
+    let hologramGroup, vinylMesh, networkNodesGroup, spectrumBarsGroup;
+    let particleVortex, cyberGrid;
+    let isHologramEnabled = true;
 
     function initThreeScene() {
       const canvas = document.getElementById('webgl-canvas');
       const width = window.innerWidth;
       const height = window.innerHeight;
 
-      // 3.1 Scene & Camera
       scene = new THREE.Scene();
-      scene.fog = new THREE.FogExp2(0x030712, 0.045);
+      scene.fog = new THREE.FogExp2(0x030712, 0.035);
 
       camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-      camera.position.set(0, 4.8, 14.2);
+      camera.position.set(0, 1.5, 16.5);
 
-      // 3.2 Renderer
       renderer = new THREE.WebGLRenderer({
         canvas,
         antialias: true,
@@ -898,164 +1270,166 @@
       });
       renderer.setSize(width, height);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-      // 3.3 OrbitControls
-      controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
-      controls.maxPolarAngle = Math.PI / 2 + 0.1;
-      controls.minDistance = 6;
-      controls.maxDistance = 25;
-      controls.enabled = false; // Initially locked to reader view
-
-      // 3.4 Lighting
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
       scene.add(ambientLight);
 
-      const studioLight = new THREE.DirectionalLight(0xa5b4fc, 1.2);
-      studioLight.position.set(5, 12, 8);
-      studioLight.castShadow = true;
-      studioLight.shadow.mapSize.width = 2048;
-      studioLight.shadow.mapSize.height = 2048;
-      scene.add(studioLight);
+      const spotLight = new THREE.SpotLight(0x818cf8, 2.5, 30, Math.PI / 4, 0.3);
+      spotLight.position.set(0, 12, 10);
+      scene.add(spotLight);
 
-      const rimLight = new THREE.DirectionalLight(0x6366f1, 0.9);
-      rimLight.position.set(-8, 6, -5);
-      scene.add(rimLight);
+      const purpleGlow = new THREE.PointLight(0xa855f7, 2, 25);
+      purpleGlow.position.set(-6, -2, 4);
+      scene.add(purpleGlow);
 
-      const bottomGlow = new THREE.PointLight(0xec4899, 1.5, 20);
-      bottomGlow.position.set(0, -2, 2);
-      scene.add(bottomGlow);
+      const pinkGlow = new THREE.PointLight(0xec4899, 2, 25);
+      pinkGlow.position.set(6, -2, 4);
+      scene.add(pinkGlow);
 
-      // 3.5 Construct 3D Book Geometry
-      build3DBook();
+      // Build 3D Hologram Objects Group (Hovering right above the book)
+      hologramGroup = new THREE.Group();
+      hologramGroup.position.set(0, 3.8, -1.0);
+      scene.add(hologramGroup);
 
-      // 3.6 Background Audio Waveform Mesh & Ambient Particles
-      buildAmbientDecorations();
+      buildHolographicVinyl();
+      buildHolographicNetwork();
+      buildHolographicSpectrum();
+      buildBackgroundElements();
 
-      // 3.7 Handle Resize
       window.addEventListener('resize', onWindowResize);
     }
 
-    function build3DBook() {
-      bookGroup = new THREE.Group();
-      bookGroup.position.set(0, 0, 0);
-      scene.add(bookGroup);
-
-      const coverMat = new THREE.MeshStandardMaterial({
-        color: 0x0f172a,
-        roughness: 0.35,
-        metalness: 0.25
-      });
-
-      const goldMat = new THREE.MeshStandardMaterial({
-        color: 0xd97706,
+    function buildHolographicVinyl() {
+      const group = new THREE.Group();
+      
+      // Outer Vinyl Disc
+      const discGeo = new THREE.CylinderGeometry(2.4, 2.4, 0.05, 48);
+      const discMat = new THREE.MeshStandardMaterial({
+        color: 0x090d16,
         roughness: 0.2,
-        metalness: 0.8
+        metalness: 0.9,
       });
+      const disc = new THREE.Mesh(discGeo, discMat);
+      disc.rotation.x = Math.PI / 3;
+      group.add(disc);
 
-      const pageEdgeMat = new THREE.MeshStandardMaterial({
-        color: 0xe2e8f0,
-        roughness: 0.8
-      });
+      // Center Neon Ring
+      const ringGeo = new THREE.TorusGeometry(0.8, 0.04, 16, 48);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x6366f1 });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = Math.PI / 3;
+      group.add(ring);
 
-      // Left Cover
-      const leftCoverGeo = new THREE.BoxGeometry(5.2, 0.18, 7.2);
-      leftCoverGeo.translate(-2.6, 0, 0);
-      leftCoverMesh = new THREE.Mesh(leftCoverGeo, coverMat);
-      leftCoverMesh.position.set(-0.1, -0.1, 0);
-      leftCoverMesh.receiveShadow = true;
-      bookGroup.add(leftCoverMesh);
+      // Outer Audio Pulse Ring
+      const pulseGeo = new THREE.TorusGeometry(2.8, 0.03, 16, 64);
+      const pulseMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.6 });
+      const pulseRing = new THREE.Mesh(pulseGeo, pulseMat);
+      pulseRing.rotation.x = Math.PI / 3;
+      group.add(pulseRing);
 
-      // Right Cover
-      const rightCoverGeo = new THREE.BoxGeometry(5.2, 0.18, 7.2);
-      rightCoverGeo.translate(2.6, 0, 0);
-      rightCoverMesh = new THREE.Mesh(rightCoverGeo, coverMat);
-      rightCoverMesh.position.set(0.1, -0.1, 0);
-      rightCoverMesh.receiveShadow = true;
-      bookGroup.add(rightCoverMesh);
-
-      // Spine Cylinder
-      const spineGeo = new THREE.CylinderGeometry(0.2, 0.2, 7.2, 16);
-      spineMesh = new THREE.Mesh(spineGeo, goldMat);
-      spineMesh.rotation.x = Math.PI / 2;
-      spineMesh.position.set(0, -0.1, 0);
-      bookGroup.add(spineMesh);
-
-      // Pages Stack Block (Left & Right)
-      const leftPagesGeo = new THREE.BoxGeometry(5.0, 0.25, 7.0);
-      leftPagesGeo.translate(-2.5, 0.13, 0);
-      const leftPages = new THREE.Mesh(leftPagesGeo, pageEdgeMat);
-      leftPages.castShadow = true;
-      bookGroup.add(leftPages);
-
-      const rightPagesGeo = new THREE.BoxGeometry(5.0, 0.25, 7.0);
-      rightPagesGeo.translate(2.5, 0.13, 0);
-      const rightPages = new THREE.Mesh(rightPagesGeo, pageEdgeMat);
-      rightPages.castShadow = true;
-      bookGroup.add(rightPages);
-
-      // Animated 3D Page Flip Mesh
-      const flipGeo = new THREE.PlaneGeometry(5.0, 7.0, 10, 10);
-      flipGeo.translate(2.5, 0, 0);
-      const flipMat = new THREE.MeshStandardMaterial({
-        color: 0xf8fafc,
-        roughness: 0.5,
-        side: THREE.DoubleSide
-      });
-      pageFlipMesh = new THREE.Mesh(flipGeo, flipMat);
-      pageFlipMesh.position.set(0, 0.28, 0);
-      pageFlipMesh.rotation.x = -Math.PI / 2;
-      pageFlipMesh.visible = false;
-      bookGroup.add(pageFlipMesh);
+      vinylMesh = group;
+      hologramGroup.add(vinylMesh);
     }
 
-    function buildAmbientDecorations() {
-      // 1. Floating Ambient Audio Particles
-      const particleCount = 400;
-      const particleGeo = new THREE.BufferGeometry();
-      const positions = new Float32Array(particleCount * 3);
-      const colors = new Float32Array(particleCount * 3);
+    function buildHolographicNetwork() {
+      networkNodesGroup = new THREE.Group();
+      networkNodesGroup.visible = false;
 
-      for (let i = 0; i < particleCount * 3; i += 3) {
-        positions[i] = (Math.random() - 0.5) * 40;
-        positions[i + 1] = (Math.random() - 0.5) * 20;
-        positions[i + 2] = (Math.random() - 0.5) * 30;
-
-        colors[i] = 0.38 + Math.random() * 0.4;     // R
-        colors[i + 1] = 0.4 + Math.random() * 0.4;  // G
-        colors[i + 2] = 0.95;                       // B
-      }
-
-      particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      particleGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-      const particleMat = new THREE.PointsMaterial({
-        size: 0.12,
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.6
+      const nodeCount = 5;
+      const nodeGeo = new THREE.SphereGeometry(0.3, 16, 16);
+      const nodeMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.8
       });
 
-      audioParticles = new THREE.Points(particleGeo, particleMat);
-      scene.add(audioParticles);
+      const positions = [
+        [-3.2, 0, 0],
+        [-1.6, 0.8, 0.5],
+        [0, 0, 0],
+        [1.6, 0.8, 0.5],
+        [3.2, 0, 0]
+      ];
 
-      // 2. 3D Sine Wave Audio Grid in Background
-      const gridSegments = 60;
-      const waveGeo = new THREE.PlaneGeometry(35, 12, gridSegments, 20);
-      const waveMat = new THREE.MeshBasicMaterial({
+      positions.forEach(pos => {
+        const node = new THREE.Mesh(nodeGeo, nodeMat);
+        node.position.set(...pos);
+        networkNodesGroup.add(node);
+      });
+
+      // Connecting Laser Cables
+      const lineMat = new THREE.LineBasicMaterial({ color: 0x818cf8, transparent: true, opacity: 0.7 });
+      const points = positions.map(p => new THREE.Vector3(...p));
+      const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(lineGeo, lineMat);
+      networkNodesGroup.add(line);
+
+      hologramGroup.add(networkNodesGroup);
+    }
+
+    function buildHolographicSpectrum() {
+      spectrumBarsGroup = new THREE.Group();
+      spectrumBarsGroup.visible = false;
+
+      const barCount = 24;
+      const barGeo = new THREE.BoxGeometry(0.18, 1.2, 0.18);
+      
+      for (let i = 0; i < barCount; i++) {
+        const color = new THREE.Color().setHSL(0.65 + (i / barCount) * 0.25, 0.9, 0.6);
+        const barMat = new THREE.MeshBasicMaterial({ color });
+        const bar = new THREE.Mesh(barGeo, barMat);
+        const angle = (i / barCount) * Math.PI * 2;
+        const radius = 2.2;
+        bar.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+        spectrumBarsGroup.add(bar);
+      }
+
+      hologramGroup.add(spectrumBarsGroup);
+    }
+
+    function buildBackgroundElements() {
+      // 1. Ambient Floating Particles Vortex
+      const count = 500;
+      const geo = new THREE.BufferGeometry();
+      const pos = new Float32Array(count * 3);
+      const col = new Float32Array(count * 3);
+
+      for (let i = 0; i < count * 3; i += 3) {
+        pos[i] = (Math.random() - 0.5) * 45;
+        pos[i + 1] = (Math.random() - 0.5) * 25;
+        pos[i + 2] = (Math.random() - 0.5) * 35;
+
+        col[i] = 0.4 + Math.random() * 0.4;
+        col[i + 1] = 0.4 + Math.random() * 0.4;
+        col[i + 2] = 0.95;
+      }
+
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+
+      const mat = new THREE.PointsMaterial({
+        size: 0.14,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.65
+      });
+
+      particleVortex = new THREE.Points(geo, mat);
+      scene.add(particleVortex);
+
+      // 2. Sine Wave Cyber Grid in the background
+      const gridGeo = new THREE.PlaneGeometry(40, 15, 60, 20);
+      const gridMat = new THREE.MeshBasicMaterial({
         color: 0x4f46e5,
         wireframe: true,
         transparent: true,
         opacity: 0.15
       });
-
-      waveformMesh = new THREE.Mesh(waveGeo, waveMat);
-      waveformMesh.position.set(0, -2.5, -8);
-      waveformMesh.rotation.x = -Math.PI / 3;
-      scene.add(waveformMesh);
+      cyberGrid = new THREE.Mesh(gridGeo, gridMat);
+      cyberGrid.position.set(0, -3.5, -9);
+      cyberGrid.rotation.x = -Math.PI / 3;
+      scene.add(cyberGrid);
     }
 
     function onWindowResize() {
@@ -1066,73 +1440,82 @@
       renderer.setSize(width, height);
     }
 
-    // --- 4. 3D ANIMATION LOOP & PAGE FLIP INTERPOLATION ---
-    let clock = new THREE.Clock();
+    // Update Hologram Display based on current spread topic
+    function updateHologramForSpread(spreadIndex) {
+      if (!hologramGroup) return;
+      hologramGroup.visible = isHologramEnabled;
 
-    function animate() {
-      requestAnimationFrame(animate);
+      const spread = SPREADS_DATA[spreadIndex];
+      const type = spread.hologramType || 'vinyl';
 
-      const elapsedTime = clock.getElapsedTime();
+      vinylMesh.visible = type === 'vinyl';
+      networkNodesGroup.visible = type === 'network';
+      spectrumBarsGroup.visible = type === 'radial';
+    }
 
-      // Animate background particles
-      if (audioParticles) {
-        audioParticles.rotation.y = elapsedTime * 0.03;
+    // --- 4. RENDER LOOP FOR THREE.JS ---
+    const clock = new THREE.Clock();
+
+    function animateThree() {
+      requestAnimationFrame(animateThree);
+      const elapsed = clock.getElapsedTime();
+
+      // Rotate Particles
+      if (particleVortex) {
+        particleVortex.rotation.y = elapsed * 0.025;
       }
 
-      // Animate background sine audio grid
-      if (waveformMesh) {
-        const pos = waveformMesh.geometry.attributes.position;
+      // Animate Sine Wave Cyber Grid
+      if (cyberGrid) {
+        const pos = cyberGrid.geometry.attributes.position;
         for (let i = 0; i < pos.count; i++) {
           const u = pos.getX(i);
-          pos.setZ(i, Math.sin(u * 0.4 + elapsedTime * 2.0) * 0.8);
+          pos.setZ(i, Math.sin(u * 0.35 + elapsed * 2.2) * 0.7);
         }
         pos.needsUpdate = true;
       }
 
-      // Subtle book breathing tilt when in reading view
-      if (!isOrbitMode && bookGroup) {
-        bookGroup.rotation.x = Math.sin(elapsedTime * 0.8) * 0.02;
-        bookGroup.rotation.y = Math.cos(elapsedTime * 0.6) * 0.015;
+      // Animate Hologram Models
+      if (hologramGroup && isHologramEnabled) {
+        if (vinylMesh.visible) {
+          vinylMesh.rotation.y = elapsed * 0.8;
+          vinylMesh.position.y = Math.sin(elapsed * 1.5) * 0.2;
+        }
+
+        if (networkNodesGroup.visible) {
+          networkNodesGroup.rotation.y = Math.sin(elapsed * 0.6) * 0.3;
+          networkNodesGroup.position.y = Math.sin(elapsed * 1.8) * 0.15;
+        }
+
+        if (spectrumBarsGroup.visible) {
+          spectrumBarsGroup.rotation.y = elapsed * 0.4;
+          spectrumBarsGroup.children.forEach((bar, idx) => {
+            const scaleY = 0.4 + Math.sin(elapsed * 6 + idx * 0.8) * 0.8 + Math.cos(elapsed * 4 + idx * 0.3) * 0.4;
+            bar.scale.y = Math.max(0.2, scaleY);
+          });
+        }
       }
 
-      // Update TWEEN
       TWEEN.update();
-
-      if (controls && isOrbitMode) {
-        controls.update();
-      }
-
       renderer.render(scene, camera);
     }
 
-    // 3D Page Flip Animation via TWEEN
-    function trigger3DPageFlip(direction = 'next') {
-      if (!pageFlipMesh) return;
+    // --- 5. PHYSICAL 3D PAGE TURNING ENGINE & RIG TILT ---
+    let currentSpread = 0;
+    let isFlipping = false;
+    let isTiltEnabled = true;
 
-      playPageFlipSound();
+    const bookRig = document.getElementById('book-rig');
+    const flippingLeaf = document.getElementById('flipping-leaf');
+    const leafFrontFace = document.getElementById('leaf-front-face');
+    const leafBackFace = document.getElementById('leaf-back-face');
+    const leafFrontBody = document.getElementById('leaf-front-body');
+    const leafBackBody = document.getElementById('leaf-back-body');
+    const leafFrontNum = document.getElementById('leaf-front-num');
+    const leafBackNum = document.getElementById('leaf-back-num');
+    const leafFrontShadow = document.getElementById('leaf-front-shadow');
+    const leafBackShadow = document.getElementById('leaf-back-shadow');
 
-      pageFlipMesh.visible = true;
-
-      const startAngle = direction === 'next' ? 0 : -Math.PI;
-      const endAngle = direction === 'next' ? -Math.PI : 0;
-
-      pageFlipMesh.rotation.y = startAngle;
-
-      new TWEEN.Tween({ angle: startAngle })
-        .to({ angle: endAngle }, 650)
-        .easing(TWEEN.Easing.Cubic.InOut)
-        .onUpdate((obj) => {
-          pageFlipMesh.rotation.y = obj.angle;
-          // Curve lift effect
-          pageFlipMesh.position.y = 0.28 + Math.sin((obj.angle - startAngle) / (endAngle - startAngle) * Math.PI) * 0.6;
-        })
-        .onComplete(() => {
-          pageFlipMesh.visible = false;
-        })
-        .start();
-    }
-
-    // --- 5. DOM CONTENT UPDATER & USER NAVIGATION ---
     const leftPageBody = document.getElementById('left-page-body');
     const rightPageBody = document.getElementById('right-page-body');
     const leftPageNum = document.getElementById('left-page-num');
@@ -1141,126 +1524,173 @@
     const pageSlider = document.getElementById('page-slider');
     const btnPrev = document.getElementById('btn-prev');
     const btnNext = document.getElementById('btn-next');
-    const tocDrawer = document.getElementById('toc-drawer');
-    const tocList = document.getElementById('toc-list');
-    const bookViewport = document.getElementById('book-viewport');
 
-    function renderSpread(index) {
-      if (index < 0 || index >= SPREADS_DATA.length) return;
+    // Dynamic 3D Book Tilt with Pointer Movement
+    window.addEventListener('pointermove', (e) => {
+      if (!isTiltEnabled || !bookRig) return;
+      const xNorm = (e.clientX / window.innerWidth) * 2 - 1;   // -1 to +1
+      const yNorm = (e.clientY / window.innerHeight) * 2 - 1;  // -1 to +1
 
-      currentSpreadIndex = index;
+      const rotX = 10 - yNorm * 12; // 10deg base tilt, +/- 12deg
+      const rotY = xNorm * 16;      // +/- 16deg Y-tilt
+
+      bookRig.style.transform = `rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg)`;
+    });
+
+    // Render Static Base Pages
+    function renderStaticPages(index) {
+      currentSpread = index;
       const data = SPREADS_DATA[index];
 
-      // Smooth opacity fade
-      bookViewport.classList.add('opacity-40');
+      leftPageBody.innerHTML = data.left;
+      rightPageBody.innerHTML = data.right;
+      leftPageNum.innerText = `Trang ${index * 2}`;
+      rightPageNum.innerText = `Trang ${index * 2 + 1}`;
 
-      setTimeout(() => {
-        leftPageBody.innerHTML = data.left;
-        rightPageBody.innerHTML = data.right;
+      spreadIndicator.innerText = `${index + 1} / ${SPREADS_DATA.length} Spreads`;
+      pageSlider.value = index;
 
-        leftPageNum.innerText = `Trang ${index * 2}`;
-        rightPageNum.innerText = `Trang ${index * 2 + 1}`;
+      btnPrev.disabled = index === 0;
+      btnNext.disabled = index === SPREADS_DATA.length - 1;
 
-        spreadIndicator.innerText = `${index + 1} / ${SPREADS_DATA.length} Spreads`;
-        pageSlider.value = index;
-
-        btnPrev.disabled = index === 0;
-        btnNext.disabled = index === SPREADS_DATA.length - 1;
-
-        bookViewport.classList.remove('opacity-40');
-      }, 150);
+      updateHologramForSpread(index);
+      attachInteractiveListeners();
     }
 
-    function goToSpread(index, direction = 'next') {
-      if (index === currentSpreadIndex) return;
-      trigger3DPageFlip(direction);
-      renderSpread(index);
-    }
-
-    // Next / Prev Button Listeners
-    btnPrev.addEventListener('click', () => {
-      if (currentSpreadIndex > 0) {
-        goToSpread(currentSpreadIndex - 1, 'prev');
+    // Physical 3D Page Flip (Lật trang 3D vật lý thật sự với góc xoay 180 độ)
+    function flipToSpread(targetIndex) {
+      if (isFlipping || targetIndex === currentSpread || targetIndex < 0 || targetIndex >= SPREADS_DATA.length) {
+        return;
       }
+
+      const isNext = targetIndex > currentSpread;
+      isFlipping = true;
+      playPageFlipSound();
+
+      // Configure double-sided leaf content
+      if (isNext) {
+        // Flipping Next: Front displays CURRENT Right page; Back displays TARGET Left page
+        leafFrontBody.innerHTML = SPREADS_DATA[currentSpread].right;
+        leafFrontNum.innerText = `Trang ${currentSpread * 2 + 1}`;
+
+        leafBackBody.innerHTML = SPREADS_DATA[targetIndex].left;
+        leafBackNum.innerText = `Trang ${targetIndex * 2}`;
+
+        // Immediately update resting Right page to target to prevent visual pop
+        rightPageBody.innerHTML = SPREADS_DATA[targetIndex].right;
+        rightPageNum.innerText = `Trang ${targetIndex * 2 + 1}`;
+      } else {
+        // Flipping Prev: Front displays TARGET Right page; Back displays CURRENT Left page
+        leafFrontBody.innerHTML = SPREADS_DATA[targetIndex].right;
+        leafFrontNum.innerText = `Trang ${targetIndex * 2 + 1}`;
+
+        leafBackBody.innerHTML = SPREADS_DATA[currentSpread].left;
+        leafBackNum.innerText = `Trang ${currentSpread * 2}`;
+
+        // Immediately update resting Left page to target
+        leftPageBody.innerHTML = SPREADS_DATA[targetIndex].left;
+        leftPageNum.innerText = `Trang ${targetIndex * 2}`;
+      }
+
+      flippingLeaf.style.visibility = 'visible';
+
+      const startAngle = isNext ? 0 : -180;
+      const endAngle = isNext ? -180 : 0;
+
+      new TWEEN.Tween({ angle: startAngle })
+        .to({ angle: endAngle }, 750)
+        .easing(TWEEN.Easing.Cubic.InOut)
+        .onUpdate((obj) => {
+          // Curvature lift & 3D transform
+          const progress = (obj.angle - startAngle) / (endAngle - startAngle); // 0 to 1
+          const liftZ = Math.sin(progress * Math.PI) * 55;                    // Lift off stack by 55px
+          const bendX = Math.sin(progress * Math.PI) * -0.05;
+
+          flippingLeaf.style.transform = `rotateY(${obj.angle.toFixed(2)}deg) translateZ(${liftZ.toFixed(2)}px)`;
+
+          // Dynamic Shading based on incident angle
+          const shadowOpacity = Math.sin(progress * Math.PI) * 0.75;
+          leafFrontShadow.style.opacity = shadowOpacity;
+          leafBackShadow.style.opacity = shadowOpacity;
+        })
+        .onComplete(() => {
+          flippingLeaf.style.visibility = 'hidden';
+          flippingLeaf.style.transform = `rotateY(0deg)`;
+          renderStaticPages(targetIndex);
+          isFlipping = false;
+        })
+        .start();
+    }
+
+    // --- 6. NAVIGATION & BUTTON LISTENERS ---
+    btnPrev.addEventListener('click', () => {
+      if (currentSpread > 0) flipToSpread(currentSpread - 1);
     });
 
     btnNext.addEventListener('click', () => {
-      if (currentSpreadIndex < SPREADS_DATA.length - 1) {
-        goToSpread(currentSpreadIndex + 1, 'next');
-      }
+      if (currentSpread < SPREADS_DATA.length - 1) flipToSpread(currentSpread + 1);
     });
 
-    // Slider listener
     pageSlider.addEventListener('input', (e) => {
       const target = parseInt(e.target.value, 10);
-      goToSpread(target, target > currentSpreadIndex ? 'next' : 'prev');
+      flipToSpread(target);
     });
 
-    // Keyboard Arrow Left/Right Navigation
+    // Keyboard Arrow Keys
     window.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowRight' || e.key === 'PageDown') {
-        if (currentSpreadIndex < SPREADS_DATA.length - 1) {
-          goToSpread(currentSpreadIndex + 1, 'next');
-        }
+        if (currentSpread < SPREADS_DATA.length - 1) flipToSpread(currentSpread + 1);
       } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-        if (currentSpreadIndex > 0) {
-          goToSpread(currentSpreadIndex - 1, 'prev');
-        }
+        if (currentSpread > 0) flipToSpread(currentSpread - 1);
       }
     });
 
-    // Sound toggle
+    // Toggle 3D Hologram Button
+    const btnHologram = document.getElementById('btn-hologram');
+    const labelHologram = document.getElementById('label-hologram');
+    btnHologram.addEventListener('click', () => {
+      isHologramEnabled = !isHologramEnabled;
+      labelHologram.innerText = isHologramEnabled ? 'Hologram: BẬT' : 'Hologram: TẮT';
+      btnHologram.classList.toggle('border-indigo-500/40', isHologramEnabled);
+      btnHologram.classList.toggle('text-slate-500', !isHologramEnabled);
+      updateHologramForSpread(currentSpread);
+    });
+
+    // Toggle 3D Tilt with Mouse
+    const btnTilt = document.getElementById('btn-tilt');
+    const labelTilt = document.getElementById('label-tilt');
+    btnTilt.addEventListener('click', () => {
+      isTiltEnabled = !isTiltEnabled;
+      labelTilt.innerText = isTiltEnabled ? 'Nghiêng 3D: BẬT' : 'Nghiêng 3D: TẮT';
+      btnTilt.classList.toggle('text-slate-500', !isTiltEnabled);
+      if (!isTiltEnabled && bookRig) {
+        bookRig.style.transform = 'rotateX(8deg) rotateY(0deg)';
+      }
+    });
+
+    // Toggle Page Sound
     const btnSound = document.getElementById('btn-sound');
     const iconSoundOn = document.getElementById('icon-sound-on');
     const iconSoundOff = document.getElementById('icon-sound-off');
-
     btnSound.addEventListener('click', () => {
       isSoundEnabled = !isSoundEnabled;
       iconSoundOn.classList.toggle('hidden', !isSoundEnabled);
       iconSoundOff.classList.toggle('hidden', isSoundEnabled);
     });
 
-    // Camera Mode Toggle: Reading Mode vs Free 3D Orbit
-    const btnCamera = document.getElementById('btn-camera');
-    const labelCamera = document.getElementById('label-camera');
-
-    btnCamera.addEventListener('click', () => {
-      isOrbitMode = !isOrbitMode;
-      controls.enabled = isOrbitMode;
-
-      if (isOrbitMode) {
-        labelCamera.innerText = 'Xoay 3D Tự Do (Orbit)';
-        btnCamera.classList.add('bg-indigo-600/30', 'border-indigo-500');
-        bookViewport.classList.add('scale-95');
-      } else {
-        labelCamera.innerText = 'Góc Đọc Chuẩn';
-        btnCamera.classList.remove('bg-indigo-600/30', 'border-indigo-500');
-        bookViewport.classList.remove('scale-95');
-        // Reset camera position
-        new TWEEN.Tween(camera.position)
-          .to({ x: 0, y: 4.8, z: 14.2 }, 800)
-          .easing(TWEEN.Easing.Cubic.Out)
-          .start();
-        controls.reset();
-      }
-    });
-
-    // Table of Contents Drawer Toggle
+    // Table of Contents Drawer
+    const tocDrawer = document.getElementById('toc-drawer');
     const btnToc = document.getElementById('btn-toc');
     const btnCloseToc = document.getElementById('btn-close-toc');
+    const tocList = document.getElementById('toc-list');
 
     function toggleToc(show) {
-      if (show) {
-        tocDrawer.classList.remove('translate-x-full');
-      } else {
-        tocDrawer.classList.add('translate-x-full');
-      }
+      tocDrawer.classList.toggle('translate-x-full', !show);
     }
-
     btnToc.addEventListener('click', () => toggleToc(true));
     btnCloseToc.addEventListener('click', () => toggleToc(false));
 
-    // Populate TOC list
+    // Populate TOC items
     const TOC_ITEMS = [
       { spread: 0, title: 'Bìa Sách & Sứ Mệnh Mashup Studio' },
       { spread: 1, title: 'Chương 1: Kiến Trúc Tổng Thể & Luồng E2E' },
@@ -1275,22 +1705,73 @@
 
     TOC_ITEMS.forEach((item, idx) => {
       const li = document.createElement('li');
-      li.className = 'p-2.5 rounded-xl bg-slate-900/60 hover:bg-indigo-950/40 border border-slate-800 hover:border-indigo-500/30 cursor-pointer transition-all flex items-center justify-between text-slate-300 hover:text-white';
+      li.className = 'p-2.5 rounded-xl bg-slate-900/80 hover:bg-indigo-950/60 border border-slate-800 hover:border-indigo-500/40 cursor-pointer transition-all flex items-center justify-between text-slate-300 hover:text-white';
       li.innerHTML = `
         <span class="font-medium">${item.title}</span>
         <span class="font-mono text-[10px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md">Spread ${idx + 1}</span>
       `;
       li.addEventListener('click', () => {
-        goToSpread(item.spread, item.spread > currentSpreadIndex ? 'next' : 'prev');
+        flipToSpread(item.spread);
         toggleToc(false);
       });
       tocList.appendChild(li);
     });
 
-    // --- 6. INITIALIZE APPLICATION ---
+    // --- 7. ATTACH INTERACTIVE LAB EVENT LISTENERS ---
+    let tapTimes = [];
+    function attachInteractiveListeners() {
+      // Lab 1: Live Tap Tempo BPM
+      const btnTap = document.getElementById('btn-tap-tempo');
+      const tapDisplay = document.getElementById('tap-bpm-display');
+      const tapStatus = document.getElementById('tap-bpm-status');
+
+      if (btnTap && tapDisplay) {
+        btnTap.addEventListener('click', () => {
+          const now = performance.now();
+          if (tapTimes.length > 0 && now - tapTimes[tapTimes.length - 1] > 2500) {
+            tapTimes = []; // Reset after 2.5s idle
+          }
+          tapTimes.push(now);
+
+          if (tapTimes.length >= 2) {
+            const intervals = [];
+            for (let i = 1; i < tapTimes.length; i++) {
+              intervals.push(tapTimes[i] - tapTimes[i - 1]);
+            }
+            const avgIntervalMs = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+            const bpm = (60000 / avgIntervalMs).toFixed(1);
+
+            tapDisplay.innerHTML = `${bpm} <span class="text-xs text-slate-400">BPM</span>`;
+            tapStatus.innerText = `Đã lấy mẫu từ ${tapTimes.length} nhịp`;
+          } else {
+            tapStatus.innerText = 'Tiếp tục nhịp thêm...';
+          }
+        });
+      }
+
+      // Lab 2: WSOLA Pitch Demo
+      const btnPlayWsola = document.getElementById('btn-play-wsola');
+      const tempoSlider = document.getElementById('tempo-slider');
+      const tempoVal = document.getElementById('tempo-val');
+
+      if (tempoSlider && tempoVal) {
+        tempoSlider.addEventListener('input', (e) => {
+          tempoVal.innerText = `${parseFloat(e.target.value).toFixed(2)}x`;
+        });
+      }
+
+      if (btnPlayWsola && tempoSlider) {
+        btnPlayWsola.addEventListener('click', () => {
+          const ratio = parseFloat(tempoSlider.value);
+          playDemoTone(ratio);
+        });
+      }
+    }
+
+    // --- 8. INITIALIZE APPLICATION ---
     initThreeScene();
-    animate();
-    renderSpread(0);
+    animateThree();
+    renderStaticPages(0);
   </script>
 </body>
 </html>
