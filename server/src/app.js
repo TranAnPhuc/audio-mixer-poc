@@ -39,6 +39,9 @@ app.get('/health', (req, res) => {
 // 3. API Routes
 app.use('/api/v1/mix', mixRoutes);
 
+// 3.1. Interactive 3D Book Documentation
+app.use('/docs', express.static(path.resolve(__dirname, '../../docs')));
+
 // 4. Fallback 404 Route Handler
 app.use((req, res) => {
   res.status(404).json({
