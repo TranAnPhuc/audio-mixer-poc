@@ -39,7 +39,7 @@
 
 ## Giai đoạn 3: Tầng API & Xử Lý Tác Vụ Bất Đồng Bộ (API & Asynchronous Worker)
 
-- [ ] **Task 3.1: Cấu hình Multer Upload & File Validation Middleware**
+- [x] **Task 3.1: Cấu hình Multer Upload & File Validation Middleware**
   - **Mô tả:** Viết middleware tiếp nhận 2 trường file `trackA` và `trackB`, lưu tạm vào `storage/uploads/`, kiểm định dung lượng tối đa 25MB và đuôi file hợp lệ.
   - **File tác động:** `server/src/middlewares/uploadMiddleware.js`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Gửi thử request qua Postman/cURL: thiếu file trả về 400; file quá lớn trả về 413; file hợp lệ được ghi vào đĩa và trả về metadata.
