@@ -10,8 +10,9 @@ client/dist/
 # Runtime audio uploads and outputs (preserve .gitkeep)
 server/storage/uploads/*
 !server/storage/uploads/.gitkeep
-server/storage/outputs/mixed-*
-server/storage/outputs/track*
+server/storage/outputs/*
+!server/storage/outputs/.gitkeep
+!server/storage/outputs/test_mixed.mp3
 
 # SQLite journal / temp
 *.db-journal

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import prisma, { JobStatus } from '../config/db.js';
 import { mixAudioTracks } from '../services/AudioMixerService.js';
+import { BpmDetectorService } from '../services/BpmDetectorService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,11 +34,42 @@ export async function processMixJobInBackground(jobId) {
     const outputFileName = `mixed-${jobId}.mp3`;
     const outputPath = path.join(outputDir, outputFileName);
 
-    // 2. Kích hoạt AudioMixerService với cơ chế Throttle cập nhật DB
+    // 2. Dò tìm BPM song song cho cả Track A và Track B (Promise.all)
+    let bpmResultA = { bpm: null, isAmbiguous: true };
+    let bpmResultB = { bpm: null, isAmbiguous: true };
+    try {
+      [bpmResultA, bpmResultB] = await Promise.all([
+        BpmDetectorService.detectBpm(job.trackAPath),
+        BpmDetectorService.detectBpm(job.trackBPath)
+      ]);
+    } catch (bpmErr) {
+      console.warn(`[MixJob ${jobId}] Cảnh báo khi phân tích BPM:`, bpmErr.message);
+    }
+
+    // 3. Tính toán tỷ lệ co dãn nhịp điệu (Tempo Ratio)
+    let tempoRatio = 1.0;
+    const canMatchTempo =
+      !bpmResultA.isAmbiguous &&
+      !bpmResultB.isAmbiguous &&
+      bpmResultA.bpm &&
+      bpmResultB.bpm &&
+      bpmResultA.bpm > 0 &&
+      bpmResultB.bpm > 0;
+
+    if (canMatchTempo) {
+      tempoRatio = Number((bpmResultB.bpm / bpmResultA.bpm).toFixed(3));
+    }
+
+    console.log(
+      `[MixJob ${jobId}] Dò nhịp hoàn tất: TrackA=${bpmResultA.bpm} BPM, TrackB=${bpmResultB.bpm} BPM => Tỷ lệ co dãn r=${tempoRatio}`
+    );
+
+    // 4. Kích hoạt AudioMixerService với cơ chế Throttle cập nhật DB
     const mixResult = await mixAudioTracks({
       trackAPath: job.trackAPath,
       trackBPath: job.trackBPath,
       outputPath,
+      tempoRatio,
       onProgress: async (percent) => {
         const now = Date.now();
         // Throttle: Chỉ ghi DB nếu cách lần trước >= 500ms hoặc bước nhảy tiến độ >= 10%
@@ -59,7 +91,7 @@ export async function processMixJobInBackground(jobId) {
       }
     });
 
-    // 3. Hoàn tất thành công: Cập nhật SUCCESS
+    // 5. Hoàn tất thành công: Cập nhật SUCCESS kèm siêu dữ liệu nhịp độ
     await prisma.mixJob.update({
       where: { id: jobId },
       data: {
@@ -68,7 +100,10 @@ export async function processMixJobInBackground(jobId) {
         outputPath: mixResult.outputPath,
         outputFileName: mixResult.outputFileName,
         outputDuration: mixResult.outputDuration,
-        executionTimeMs: mixResult.executionTimeMs
+        executionTimeMs: mixResult.executionTimeMs,
+        trackABpm: bpmResultA.bpm ?? null,
+        trackBBpm: bpmResultB.bpm ?? null,
+        appliedTempoRatio: tempoRatio
       }
     });
 
@@ -169,6 +204,11 @@ export async function getJobStatus(req, res, next) {
           jobId: job.id,
           status: job.status,
           progress: job.progress,
+          tempo: {
+            trackABpm: job.trackABpm,
+            trackBBpm: job.trackBBpm,
+            appliedTempoRatio: job.appliedTempoRatio
+          },
           result: {
             streamUrl: `/api/v1/mix/${job.id}/stream`,
             downloadUrl: `/api/v1/mix/${job.id}/download`,

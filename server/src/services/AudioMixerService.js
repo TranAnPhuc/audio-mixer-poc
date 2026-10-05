@@ -51,15 +51,69 @@ export function getAudioMetadata(filePath) {
 }
 
 /**
+ * Tạo chuỗi bộ lọc atempo an toàn cho FFmpeg
+ * Bộ lọc atempo của FFmpeg chỉ chấp nhận giá trị trong khoảng [0.5, 2.0].
+ * Nếu ratio vượt ngoài ngưỡng này, hàm tự động phân rã và nối chuỗi nhiều filter liên tiếp.
+ * @param {number} [ratio=1.0] Tỷ lệ co dãn thời gian (tempoRatio)
+ * @returns {string} Chuỗi filter atempo (ví dụ "atempo=1.25" hoặc "atempo=2.0,atempo=1.25") hoặc rỗng nếu ratio = 1.0
+ */
+export function buildAtempoFilterChain(ratio) {
+  if (!ratio || typeof ratio !== 'number' || isNaN(ratio) || !isFinite(ratio) || ratio <= 0) {
+    return '';
+  }
+
+  // Tỷ lệ xấp xỉ 1.0 (sai lệch < 0.1%) không cần can thiệp để tối ưu hiệu năng
+  if (Math.abs(ratio - 1.0) < 0.001) {
+    return '';
+  }
+
+  const filters = [];
+  let currentRatio = ratio;
+
+  // Phân rã khi tốc độ vượt quá 2.0
+  while (currentRatio > 2.0) {
+    filters.push('atempo=2.0');
+    currentRatio /= 2.0;
+  }
+
+  // Phân rã khi tốc độ thấp hơn 0.5
+  while (currentRatio < 0.5) {
+    filters.push('atempo=0.5');
+    currentRatio /= 0.5;
+  }
+
+  // Phần dư còn lại trong khoảng [0.5, 2.0]
+  if (Math.abs(currentRatio - 1.0) >= 0.001) {
+    filters.push(`atempo=${Number(currentRatio.toFixed(4))}`);
+  }
+
+  return filters.join(',');
+}
+
+/**
  * Dịch vụ phối trộn âm thanh chuyên nghiệp sử dụng FFmpeg FilterGraph
  * @param {object} params
  * @param {string} params.trackAPath Đường dẫn file Vocal (Track A)
  * @param {string} params.trackBPath Đường dẫn file Beat (Track B)
  * @param {string} params.outputPath Đường dẫn xuất file MP3 thành phẩm
+ * @param {number} [params.tempoRatio=1.0] Tỷ lệ co/dãn thời gian áp dụng lên Track A (Vocal)
  * @param {function} [params.onProgress] Callback nhận tiến độ xử lý (0 -> 100%)
- * @returns {Promise<{ outputPath: string, outputFileName: string, outputDuration: number, executionTimeMs: number, sizeBytes: number }>}
+ * @returns {Promise<{
+ *   outputPath: string,
+ *   outputFileName: string,
+ *   outputDuration: number,
+ *   executionTimeMs: number,
+ *   sizeBytes: number,
+ *   appliedTempoRatio: number
+ * }>}
  */
-export async function mixAudioTracks({ trackAPath, trackBPath, outputPath, onProgress }) {
+export async function mixAudioTracks({
+  trackAPath,
+  trackBPath,
+  outputPath,
+  tempoRatio = 1.0,
+  onProgress
+}) {
   if (!fs.existsSync(trackAPath)) {
     throw new Error(`[AudioMixerService] Tệp Vocal không tồn tại tại: ${trackAPath}`);
   }
@@ -75,12 +129,17 @@ export async function mixAudioTracks({ trackAPath, trackBPath, outputPath, onPro
 
   // Đo thời lượng ban đầu của 2 tệp để tính toán tiến trình chính xác
   let expectedTotalDuration = 0;
+  const effectiveTempoRatio = (typeof tempoRatio === 'number' && tempoRatio > 0) ? tempoRatio : 1.0;
+
   try {
     const [metaA, metaB] = await Promise.all([
       getAudioMetadata(trackAPath),
       getAudioMetadata(trackBPath)
     ]);
-    expectedTotalDuration = Math.max(metaA.duration, metaB.duration) || 1;
+    const durationA = metaA.duration || 0;
+    const durationB = metaB.duration || 0;
+    const adjustedDurationA = durationA / effectiveTempoRatio;
+    expectedTotalDuration = Math.max(adjustedDurationA, durationB) || 1;
   } catch (probeErr) {
     console.warn('[AudioMixerService] Cảnh báo: Không thể probe độ dài tệp đầu vào, sử dụng ước lượng mặc định:', probeErr.message);
     expectedTotalDuration = 10;
@@ -91,12 +150,18 @@ export async function mixAudioTracks({ trackAPath, trackBPath, outputPath, onPro
   return new Promise((resolve, reject) => {
     let lastReportedPercent = -1;
 
+    // Chuẩn bị chuỗi filter cho Track A (Vocal)
+    const atempoChain = buildAtempoFilterChain(effectiveTempoRatio);
+    const vocalFilter = atempoChain
+      ? `[0:a]aresample=44100,${atempoChain},volume=1.0[vocal_norm]`
+      : `[0:a]aresample=44100,volume=1.0[vocal_norm]`;
+
     ffmpeg()
       .input(trackAPath)
       .input(trackBPath)
       .complexFilter([
-        // 1. Resample về 44.1kHz và Gain Staging
-        '[0:a]aresample=44100,volume=1.0[vocal_norm]',
+        // 1. Resample về 44.1kHz, áp dụng atempo co dãn thời gian và Gain Staging
+        vocalFilter,
         '[1:a]aresample=44100,volume=0.75[beat_norm]',
         // 2. Amix 2 luồng âm thanh theo độ dài lớn nhất
         '[vocal_norm][beat_norm]amix=inputs=2:duration=longest:dropout_transition=2:weights=1.0 0.75[raw_mixed]',
@@ -156,6 +221,7 @@ export async function mixAudioTracks({ trackAPath, trackBPath, outputPath, onPro
             channels: outputMeta.channels,
             bitrate: outputMeta.bitrate,
             sizeBytes: fileStats.size,
+            appliedTempoRatio: Number(effectiveTempoRatio.toFixed(3)),
             executionTimeMs
           });
         } catch (metaErr) {
@@ -165,6 +231,7 @@ export async function mixAudioTracks({ trackAPath, trackBPath, outputPath, onPro
             outputFileName: path.basename(outputPath),
             outputDuration: expectedTotalDuration,
             executionTimeMs,
+            appliedTempoRatio: Number(effectiveTempoRatio.toFixed(3)),
             sizeBytes: fs.statSync(outputPath).size
           });
         }
@@ -175,5 +242,7 @@ export async function mixAudioTracks({ trackAPath, trackBPath, outputPath, onPro
 
 export default {
   mixAudioTracks,
-  getAudioMetadata
+  getAudioMetadata,
+  buildAtempoFilterChain
 };
+
