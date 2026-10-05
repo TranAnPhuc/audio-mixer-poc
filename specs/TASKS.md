@@ -44,12 +44,12 @@
   - **File tác động:** `server/src/middlewares/uploadMiddleware.js`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Gửi thử request qua Postman/cURL: thiếu file trả về 400; file quá lớn trả về 413; file hợp lệ được ghi vào đĩa và trả về metadata.
 
-- [ ] **Task 3.2: Endpoint POST /api/v1/mix**
+- [x] **Task 3.2: Endpoint POST /api/v1/mix**
   - **Mô tả:** Controller nhận dữ liệu từ multer, tạo bản ghi `MixJob` trạng thái `PENDING` trong SQLite, kích hoạt `AudioMixerService` chạy ngầm (không dùng `await` chặn response), lập tức trả về HTTP 202 kèm `jobId`.
   - **File tác động:** `server/src/controllers/mixController.js`, `server/src/routes/mixRoutes.js`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Request trả về trong vòng dưới 200ms; trong database bản ghi chuyển từ `PENDING` -> `PROCESSING` -> `SUCCESS` khi audio render xong.
 
-- [ ] **Task 3.3: Endpoint GET /api/v1/mix/:jobId & Stream / Download**
+- [x] **Task 3.3: Endpoint GET /api/v1/mix/:jobId & Stream / Download**
   - **Mô tả:** Cung cấp API kiểm tra trạng thái job và API phân phối file âm thanh (hỗ trợ HTTP 206 Partial Content cho streaming).
   - **File tác động:** `server/src/controllers/mixController.js`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Trình duyệt gọi URL stream có thể phát và tua nhạc mượt mà; endpoint download trả về file đính kèm với header `Content-Disposition`.
@@ -58,22 +58,22 @@
 
 ## Giai đoạn 4: Giao Diện Người Dùng (React Client)
 
-- [ ] **Task 4.1: Khởi tạo Client Workspace với Vite & TailwindCSS**
+- [x] **Task 4.1: Khởi tạo Client Workspace với Vite & TailwindCSS**
   - **Mô tả:** Thiết lập ứng dụng React trong thư mục `client`, cài đặt `tailwindcss`, `lucide-react`, `axios`, `wavesurfer.js`.
   - **File tác động:** `client/package.json`, `client/vite.config.js`, `client/tailwind.config.js`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Chạy `npm run dev` hiển thị trang chào mừng có áp dụng class TailwindCSS thành công.
 
-- [ ] **Task 4.2: Thành phần tải lên (DualDropzone Component)**
+- [x] **Task 4.2: Thành phần tải lên (DualDropzone Component)**
   - **Mô tả:** Xây dựng UI gồm 2 ô kéo thả file riêng biệt cho Track A và Track B, hiển thị tên file, dung lượng và nút bấm "Bắt đầu Mix". Có validate cơ bản ở client.
   - **File tác động:** `client/src/components/DualDropzone.jsx`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Người dùng có thể chọn 2 file từ máy tính; nút bấm kích hoạt gọi API upload và nhận về `jobId`.
 
-- [ ] **Task 4.3: Hook điều phối Polling & Trạng thái (useJobPolling)**
+- [x] **Task 4.3: Hook điều phối Polling & Trạng thái (useJobPolling)**
   - **Mô tả:** Custom hook nhận vào `jobId`, kích hoạt `setInterval` gọi `GET /api/v1/mix/:jobId` mỗi 1.5 giây. Dừng polling khi trạng thái là `SUCCESS` hoặc `FAILED`.
   - **File tác động:** `client/src/hooks/useJobPolling.js`.
   - **Tiêu chuẩn nghiệm thu (DoD):** UI hiển thị chính xác thanh phần trăm tiến độ cập nhật liên tục từ server cho đến khi đạt 100%.
 
-- [ ] **Task 4.4: Trình phát trực quan hóa (WaveformPlayer Component)**
+- [x] **Task 4.4: Trình phát trực quan hóa (WaveformPlayer Component)**
   - **Mô tả:** Tích hợp thư viện `wavesurfer.js` để render dạng sóng của bản mix lấy từ endpoint stream. Có nút Play/Pause và nút Download.
   - **File tác động:** `client/src/components/WaveformPlayer.jsx`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Sóng âm hiển thị trực quan; nhấp chuột vào vị trí bất kỳ trên sóng để tua nhạc thành công.
@@ -82,7 +82,7 @@
 
 ## Giai đoạn 5: Hoàn Thiện & Kiểm Thử Tích Hợp (End-to-End Verification)
 
-- [ ] **Task 5.1: Cấu hình Root Script & Kiểm thử toàn diện**
+- [x] **Task 5.1: Cấu hình Root Script & Kiểm thử toàn diện**
   - **Mô tả:** Thêm script `concurrently` tại root `package.json` để khởi động cả client và server bằng một lệnh duy nhất (`npm run dev`).
   - **File tác động:** `package.json`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Mở trình duyệt, thực hiện trọn vẹn luồng từ Upload 2 bài hát -> Theo dõi thanh tiến trình -> Nghe bản mashup trên Waveform -> Tải về thành công.

@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { verifyFfmpegInstallation } from './utils/checkFfmpeg.js';
+import mixRoutes from './routes/mixRoutes.js';
 
 // Load environment variables from .env
 dotenv.config();
@@ -35,7 +36,10 @@ app.get('/health', (req, res) => {
   });
 });
 
-// 3. Fallback 404 Route Handler
+// 3. API Routes
+app.use('/api/v1/mix', mixRoutes);
+
+// 4. Fallback 404 Route Handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -47,7 +51,7 @@ app.use((req, res) => {
   });
 });
 
-// 4. Global Error Handler
+// 5. Global Error Handler
 app.use((err, req, res, next) => {
   console.error('[Unhandled Error]:', err);
   res.status(err.status || 500).json({
@@ -60,7 +64,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 5. Server Lifecycle & Bootstrap (Fail-Fast Verification)
+// 6. Server Lifecycle & Bootstrap (Fail-Fast Verification)
 let server = null;
 
 async function bootstrap() {

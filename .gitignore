@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Production build outputs
+dist/
+client/dist/
+
+# Runtime audio uploads and outputs (preserve .gitkeep)
+server/storage/uploads/*
+!server/storage/uploads/.gitkeep
+server/storage/outputs/mixed-*
+server/storage/outputs/track*
+
+# SQLite journal / temp
+*.db-journal
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment files
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
