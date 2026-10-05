@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>The Audio Mashup Chronicles - 3D Interactive Technical Documentation</title>
+  <title>The Audio Mashup Chronicles - 3D Interactive Technical Documentation & Masterclass</title>
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -57,10 +57,8 @@
 
   <style>
     :root {
-      --book-w: 940px;
-      --book-h: 620px;
-      --page-w: 470px;
-      --page-h: 620px;
+      --book-w: 960px;
+      --book-h: 630px;
       --cover-color: #0b0f19;
       --spine-color: #1e1b4b;
       --gold-accent: #f59e0b;
@@ -70,10 +68,8 @@
 
     @media (max-width: 1024px) {
       :root {
-        --book-w: 720px;
-        --book-h: 520px;
-        --page-w: 360px;
-        --page-h: 520px;
+        --book-w: 740px;
+        --book-h: 530px;
       }
     }
 
@@ -81,8 +77,6 @@
       :root {
         --book-w: 92vw;
         --book-h: 70vh;
-        --page-w: 92vw;
-        --page-h: 70vh;
       }
     }
 
@@ -120,7 +114,7 @@
       pointer-events: none;
     }
 
-    /* 3D Book Rig (Rotates with Mouse / Orbit) */
+    /* 3D Book Rig (Rotates with Mouse / Physics) */
     #book-rig {
       position: relative;
       width: var(--book-w);
@@ -138,8 +132,8 @@
       border-radius: 16px;
       transform: translateZ(-28px);
       box-shadow: 
-        0 40px 100px -20px rgba(0, 0, 0, 0.9),
-        0 0 50px rgba(99, 102, 241, 0.2),
+        0 40px 100px -20px rgba(0, 0, 0, 0.95),
+        0 0 50px rgba(99, 102, 241, 0.25),
         inset 0 0 0 2px rgba(245, 158, 11, 0.3);
     }
 
@@ -206,7 +200,7 @@
       height: 100%;
       position: relative;
       background: linear-gradient(135deg, #090d16 0%, #0f172a 100%);
-      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.7);
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.75);
       border: 1px solid rgba(255, 255, 255, 0.08);
       overflow-y: auto;
       overflow-x: hidden;
@@ -252,7 +246,7 @@
       pointer-events: none;
     }
 
-    /* 3D Physical Flipping Leaf (Lá lật 3D thật sự trong không gian) */
+    /* 3D Physical Flipping Leaf */
     #flipping-leaf {
       position: absolute;
       top: 0;
@@ -340,14 +334,24 @@
       border: 1px solid rgba(99, 102, 241, 0.35);
     }
 
-    /* Holographic Glow Animations */
-    @keyframes pulse-holo {
-      0%, 100% { opacity: 0.8; filter: drop-shadow(0 0 15px rgba(99, 102, 241, 0.6)); }
-      50% { opacity: 1; filter: drop-shadow(0 0 30px rgba(168, 85, 247, 0.9)); }
+    .badge-node {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.82em;
+      padding: 0.15em 0.45em;
+      border-radius: 0.25rem;
+      background: rgba(16, 185, 129, 0.18);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.35);
     }
 
-    .holo-glow {
-      animation: pulse-holo 3s infinite ease-in-out;
+    .badge-react {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.82em;
+      padding: 0.15em 0.45em;
+      border-radius: 0.25rem;
+      background: rgba(6, 182, 212, 0.18);
+      color: #67e8f9;
+      border: 1px solid rgba(6, 182, 212, 0.35);
     }
   </style>
 </head>
@@ -361,7 +365,7 @@
     <!-- Left Logo & Project Metadata -->
     <div class="glass-panel px-4 py-2.5 rounded-2xl flex items-center gap-3.5 pointer-events-auto shadow-2xl">
       <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/40">
-        <svg class="w-5 h-5 text-white animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
         </svg>
       </div>
@@ -371,10 +375,10 @@
             THE AUDIO MASHUP CHRONICLES
           </h1>
           <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-            True 3D Book
+            Node.js & React.js Masterclass
           </span>
         </div>
-        <p class="text-[11px] text-slate-400 font-medium">Digital Signal Processing & Autonomous Engine Manual</p>
+        <p class="text-[11px] text-slate-400 font-medium">Full-Stack Digital Signal Processing & Architecture Tome</p>
       </div>
     </div>
 
@@ -386,7 +390,7 @@
         <span id="label-hologram">Hologram: BẬT</span>
       </button>
 
-      <!-- 3D Book Tilt Toggle (Tilt with Mouse vs Locked Flat) -->
+      <!-- 3D Book Tilt Toggle -->
       <button id="btn-tilt" class="glass-panel hover:bg-slate-800 text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-lg active:scale-95" title="Bật/Tắt nghiêng 3D theo con trỏ chuột">
         <svg class="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
@@ -451,7 +455,7 @@
             <!-- Dynamic Right HTML Content -->
           </div>
           <div class="pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-500 font-mono">
-            <span class="text-indigo-400">Digital Signal Processing</span>
+            <span class="text-indigo-400">Node.js & React Architecture</span>
             <span id="right-page-num">Trang 1</span>
           </div>
         </section>
@@ -496,9 +500,9 @@
 
       <!-- Spread Slider & Indicator -->
       <div class="flex items-center gap-3">
-        <input id="page-slider" type="range" min="0" max="8" value="0" class="w-28 sm:w-48 accent-indigo-500 cursor-pointer">
-        <span id="spread-indicator" class="font-mono text-xs font-bold text-indigo-300 min-w-[75px] text-center">
-          1 / 9 Spreads
+        <input id="page-slider" type="range" min="0" max="10" value="0" class="w-28 sm:w-52 accent-indigo-500 cursor-pointer">
+        <span id="spread-indicator" class="font-mono text-xs font-bold text-indigo-300 min-w-[85px] text-center">
+          1 / 11 Spreads
         </span>
       </div>
 
@@ -533,7 +537,7 @@
     </div>
     <div class="pt-4 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between font-mono">
       <span>Trần An Phúc © 2026</span>
-      <span>Three.js + DSP Engine</span>
+      <span>Three.js + Node + React</span>
     </div>
   </aside>
 
@@ -541,7 +545,7 @@
   <!-- JAVASCRIPT: 3D HOLOGRAPHIC THREE.JS + PHYSICAL 3D PAGE TURNING -->
   <!-- ============================================================== -->
   <script>
-    // --- 1. EXHAUSTIVE DOCUMENTATION DATA (8 CHAPTERS / 9 SPREADS) ---
+    // --- 1. EXHAUSTIVE DOCUMENTATION DATA (11 SPREADS / 22 PAGES) ---
     const SPREADS_DATA = [
       // SPREAD 0: BÌA SÁCH & SỨ MỆNH MASHUP STUDIO
       {
@@ -563,13 +567,13 @@
                 THE AUDIO MASHUP CHRONICLES
               </h1>
               <p class="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
-                Tài liệu kiến trúc toàn diện giải phẫu lõi xử lý tín hiệu số DSP, thuật toán phát hiện nhịp Onset, co dãn thời gian WSOLA và phân phối phân đoạn HTTP 206.
+                Tài liệu kiến trúc toàn diện giải phẫu lõi xử lý tín hiệu số DSP, nền tảng chuyên sâu Node.js & React 18, giải thuật dò nhịp Onset và phân phối phân đoạn HTTP 206.
               </p>
             </div>
 
             <div class="pt-6 border-t border-slate-800/80 w-full flex flex-col items-center space-y-1 text-xs text-slate-500">
               <span class="text-slate-300 font-semibold">Tác giả & Kỹ sư trưởng:</span>
-              <span class="text-indigo-400 font-mono font-bold">Trần An Phúc (Tech Lead & Senior Audio Systems Engineer)</span>
+              <span class="text-indigo-400 font-mono font-bold">Trần An Phúc (Tech Lead & Senior Systems Engineer)</span>
               <span class="text-[11px] text-slate-600 pt-1">Hà Nội, Việt Nam • Phiên bản 2.0.0 (Production Release)</span>
             </div>
           </div>
@@ -578,55 +582,63 @@
           <div class="space-y-4">
             <div class="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-wider">
               <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-              <span>Lời Tựa & Mục Lục Tương Tác 3D</span>
+              <span>Lời Tựa & Mục Lục Tổng Quan</span>
             </div>
 
             <h2 class="text-lg font-extrabold text-white font-display">Tự Động Hóa Phòng Thu Âm Nhạc</h2>
             
             <p class="text-xs text-slate-300 leading-relaxed">
-              Trong sản xuất âm nhạc truyền thống, việc phối một đoạn giọng hát <span class="badge-code">Vocal (Acappella)</span> vào một bản nhạc nền <span class="badge-code">Beat (Instrumental)</span> đòi hỏi kỹ sư âm thanh phải sử dụng DAW chuyên nghiệp (Ableton Live, Logic Pro) để dò nhịp thủ công (tap tempo), co giãn thời gian (time-stretching) và căn chỉnh âm lượng chống méo tiếng.
+              Dự án này là minh chứng cho việc kết hợp hài hòa giữa <span class="badge-node">Node.js High-Performance Backend</span>, <span class="badge-react">React 18 Declarative Frontend</span> và lõi âm học số <span class="badge-code">FFmpeg DSP Pipeline</span>.
             </p>
 
             <p class="text-xs text-slate-300 leading-relaxed">
-              Dự án này đã tự động hóa 100% pipeline phức tạp trên: đưa vào 2 tệp âm thanh bất kỳ, hệ thống sẽ tự động phân tích phổ tần số, đồng bộ nhịp phách, cân chỉnh headroom và xuất ra sản phẩm mashup hoàn hảo trong vài giây.
+              Mỗi dòng code đều được xây dựng dựa trên các nguyên lý khoa học máy tính chuẩn mực: Non-blocking I/O, Event Loop phases, Microtask starvation prevention, React Fiber reconciliation, và Byte-Range seeking RFC 7233.
             </p>
 
-            <div class="glass-card p-3.5 rounded-xl space-y-2 mt-2">
+            <div class="glass-card p-3 rounded-xl space-y-1.5 mt-2">
               <h3 class="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
-                <span>📋 Danh Sách Các Chương Kỹ Thuật:</span>
+                <span>📋 Mục Lục Toàn Bộ 10 Chương Kỹ Thuật:</span>
               </h3>
-              <ul class="space-y-1.5 text-[11px] text-slate-400 font-mono">
-                <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(1)">
-                  <span>• Chương 1: Kiến Trúc Tổng Thể & Luồng E2E</span>
-                  <span class="text-indigo-500">Spread 2 →</span>
+              <ul class="space-y-1 text-[11px] text-slate-400 font-mono">
+                <li class="hover:text-emerald-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(1)">
+                  <span>• Chương 1: Nền Tảng Cốt Lõi Node.js & Event Loop</span>
+                  <span class="text-emerald-400">Spread 2 →</span>
                 </li>
-                <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(2)">
-                  <span>• Chương 2: Lõi Âm Học DSP & FilterGraph</span>
-                  <span class="text-indigo-500">Spread 3 →</span>
+                <li class="hover:text-cyan-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(2)">
+                  <span>• Chương 2: Nền Tảng Cốt Lõi React 18 & Fiber</span>
+                  <span class="text-cyan-400">Spread 3 →</span>
                 </li>
                 <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(3)">
-                  <span>• Chương 3: Thuật Toán Dò Nhịp BPM Onset</span>
-                  <span class="text-indigo-500">Spread 4 →</span>
+                  <span>• Chương 3: Kiến Trúc Phân Tầng & Luồng E2E</span>
+                  <span class="text-indigo-400">Spread 4 →</span>
                 </li>
                 <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(4)">
-                  <span>• Chương 4: Co Dãn Thời Gian WSOLA (atempo)</span>
-                  <span class="text-indigo-500">Spread 5 →</span>
+                  <span>• Chương 4: Lõi Âm Học DSP & FilterGraph</span>
+                  <span class="text-indigo-400">Spread 5 →</span>
                 </li>
                 <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(5)">
-                  <span>• Chương 5: Xử Lý Nền Bất Đồng Bộ & SQLite</span>
-                  <span class="text-indigo-500">Spread 6 →</span>
+                  <span>• Chương 5: Thuật Toán Dò Nhịp BPM Onset</span>
+                  <span class="text-indigo-400">Spread 6 →</span>
                 </li>
                 <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(6)">
-                  <span>• Chương 6: Truyền Phát Phân Đoạn HTTP 206</span>
-                  <span class="text-indigo-500">Spread 7 →</span>
+                  <span>• Chương 6: Co Dãn Thời Gian WSOLA (atempo)</span>
+                  <span class="text-indigo-400">Spread 7 →</span>
                 </li>
                 <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(7)">
-                  <span>• Chương 7: Giao Diện Người Dùng & WaveSurfer</span>
-                  <span class="text-indigo-500">Spread 8 →</span>
+                  <span>• Chương 7: Background Worker & SQLite Concurrency</span>
+                  <span class="text-indigo-400">Spread 8 →</span>
                 </li>
                 <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(8)">
-                  <span>• Chương 8: Kiểm Thử Toàn Trình & Tổng Kết</span>
-                  <span class="text-indigo-500">Spread 9 →</span>
+                  <span>• Chương 8: Phân Đoạn Byte HTTP 206 Streaming</span>
+                  <span class="text-indigo-400">Spread 9 →</span>
+                </li>
+                <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(9)">
+                  <span>• Chương 9: Giao Diện WaveSurfer Canvas & Explainable DSP</span>
+                  <span class="text-indigo-400">Spread 10 →</span>
+                </li>
+                <li class="hover:text-indigo-300 cursor-pointer flex items-center justify-between" onclick="flipToSpread(10)">
+                  <span>• Chương 10: Kiểm Thử Toàn Trình & Lộ Trình Mở Rộng</span>
+                  <span class="text-indigo-400">Spread 11 →</span>
                 </li>
               </ul>
             </div>
@@ -634,13 +646,141 @@
         `
       },
 
-      // SPREAD 1: CHƯƠNG 1 - KIẾN TRÚC TỔNG THỂ & LUỒNG E2E
+      // SPREAD 1: CHƯƠNG 1 - NỀN TẢNG CỐT LÕI NODE.JS & EVENT LOOP ARCHITECTURE
+      {
+        theme: 'node',
+        hologramType: 'network',
+        left: `
+          <div class="space-y-4">
+            <span class="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider">Chương 1 (Phần 1)</span>
+            <h2 class="text-lg font-bold text-white font-display">Nền Tảng Node.js: Event Loop & Libuv</h2>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Node.js là một runtime JavaScript đơn luồng (<span class="badge-node">Single-Threaded</span>), hoạt động trên mô hình hướng sự kiện bất đồng bộ (<span class="badge-node">Event-Driven Asynchronous I/O</span>) thông qua thư viện C++ cốt lõi <span class="badge-code">Libuv</span>.
+            </p>
+
+            <div class="glass-card p-3 rounded-xl space-y-2 font-mono text-[11px]">
+              <div class="text-emerald-300 font-bold">// 6 Pha Tuần Tự Của Event Loop:</div>
+              <div class="text-slate-300 space-y-1">
+                <div>1. <span class="text-amber-400">Timers</span>: Xử lý callback của setTimeout, setInterval.</div>
+                <div>2. <span class="text-indigo-400">Pending Callbacks</span>: Thực thi callback I/O bị trì hoãn từ vòng trước.</div>
+                <div>3. <span class="text-slate-500">Idle / Prepare</span>: Nội bộ hệ thống Libuv chuẩn bị.</div>
+                <div>4. <span class="text-purple-400">Poll</span>: Chờ đón I/O mới (Network, File I/O, Database socket).</div>
+                <div>5. <span class="text-emerald-400">Check (setImmediate)</span>: Chạy callback đăng ký qua setImmediate.</div>
+                <div>6. <span class="text-rose-400">Close Callbacks</span>: Đóng kết nối socket, file handles (socket.on('close')).</div>
+              </div>
+            </div>
+
+            <h3 class="text-xs font-bold text-slate-200 pt-1">Microtask Queue & Hiểm Họa Starvation:</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              <span class="badge-node">process.nextTick()</span> và <span class="badge-code">Promise.then()</span> thuộc hàng đợi Microtask. Chúng chạy ngay lập tức khi một thao tác JS hiện tại kết thúc, trước khi Event Loop chuyển sang pha tiếp theo. Nếu lạm dụng đệ quy nextTick, toàn bộ I/O Poll sẽ bị chết đói (I/O Starvation)!
+            </p>
+          </div>
+        `,
+        right: `
+          <div class="space-y-4">
+            <span class="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider">Chương 1 (Phần 2)</span>
+            <h2 class="text-lg font-bold text-white font-display">Ứng Dụng Trong Hệ Thống Audio Mixer</h2>
+            
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Tại sao trong controller chúng ta chọn <span class="badge-node">setImmediate</span> thay vì gọi hàm trực tiếp hay dùng nextTick?
+            </p>
+
+            <div class="p-3 bg-slate-900 rounded-xl border border-emerald-500/30 space-y-2 text-xs">
+              <div class="text-emerald-300 font-bold font-mono">1. Tránh Block Main Thread Bằng setImmediate:</div>
+              <p class="text-slate-400 text-[11px] leading-relaxed">
+                Khi nhận upload 2 file audio, sau khi insert bản ghi <span class="badge-code">PENDING</span> vào SQLite, server gửi ngay HTTP 202 rồi đăng ký:
+                <br><span class="badge-code text-indigo-300">setImmediate(() => processMixJobInBackground(jobId))</span>.
+                Điều này đẩy việc tính toán nặng sang pha <span class="text-emerald-400 font-semibold">Check</span>, nhường CPU cho pha <span class="text-purple-400 font-semibold">Poll</span> tiếp tục phục vụ hàng nghìn request HTTP khác.
+              </p>
+            </div>
+
+            <div class="p-3 bg-slate-900 rounded-xl border border-indigo-500/30 space-y-2 text-xs">
+              <div class="text-indigo-300 font-bold font-mono">2. Libuv Threadpool & Multi-processing:</div>
+              <p class="text-slate-400 text-[11px] leading-relaxed">
+                Node.js Main Thread chỉ điều phối. FFmpeg được khởi tạo thông qua <span class="badge-code">child_process.spawn()</span> thành tiến trình OS độc lập tận dụng tối đa đa nhân CPU của hệ điều hành, bypass hoàn toàn giới hạn 1 thread của V8.
+              </p>
+            </div>
+
+            <div class="p-3 bg-slate-900 rounded-xl border border-cyan-500/30 space-y-1.5 text-xs">
+              <div class="text-cyan-300 font-bold font-mono">3. Buffer & Binary TypedArrays:</div>
+              <p class="text-slate-400 text-[11px]">
+                <span class="badge-node">BpmDetectorService</span> nhận luồng raw PCM trực tiếp vào Node.js <span class="badge-code">Buffer</span> (bộ nhớ C++ ngoài V8 Heap), sau đó chuyển sang <span class="badge-code">Int16Array</span> để phân tích toán học mà không sinh rác cho bộ gom rác V8 Garbage Collector.
+              </p>
+            </div>
+          </div>
+        `
+      },
+
+      // SPREAD 2: CHƯƠNG 2 - NỀN TẢNG CỐT LÕI REACT 18 & FIBER ARCHITECTURE
+      {
+        theme: 'react',
+        hologramType: 'radial',
+        left: `
+          <div class="space-y-4">
+            <span class="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider">Chương 2 (Phần 1)</span>
+            <h2 class="text-lg font-bold text-white font-display">Nền Tảng React 18: Fiber & Concurrency</h2>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              React là thư viện xây dựng giao diện theo mô hình khai báo (<span class="badge-react">Declarative UI</span>). Trong React 18, kiến trúc <span class="badge-react">React Fiber</span> cho phép chia nhỏ quá trình điều phối (Reconciliation) thành các lát cắt thời gian linh hoạt.
+            </p>
+
+            <div class="glass-card p-3 rounded-xl space-y-2 text-xs">
+              <div class="text-cyan-300 font-bold font-mono">2 Pha Xử Lý Của React 18:</div>
+              <div class="text-slate-400 text-[11px] space-y-1">
+                <div><strong class="text-slate-200">1. Render Phase (Asynchronous):</strong> Tạo Virtual DOM tree mới, so sánh diff với Fiber tree hiện tại. Pha này có thể bị tạm dừng, ưu tiên hoặc hủy bỏ nếu có tác vụ ưu tiên cao hơn (User click, type).</div>
+                <div><strong class="text-slate-200">2. Commit Phase (Synchronous):</strong> Áp dụng các thay đổi thực tế vào Real DOM của trình duyệt chỉ trong một lần duy nhất, đảm bảo giao diện không bao giờ bị chớp giật (Flickering).</div>
+              </div>
+            </div>
+
+            <h3 class="text-xs font-bold text-slate-200 pt-1">Quy Tắc Vàng Của React Hooks:</h3>
+            <p class="text-xs text-slate-400 text-[11px] leading-relaxed">
+              Mọi Hook (<span class="badge-code">useState</span>, <span class="badge-code">useEffect</span>, <span class="badge-code">useRef</span>) được lưu trữ dưới dạng một danh sách liên kết đơn (Linked List) bên trong Fiber node của component. Do đó, hooks <strong class="text-slate-200">tuyệt đối không được đặt trong câu lệnh điều kiện (if), vòng lặp hay hàm lồng</strong> để đảm bảo thứ tự gọi luôn nhất quán giữa các lần render.
+            </p>
+          </div>
+        `,
+        right: `
+          <div class="space-y-4">
+            <span class="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider">Chương 2 (Phần 2)</span>
+            <h2 class="text-lg font-bold text-white font-display">Custom Hook & Ngăn Ngừa Zombie Loop</h2>
+            
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Khám phá cách thức thiết kế Custom Hook <span class="badge-react">useJobPolling.js</span> chuẩn mực trong hệ thống:
+            </p>
+
+            <div class="p-3 bg-slate-900 rounded-xl border border-cyan-500/30 space-y-2 text-xs font-mono">
+              <div class="text-cyan-300 font-bold">// Quản Trị Vòng Đời & Tránh Rò Rỉ Timer:</div>
+              <div class="text-slate-400 text-[11px] space-y-1">
+                <div>useEffect(() => {</div>
+                <div>&nbsp;&nbsp;let isCancelled = false; // Flag bảo vệ stale update</div>
+                <div>&nbsp;&nbsp;const timer = setInterval(async () => {</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;const res = await api.get('/mix/' + jobId);</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;if (!isCancelled && res.data.status === 'SUCCESS') {</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;setResult(res.data);</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;clearInterval(timer);</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;}</div>
+                <div>&nbsp;&nbsp;}, 1000);</div>
+                <div>&nbsp;&nbsp;return () => {</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;isCancelled = true; // Cleanup ngăn zombie leak!</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;clearInterval(timer);</div>
+                <div>&nbsp;&nbsp;};</div>
+                <div>}, [jobId]);</div>
+              </div>
+            </div>
+
+            <h3 class="text-xs font-bold text-slate-200 pt-1">Cầu Nối Giữa React & WaveSurfer Canvas:</h3>
+            <p class="text-xs text-slate-400 text-[11px] leading-relaxed">
+              WaveSurfer là thư viện can thiệp DOM trực tiếp (<span class="badge-code">Imperative</span>), trong khi React lại quản lý DOM qua trạng thái (<span class="badge-react">Declarative</span>). Chúng ta dùng <span class="badge-code">useRef</span> để neo phần tử DOM mà không kích hoạt re-render, khởi tạo instance trong <span class="badge-code">useEffect</span> và gọi <span class="badge-code">wavesurfer.destroy()</span> trong cleanup function.
+            </p>
+          </div>
+        `
+      },
+
+      // SPREAD 3: CHƯƠNG 3 - KIẾN TRÚC PHÂN TẦNG VÀ LUỒNG DỮ LIỆU E2E
       {
         theme: 'pipeline',
         hologramType: 'network',
         left: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 1 (Phần 1)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 3 (Phần 1)</span>
             <h2 class="text-lg font-bold text-white font-display">Kiến Trúc Topology & Phân Tầng</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
               Dự án xây dựng theo mô hình <span class="badge-code">Client-Server Monorepo</span> hiện đại, chia tách rõ ràng giữa lớp giao diện trực quan và lớp xử lý tín hiệu nền:
@@ -666,7 +806,7 @@
         `,
         right: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 1 (Phần 2)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 3 (Phần 2)</span>
             <h2 class="text-lg font-bold text-white font-display">Luồng Dữ Liệu Toàn Trình (E2E Pipeline)</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
               Mỗi tác vụ phối âm trải qua chuỗi 4 mắt xích liên tục:
@@ -709,13 +849,13 @@
         `
       },
 
-      // SPREAD 2: CHƯƠNG 2 - LÕI ÂM HỌC SỐ DSP & FFMPEG COMPLEXFILTER
+      // SPREAD 4: CHƯƠNG 4 - LÕI ÂM HỌC SỐ DSP & FFMPEG COMPLEXFILTER
       {
         theme: 'dsp',
         hologramType: 'network',
         left: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 2 (Phần 1)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 4 (Phần 1)</span>
             <h2 class="text-lg font-bold text-white font-display">Lõi Âm Học Số DSP (Complex FilterGraph)</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
               Trọng tâm của <span class="badge-code">AudioMixerService.js</span> là chuỗi FilterGraph xây dựng bằng fluent-ffmpeg để điều phối 2 luồng âm thanh độc lập:
@@ -742,7 +882,7 @@
         `,
         right: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 2 (Phần 2)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 4 (Phần 2)</span>
             <h2 class="text-lg font-bold text-white font-display">Cơ Chế Summing & Triệt Tiêu Clipping</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
               Khi 2 sóng âm thanh cộng hưởng biên độ tại cùng một thời điểm, biên độ tổng có thể vượt quá $0\text{ dBFS}$ gây ra hiện tượng méo tiếng số <span class="badge-code">Digital Clipping</span>.
@@ -778,13 +918,13 @@
         `
       },
 
-      // SPREAD 3: CHƯƠNG 3 - THUẬT TOÁN DÒ NHỊP BPM ONSET
+      // SPREAD 5: CHƯƠNG 5 - THUẬT TOÁN DÒ NHỊP BPM ONSET
       {
         theme: 'bpm',
         hologramType: 'radial',
         left: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 3 (Phần 1)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 5 (Phần 1)</span>
             <h2 class="text-lg font-bold text-white font-display">Thuật Toán Dò Nhịp Độ (BPM Engine)</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
               <span class="badge-code">BpmDetectorService.js</span> chịu trách nhiệm trích xuất chỉ số tempo của ca khúc bằng giải thuật <span class="text-indigo-300 font-semibold">BeatRoot Onset Detection</span>:
@@ -816,7 +956,7 @@
         `,
         right: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 3 (Phần 2)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 5 (Phần 2)</span>
             <h2 class="text-lg font-bold text-white font-display">Thực Nghiệm Tương Tác: Live BPM Tap</h2>
             
             <p class="text-xs text-slate-300 leading-relaxed">
@@ -845,13 +985,13 @@
         `
       },
 
-      // SPREAD 4: CHƯƠNG 4 - CO DÃN THỜI GIAN WSOLA (ATEMPO)
+      // SPREAD 6: CHƯƠNG 6 - CO DÃN THỜI GIAN WSOLA (ATEMPO)
       {
         theme: 'wsola',
         hologramType: 'radial',
         left: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 4 (Phần 1)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 6 (Phần 1)</span>
             <h2 class="text-lg font-bold text-white font-display">Kỹ Thuật Co Dãn Thời Gian WSOLA</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
               Thách thức lớn nhất trong Mashup là thay đổi tốc độ vocal cho khớp beat mà <span class="text-amber-300 font-semibold">tuyệt đối không bị biến đổi cao độ (pitch)</span> làm giọng hát bị "nghẹt mũi sóc chuột" (Chipmunk effect).
@@ -876,7 +1016,7 @@
         `,
         right: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 4 (Phần 2)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 6 (Phần 2)</span>
             <h2 class="text-lg font-bold text-white font-display">Phân Rã Chuỗi Bộ Lọc (Filter Chaining)</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
               FFmpeg giới hạn mỗi bộ lọc <span class="badge-code">atempo</span> chỉ nhận tham số trong khoảng $[0.5, 2.0]$. Nếu $r = 2.5$, FFmpeg sẽ crash ngay lập tức!
@@ -916,13 +1056,13 @@
         `
       },
 
-      // SPREAD 5: CHƯƠNG 5 - XỬ LÝ NỀN BẤT ĐỒNG BỘ & SQLITE
+      // SPREAD 7: CHƯƠNG 7 - XỬ LÝ NỀN BẤT ĐỒNG BỘ & SQLITE
       {
         theme: 'worker',
         hologramType: 'network',
         left: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 5 (Phần 1)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 7 (Phần 1)</span>
             <h2 class="text-lg font-bold text-white font-display">Background Worker Bất Đồng Bộ</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
               Phối âm thanh là tác vụ <span class="badge-code">CPU-Intensive</span>. Nếu chạy đồng bộ trên Main Thread của Node.js, toàn bộ API server sẽ bị nghẽn (freeze), không thể nhận request khác.
@@ -943,7 +1083,7 @@
         `,
         right: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 5 (Phần 2)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 7 (Phần 2)</span>
             <h2 class="text-lg font-bold text-white font-display">Tối Ưu I/O SQLite Với Prisma ORM</h2>
             
             <p class="text-xs text-slate-300 leading-relaxed">
@@ -975,13 +1115,13 @@
         `
       },
 
-      // SPREAD 6: CHƯƠNG 6 - TRUYỀN PHÁT PHÂN ĐOẠN HTTP 206
+      // SPREAD 8: CHƯƠNG 8 - TRUYỀN PHÁT PHÂN ĐOẠN HTTP 206
       {
         theme: 'stream',
         hologramType: 'network',
         left: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 6 (Phần 1)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 8 (Phần 1)</span>
             <h2 class="text-lg font-bold text-white font-display">Phân Đoạn Byte (HTTP 206 Streaming)</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
               Để người dùng có thể kéo tua (seek) ngay lập tức trên sóng nhạc WaveSurfer mà không phải đợi tải xong toàn bộ file 10MB+, hệ thống cài đặt chuẩn <span class="badge-code">RFC 7233 Range Requests</span>:
@@ -1006,7 +1146,7 @@
         `,
         right: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 6 (Phần 2)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 8 (Phần 2)</span>
             <h2 class="text-lg font-bold text-white font-display">Phân Biệt Stream vs Download Endpoint</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
               Hệ thống chia tách rõ ràng giữa mục đích nghe trực tuyến và tải về lưu trữ:
@@ -1035,13 +1175,13 @@
         `
       },
 
-      // SPREAD 7: CHƯƠNG 7 - GIAO DIỆN NGƯỜI DÙNG & WAVESURFER
+      // SPREAD 9: CHƯƠNG 9 - GIAO DIỆN NGƯỜI DÙNG & WAVESURFER
       {
         theme: 'ui',
         hologramType: 'vinyl',
         left: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 7 (Phần 1)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 9 (Phần 1)</span>
             <h2 class="text-lg font-bold text-white font-display">Kiến Trúc Giao Diện React 18</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
               Giao diện người dùng được tổ chức theo triết lý Single Page Studio hiện đại, hỗ trợ kéo thả tệp và phản hồi trạng thái thời gian thực.
@@ -1062,7 +1202,7 @@
         `,
         right: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 7 (Phần 2)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 9 (Phần 2)</span>
             <h2 class="text-lg font-bold text-white font-display">Tích Hợp WaveSurfer.js Canvas</h2>
             
             <p class="text-xs text-slate-300 leading-relaxed">
@@ -1099,13 +1239,13 @@
         `
       },
 
-      // SPREAD 8: CHƯƠNG 8 - KIỂM THỬ TOÀN TRÌNH & TỔNG KẾT
+      // SPREAD 10: CHƯƠNG 10 - KIỂM THỬ TOÀN TRÌNH & TỔNG KẾT
       {
         theme: 'test',
         hologramType: 'radial',
         left: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 8 (Phần 1)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 10 (Phần 1)</span>
             <h2 class="text-lg font-bold text-white font-display">Bộ Kịch Bản Kiểm Thử (DoD)</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
               Mọi tính năng đều trải qua quy trình xác thực độc lập nghiêm ngặt:
@@ -1136,7 +1276,7 @@
         `,
         right: `
           <div class="space-y-4">
-            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 8 (Phần 2)</span>
+            <span class="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">Chương 10 (Phần 2)</span>
             <h2 class="text-lg font-bold text-white font-display">Lời Kết & Định Hướng Tương Lai</h2>
             <p class="text-xs text-slate-300 leading-relaxed">
               Dự án đã hiện thực hóa trọn vẹn mục tiêu ban đầu: xây dựng một <span class="badge-code">Audio Mashup Engine</span> tự động, hiệu năng cao và có trải nghiệm người dùng hiện đại.
@@ -1188,7 +1328,6 @@
 
         for (let i = 0; i < bufferSize; i++) {
           const t = i / bufferSize;
-          // Dual envelope: quick burst + friction trail
           const env = (Math.sin(t * Math.PI) * Math.exp(-t * 4)) + (Math.sin(t * Math.PI * 2) * 0.15);
           data[i] = (Math.random() * 2 - 1) * env * 0.3;
         }
@@ -1303,7 +1442,6 @@
     function buildHolographicVinyl() {
       const group = new THREE.Group();
       
-      // Outer Vinyl Disc
       const discGeo = new THREE.CylinderGeometry(2.4, 2.4, 0.05, 48);
       const discMat = new THREE.MeshStandardMaterial({
         color: 0x090d16,
@@ -1314,14 +1452,12 @@
       disc.rotation.x = Math.PI / 3;
       group.add(disc);
 
-      // Center Neon Ring
       const ringGeo = new THREE.TorusGeometry(0.8, 0.04, 16, 48);
       const ringMat = new THREE.MeshBasicMaterial({ color: 0x6366f1 });
       const ring = new THREE.Mesh(ringGeo, ringMat);
       ring.rotation.x = Math.PI / 3;
       group.add(ring);
 
-      // Outer Audio Pulse Ring
       const pulseGeo = new THREE.TorusGeometry(2.8, 0.03, 16, 64);
       const pulseMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.6 });
       const pulseRing = new THREE.Mesh(pulseGeo, pulseMat);
@@ -1336,7 +1472,6 @@
       networkNodesGroup = new THREE.Group();
       networkNodesGroup.visible = false;
 
-      const nodeCount = 5;
       const nodeGeo = new THREE.SphereGeometry(0.3, 16, 16);
       const nodeMat = new THREE.MeshStandardMaterial({
         color: 0x38bdf8,
@@ -1358,7 +1493,6 @@
         networkNodesGroup.add(node);
       });
 
-      // Connecting Laser Cables
       const lineMat = new THREE.LineBasicMaterial({ color: 0x818cf8, transparent: true, opacity: 0.7 });
       const points = positions.map(p => new THREE.Vector3(...p));
       const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
@@ -1376,7 +1510,7 @@
       const barGeo = new THREE.BoxGeometry(0.18, 1.2, 0.18);
       
       for (let i = 0; i < barCount; i++) {
-        const color = new THREE.Color().setHSL(0.65 + (i / barCount) * 0.25, 0.9, 0.6);
+        const color = new THREE.Color().setHSL(0.55 + (i / barCount) * 0.35, 0.9, 0.6);
         const barMat = new THREE.MeshBasicMaterial({ color });
         const bar = new THREE.Mesh(barGeo, barMat);
         const angle = (i / barCount) * Math.PI * 2;
@@ -1389,7 +1523,6 @@
     }
 
     function buildBackgroundElements() {
-      // 1. Ambient Floating Particles Vortex
       const count = 500;
       const geo = new THREE.BufferGeometry();
       const pos = new Float32Array(count * 3);
@@ -1418,7 +1551,6 @@
       particleVortex = new THREE.Points(geo, mat);
       scene.add(particleVortex);
 
-      // 2. Sine Wave Cyber Grid in the background
       const gridGeo = new THREE.PlaneGeometry(40, 15, 60, 20);
       const gridMat = new THREE.MeshBasicMaterial({
         color: 0x4f46e5,
@@ -1440,7 +1572,6 @@
       renderer.setSize(width, height);
     }
 
-    // Update Hologram Display based on current spread topic
     function updateHologramForSpread(spreadIndex) {
       if (!hologramGroup) return;
       hologramGroup.visible = isHologramEnabled;
@@ -1460,12 +1591,10 @@
       requestAnimationFrame(animateThree);
       const elapsed = clock.getElapsedTime();
 
-      // Rotate Particles
       if (particleVortex) {
         particleVortex.rotation.y = elapsed * 0.025;
       }
 
-      // Animate Sine Wave Cyber Grid
       if (cyberGrid) {
         const pos = cyberGrid.geometry.attributes.position;
         for (let i = 0; i < pos.count; i++) {
@@ -1475,7 +1604,6 @@
         pos.needsUpdate = true;
       }
 
-      // Animate Hologram Models
       if (hologramGroup && isHologramEnabled) {
         if (vinylMesh.visible) {
           vinylMesh.rotation.y = elapsed * 0.8;
@@ -1557,7 +1685,7 @@
       attachInteractiveListeners();
     }
 
-    // Physical 3D Page Flip (Lật trang 3D vật lý thật sự với góc xoay 180 độ)
+    // Physical 3D Page Flip
     function flipToSpread(targetIndex) {
       if (isFlipping || targetIndex === currentSpread || targetIndex < 0 || targetIndex >= SPREADS_DATA.length) {
         return;
@@ -1567,27 +1695,22 @@
       isFlipping = true;
       playPageFlipSound();
 
-      // Configure double-sided leaf content
       if (isNext) {
-        // Flipping Next: Front displays CURRENT Right page; Back displays TARGET Left page
         leafFrontBody.innerHTML = SPREADS_DATA[currentSpread].right;
         leafFrontNum.innerText = `Trang ${currentSpread * 2 + 1}`;
 
         leafBackBody.innerHTML = SPREADS_DATA[targetIndex].left;
         leafBackNum.innerText = `Trang ${targetIndex * 2}`;
 
-        // Immediately update resting Right page to target to prevent visual pop
         rightPageBody.innerHTML = SPREADS_DATA[targetIndex].right;
         rightPageNum.innerText = `Trang ${targetIndex * 2 + 1}`;
       } else {
-        // Flipping Prev: Front displays TARGET Right page; Back displays CURRENT Left page
         leafFrontBody.innerHTML = SPREADS_DATA[targetIndex].right;
         leafFrontNum.innerText = `Trang ${targetIndex * 2 + 1}`;
 
         leafBackBody.innerHTML = SPREADS_DATA[currentSpread].left;
         leafBackNum.innerText = `Trang ${currentSpread * 2}`;
 
-        // Immediately update resting Left page to target
         leftPageBody.innerHTML = SPREADS_DATA[targetIndex].left;
         leftPageNum.innerText = `Trang ${targetIndex * 2}`;
       }
@@ -1601,14 +1724,11 @@
         .to({ angle: endAngle }, 750)
         .easing(TWEEN.Easing.Cubic.InOut)
         .onUpdate((obj) => {
-          // Curvature lift & 3D transform
-          const progress = (obj.angle - startAngle) / (endAngle - startAngle); // 0 to 1
-          const liftZ = Math.sin(progress * Math.PI) * 55;                    // Lift off stack by 55px
-          const bendX = Math.sin(progress * Math.PI) * -0.05;
+          const progress = (obj.angle - startAngle) / (endAngle - startAngle);
+          const liftZ = Math.sin(progress * Math.PI) * 55;
 
           flippingLeaf.style.transform = `rotateY(${obj.angle.toFixed(2)}deg) translateZ(${liftZ.toFixed(2)}px)`;
 
-          // Dynamic Shading based on incident angle
           const shadowOpacity = Math.sin(progress * Math.PI) * 0.75;
           leafFrontShadow.style.opacity = shadowOpacity;
           leafBackShadow.style.opacity = shadowOpacity;
@@ -1690,17 +1810,19 @@
     btnToc.addEventListener('click', () => toggleToc(true));
     btnCloseToc.addEventListener('click', () => toggleToc(false));
 
-    // Populate TOC items
+    // Populate TOC items (11 SPREADS)
     const TOC_ITEMS = [
       { spread: 0, title: 'Bìa Sách & Sứ Mệnh Mashup Studio' },
-      { spread: 1, title: 'Chương 1: Kiến Trúc Tổng Thể & Luồng E2E' },
-      { spread: 2, title: 'Chương 2: Lõi Âm Học DSP & FilterGraph' },
-      { spread: 3, title: 'Chương 3: Thuật Toán Dò Nhịp BPM Onset' },
-      { spread: 4, title: 'Chương 4: Co Dãn Thời Gian WSOLA (atempo)' },
-      { spread: 5, title: 'Chương 5: Xử Lý Nền Bất Đồng Bộ & SQLite' },
-      { spread: 6, title: 'Chương 6: Truyền Phát Phân Đoạn HTTP 206' },
-      { spread: 7, title: 'Chương 7: Giao Diện Người Dùng & WaveSurfer' },
-      { spread: 8, title: 'Chương 8: Kiểm Thử Toàn Trình & Tổng Kết' }
+      { spread: 1, title: 'Chương 1: Nền Tảng Cốt Lõi Node.js & Event Loop' },
+      { spread: 2, title: 'Chương 2: Nền Tảng Cốt Lõi React 18 & Fiber' },
+      { spread: 3, title: 'Chương 3: Kiến Trúc Phân Tầng & Luồng E2E' },
+      { spread: 4, title: 'Chương 4: Lõi Âm Học DSP & FilterGraph' },
+      { spread: 5, title: 'Chương 5: Thuật Toán Dò Nhịp BPM Onset' },
+      { spread: 6, title: 'Chương 6: Co Dãn Thời Gian WSOLA (atempo)' },
+      { spread: 7, title: 'Chương 7: Background Worker & SQLite Concurrency' },
+      { spread: 8, title: 'Chương 8: Phân Đoạn Byte HTTP 206 Streaming' },
+      { spread: 9, title: 'Chương 9: Giao Diện WaveSurfer Canvas & Explainable DSP' },
+      { spread: 10, title: 'Chương 10: Kiểm Thử Toàn Trình & Lộ Trình Mở Rộng' }
     ];
 
     TOC_ITEMS.forEach((item, idx) => {
