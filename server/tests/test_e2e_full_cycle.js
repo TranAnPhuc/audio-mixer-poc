@@ -119,6 +119,9 @@ async function runFullCycleE2ETest() {
     console.log(`  → Thời gian FFmpeg render: ${jobResultData.result.executionTimeMs}ms`);
     console.log(`  → Stream URL: ${jobResultData.result.streamUrl}`);
     console.log(`  → Download URL: ${jobResultData.result.downloadUrl}`);
+    if (jobResultData.tempo) {
+      console.log(`  → Tempo Matching: TrackA=${jobResultData.tempo.trackABpm} BPM | TrackB=${jobResultData.tempo.trackBBpm} BPM | Ratio=${jobResultData.tempo.appliedTempoRatio}`);
+    }
 
     // Ghi nhận file đầu ra để dọn dẹp sau này
     const jobInDb = await prisma.mixJob.findUnique({ where: { id: createdJobId } });

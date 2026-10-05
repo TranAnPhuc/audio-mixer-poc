@@ -15,7 +15,7 @@ function formatTime(seconds) {
 /**
  * Component hiển thị sóng âm thanh tương tác và điều khiển phát nhạc
  */
-export default function WaveformPlayer({ streamUrl, downloadUrl, duration: initialDuration, jobId }) {
+export default function WaveformPlayer({ streamUrl, downloadUrl, duration: initialDuration, jobId, tempo }) {
   const containerRef = useRef(null);
   const wavesurferRef = useRef(null);
 
@@ -90,12 +90,19 @@ export default function WaveformPlayer({ streamUrl, downloadUrl, duration: initi
   return (
     <div className="w-full bg-slate-950/70 border border-slate-800 rounded-2xl p-5 sm:p-6 space-y-5 shadow-inner animate-fade-in text-left">
       {/* Header trực quan */}
-      <div className="flex items-center justify-between text-xs text-slate-400">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-400">
         <span className="font-semibold flex items-center gap-1.5 text-indigo-400">
           <Volume2 className="w-4 h-4" />
           <span>Dạng Sóng Trực Quan Hóa (Interactive Audio Waveform)</span>
         </span>
-        <span className="font-mono text-slate-500">320kbps CBR • 44.1kHz Stereo</span>
+        <div className="flex items-center gap-2">
+          {tempo?.appliedTempoRatio && tempo.appliedTempoRatio !== 1.0 && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 font-mono">
+              {tempo.appliedTempoRatio}x Tempo Matched
+            </span>
+          )}
+          <span className="font-mono text-slate-500">320kbps CBR • 44.1kHz Stereo</span>
+        </div>
       </div>
 
       {/* Vùng Canvas hiển thị sóng âm */}

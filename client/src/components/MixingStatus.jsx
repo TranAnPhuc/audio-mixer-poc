@@ -1,5 +1,17 @@
 import React from 'react';
-import { Loader2, CheckCircle2, AlertOctagon, RotateCcw, Clock, Sparkles, AudioWaveform } from 'lucide-react';
+import {
+  Loader2,
+  CheckCircle2,
+  AlertOctagon,
+  RotateCcw,
+  Clock,
+  Sparkles,
+  AudioWaveform,
+  Mic,
+  Disc,
+  Gauge,
+  Activity
+} from 'lucide-react';
 import WaveformPlayer from './WaveformPlayer';
 
 /**
@@ -8,6 +20,7 @@ import WaveformPlayer from './WaveformPlayer';
 export default function MixingStatus({
   status,
   progress,
+  tempo,
   jobId,
   result,
   error,
@@ -67,7 +80,7 @@ export default function MixingStatus({
             <div className="flex justify-between items-center text-xs">
               <span className="text-slate-400 flex items-center gap-1.5">
                 <AudioWaveform className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-                <span>FFmpeg ComplexFilter (Resample, Gain Staging, Limiter)</span>
+                <span>FFmpeg ComplexFilter (Resample, Tempo Match, Gain Staging, Limiter)</span>
               </span>
               <span className="font-mono font-bold text-indigo-400 text-sm">{progress}%</span>
             </div>
@@ -80,12 +93,12 @@ export default function MixingStatus({
             </div>
 
             <p className="text-[11px] text-slate-500 text-center italic">
-              Đang đồng bộ tần số lấy mẫu 44.1kHz và triệt tiêu méo tiếng số...
+              Đang phân tích BPM, co dãn nhịp điệu và phối ghép luồng âm thanh...
             </p>
           </div>
         )}
 
-        {/* Trạng thái SUCCESS: Hiển thị tóm tắt kết quả & WaveformPlayer */}
+        {/* Trạng thái SUCCESS: Hiển thị tóm tắt kết quả, BPM Badges & WaveformPlayer */}
         {isSuccess && result && (
           <div className="space-y-5">
             <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
@@ -98,12 +111,88 @@ export default function MixingStatus({
               </p>
             </div>
 
+            {/* Khối Thông số Đồng bộ Nhịp điệu (BPM & Tempo Matching) */}
+            {tempo && (
+              <div className="p-4 rounded-xl bg-slate-950/70 border border-indigo-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    <Activity className="w-4 h-4 text-indigo-400" />
+                    <span>Đồng bộ Nhịp điệu (Tempo Matching)</span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-mono">WSOLA atempo</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {/* Track A: Vocal BPM */}
+                  <div className="flex items-center gap-2.5 p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/20 text-indigo-300">
+                    <div className="p-2 rounded-lg bg-indigo-500/20 text-indigo-400">
+                      <Mic className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-indigo-400/80 uppercase font-semibold block">Track A (Vocal)</span>
+                      <span className="font-mono font-bold text-sm text-indigo-200">
+                        {typeof tempo.trackABpm === 'number' ? `${tempo.trackABpm} BPM` : 'Không rõ (Tự nhiên)'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Track B: Beat BPM */}
+                  <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/20 text-emerald-300">
+                    <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400">
+                      <Disc className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-emerald-400/80 uppercase font-semibold block">Track B (Beat Master)</span>
+                      <span className="font-mono font-bold text-sm text-emerald-200">
+                        {typeof tempo.trackBBpm === 'number' ? `${tempo.trackBBpm} BPM` : 'Không rõ (Tự nhiên)'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Mức độ cân chỉnh (Adjustment Badge) */}
+                  <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-200">
+                    <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
+                      <Gauge className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Cân chỉnh Tempo</span>
+                      {(() => {
+                        const r = tempo.appliedTempoRatio;
+                        if (!r || r === 1.0) {
+                          return (
+                            <span className="inline-flex items-center text-xs font-semibold text-slate-300 font-mono">
+                              Tốc độ gốc (1.0x)
+                            </span>
+                          );
+                        }
+                        if (r > 1.0) {
+                          const pct = ((r - 1) * 100).toFixed(1);
+                          return (
+                            <span className="inline-flex items-center text-xs font-semibold text-amber-400 font-mono">
+                              +{pct}% Tempo (Co ngắn)
+                            </span>
+                          );
+                        }
+                        const pct = ((1 - r) * 100).toFixed(1);
+                        return (
+                          <span className="inline-flex items-center text-xs font-semibold text-sky-400 font-mono">
+                            -{pct}% Tempo (Dãn dài)
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Trình phát WaveformPlayer tương tác */}
             <WaveformPlayer
               streamUrl={result.streamUrl}
               downloadUrl={result.downloadUrl}
               duration={result.duration}
               jobId={jobId}
+              tempo={tempo}
             />
 
             <div className="grid grid-cols-2 gap-3 text-xs font-mono">

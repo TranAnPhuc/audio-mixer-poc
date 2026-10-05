@@ -15,6 +15,7 @@ export function useJobPolling(jobId, options = {}) {
 
   const [status, setStatus] = useState('IDLE');
   const [progress, setProgress] = useState(0);
+  const [tempo, setTempo] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [isPolling, setIsPolling] = useState(false);
@@ -28,6 +29,7 @@ export function useJobPolling(jobId, options = {}) {
   const reset = useCallback(() => {
     setStatus('IDLE');
     setProgress(0);
+    setTempo(null);
     setResult(null);
     setError(null);
     setIsPolling(false);
@@ -47,6 +49,7 @@ export function useJobPolling(jobId, options = {}) {
     setProgress(0);
     setError(null);
     setResult(null);
+    setTempo(null);
 
     const checkStatus = async () => {
       try {
@@ -54,15 +57,20 @@ export function useJobPolling(jobId, options = {}) {
         if (!isMounted) return;
 
         if (response.success && response.data) {
-          const { status: jobStatus, progress: jobProgress, result: jobResult, errorMessage, error: jobError } = response.data;
+          const { status: jobStatus, progress: jobProgress, tempo: jobTempo, result: jobResult, errorMessage, error: jobError } = response.data;
 
           setStatus(jobStatus);
           setProgress(typeof jobProgress === 'number' ? jobProgress : 0);
+
+          if (jobTempo) {
+            setTempo(jobTempo);
+          }
 
           if (jobStatus === 'SUCCESS') {
             if (timerId) clearInterval(timerId);
             setIsPolling(false);
             setProgress(100);
+            if (jobTempo) setTempo(jobTempo);
             setResult(jobResult);
             onSuccessRef.current?.(jobResult);
           } else if (jobStatus === 'FAILED') {
@@ -98,6 +106,7 @@ export function useJobPolling(jobId, options = {}) {
   return {
     status,
     progress,
+    tempo,
     result,
     error,
     isPolling,

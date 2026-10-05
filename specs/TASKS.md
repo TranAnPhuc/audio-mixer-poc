@@ -109,7 +109,7 @@
   - **File tác động:** `server/src/controllers/mixController.js`, `server/tests/test_api_bpm_mix.js`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Gửi request tạo mix job; endpoint `GET /:jobId` khi `SUCCESS` trả về đầy đủ block dữ liệu `tempo: { trackABpm, trackBBpm, appliedTempoRatio }`.
 
-- [ ] **Task 6.4: Hiển thị thông số BPM trên Giao diện Web**
+- [x] **Task 6.4: Hiển thị thông số BPM trên Giao diện Web**
   - **Mô tả:** Cập nhật UI `MixingStatus.jsx` và `WaveformPlayer.jsx` để hiển thị các Badge thông số: BPM của bài Vocal, BPM của bài Beat, và tỷ lệ phần trăm tốc độ đã tự động cân chỉnh (ví dụ: `+6.7% Tempo Adjusted`).
   - **File tác động:** `client/src/components/MixingStatus.jsx`, `client/src/components/WaveformPlayer.jsx`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Sau khi bài phối âm hoàn tất, người dùng nhìn thấy rõ ràng các chỉ số nhịp độ trực quan ngay trên card kết quả.
