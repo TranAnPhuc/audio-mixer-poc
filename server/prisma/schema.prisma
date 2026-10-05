@@ -1,0 +1,43 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Đối với SQLite, Enum được biểu diễn dưới dạng String @default("PENDING")
+// Các trạng thái chuẩn hóa: PENDING, PROCESSING, SUCCESS, FAILED
+model MixJob {
+  id                 String   @id @default(uuid())
+  status             String   @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED
+  progress           Int      @default(0)         // Tiến độ từ 0 -> 100%
+
+  // Thông tin tệp gốc A (Vocal)
+  trackAOriginalName String
+  trackAPath         String
+  trackAMimeType     String
+  trackASize         Int
+
+  // Thông tin tệp gốc B (Beat)
+  trackBOriginalName String
+  trackBPath         String
+  trackBMimeType     String
+  trackBSize         Int
+
+  // Thông tin kết quả
+  outputFileName     String?
+  outputPath         String?
+  outputDuration     Float?                       // Thời lượng file kết quả (giây)
+
+  // Ghi nhận lỗi và hiệu năng
+  errorMessage       String?
+  executionTimeMs    Int?                         // Tổng thời gian xử lý của FFmpeg (ms)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
