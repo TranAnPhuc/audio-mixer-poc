@@ -39,28 +39,122 @@ export async function resampleAudioTo16k(audioBuffer) {
 
   const source = offlineCtx.createBufferSource();
   source.buffer = audioBuffer;
-  source.connect(offlineCtx.destination);
+
+  // Vocal Isolation DSP Filter: Tách giọng hát, triệt tiêu bass 808, kick và hi-hats trước khi gửi cho Whisper
+  if (typeof offlineCtx.createBiquadFilter === 'function') {
+    // 1. highpass tại 180Hz (Q = 0.707): Triệt tiêu triệt để tiếng bass 808 và kick drum dồn dập
+    const highpass = offlineCtx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 180;
+    highpass.Q.value = 0.707;
+
+    // 2. lowpass tại 4200Hz: Lọc bỏ hi-hats và tiếng xì của beat
+    const lowpass = offlineCtx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 4200;
+
+    // 3. peaking tại 1500Hz (Gain +4dB, Q = 1.0): Làm nổi bật dải âm trung của giọng hát tiếng Việt
+    const peaking = offlineCtx.createBiquadFilter();
+    peaking.type = 'peaking';
+    peaking.frequency.value = 1500;
+    peaking.gain.value = 4;
+    peaking.Q.value = 1.0;
+
+    // Nối chuỗi: source -> highpass -> lowpass -> peaking -> destination
+    source.connect(highpass);
+    highpass.connect(lowpass);
+    lowpass.connect(peaking);
+    peaking.connect(offlineCtx.destination);
+  } else {
+    source.connect(offlineCtx.destination);
+  }
+
   source.start(0);
 
   const renderedBuffer = await offlineCtx.startRendering();
-  return renderedBuffer.getChannelData(0);
+  const channelData = renderedBuffer.getChannelData(0);
+
+  // Peak Normalization: Khuếch đại giọng hát rõ nét, giúp Whisper phân biệt tiếng người với nhạc beat
+  let maxAmp = 0;
+  for (let i = 0; i < channelData.length; i++) {
+    const absVal = Math.abs(channelData[i]);
+    if (absVal > maxAmp) maxAmp = absVal;
+  }
+
+  if (maxAmp > 0.01) {
+    const scale = 0.95 / maxAmp;
+    for (let i = 0; i < channelData.length; i++) {
+      channelData[i] *= scale;
+    }
+  }
+
+  return channelData;
 }
 
 /**
  * Chuyển đổi kết quả chunks từ Whisper AI thành mảng lyric objects chuẩn cho AuraVinyl
+ * Lọc triệt để các ảo giác AI (Hallucination tokens, repetitive noise, unvoiced beats)
  * @param {Array<{ timestamp: [number, number|null], text: string }>} chunks 
  * @returns {Array<{ id: number, time: number, text: string }>}
  */
 export function convertWhisperChunksToLrc(chunks) {
   if (!chunks || !Array.isArray(chunks)) return [];
 
+  // Helper kiểm tra câu bị lặp từ bất thường (> 3 lần liên tiếp)
+  const isExcessiveRepetition = (text) => {
+    // 1. Kiểm tra cùng 1 từ lặp lại > 3 lần liên tiếp: "la la la la"
+    if (/(\b\S+\b)(?:[\s,.-]+\1){3,}/i.test(text)) return true;
+
+    // 2. Tách các từ riêng lẻ để kiểm tra lặp từ liên tiếp
+    const words = text.toLowerCase().split(/\s+/).filter(Boolean);
+    if (words.length >= 4) {
+      let repeatCount = 1;
+      for (let i = 1; i < words.length; i++) {
+        if (words[i] === words[i - 1]) {
+          repeatCount++;
+          if (repeatCount >= 3) return true;
+        } else {
+          repeatCount = 1;
+        }
+      }
+    }
+
+    return false;
+  };
+
   const lines = [];
   let id = 0;
 
   for (const chunk of chunks) {
-    if (!chunk || !chunk.text) continue;
-    const cleanText = chunk.text.trim();
-    if (!cleanText) continue;
+    if (!chunk || typeof chunk.text !== 'string') continue;
+
+    let cleanText = chunk.text;
+
+    // 1. Loại bỏ các thẻ rác âm thanh nền rõ ràng: [music], [song], [applause], (music), (applause)...
+    cleanText = cleanText.replace(/\[\s*(music|song|applause|sound|cheering|laughter|instrumental)\s*\]/gi, ' ');
+    cleanText = cleanText.replace(/\(\s*(music|song|applause|sound|cheering|laughter|instrumental)\s*\)/gi, ' ');
+
+    // 2. Quét sạch mọi thẻ mở chưa đóng như [S, [s, [music, [Song (nguyên nhân gây ra chữ [S khi Whisper bị cắt cụt)
+    cleanText = cleanText.replace(/\[[A-Za-z0-9_]+(?:\s|\]|$)/g, ' ');
+
+    // 3. Loại bỏ các dấu ngoặc vuông và ngoặc đơn lẻ loi còn sót lại
+    cleanText = cleanText.replace(/[[\]()]/g, ' ');
+    cleanText = cleanText.replace(/\s+/g, ' ').trim();
+
+    // 4. Bỏ qua các chunk sau khi làm sạch bị rỗng hoặc chỉ chứa dấu câu/khoảng trắng
+    const hasWordCharacters = /[\p{L}\p{N}]/u.test(cleanText);
+    if (!hasWordCharacters) continue;
+
+    // 5. Lọc bỏ bất kỳ dòng nào chỉ có duy nhất 1 ký tự hoặc chỉ gồm ký tự rác
+    if (cleanText.length <= 1) continue;
+
+    // 6. Bỏ qua nếu câu bị lặp từ bất thường (> 3 lần liên tiếp)
+    if (isExcessiveRepetition(cleanText)) continue;
+
+    // 7. Bỏ qua nếu trùng hoàn toàn với câu liền trước (Whisper hallucination loop)
+    if (lines.length > 0 && lines[lines.length - 1].text.toLowerCase() === cleanText.toLowerCase()) {
+      continue;
+    }
 
     // Trích xuất mốc thời gian bắt đầu (giây)
     let startTime = 0;
@@ -77,7 +171,10 @@ export function convertWhisperChunksToLrc(chunks) {
 
   // Sắp xếp các câu hát theo thứ tự thời gian tăng dần
   lines.sort((a, b) => a.time - b.time);
-  return lines.map((line, idx) => ({ ...line, id: idx }));
+  const processedLines = lines.map((line, idx) => ({ ...line, id: idx }));
+
+  console.log('[aiTranscriptionService] Processed lines:', processedLines);
+  return processedLines;
 }
 
 /**
@@ -145,7 +242,31 @@ export function transcribeAudioFile(file, onProgress = () => {}) {
             progress: 100
           });
 
-          const lines = convertWhisperChunksToLrc(data.chunks);
+          let lines = convertWhisperChunksToLrc(data.chunks);
+
+          // Fallback thông minh: Nếu chunks rỗng nhưng text có nội dung, tự tạo dòng câu hát phân bổ đều theo thời gian
+          if (lines.length === 0 && data.text && typeof data.text === 'string' && data.text.trim()) {
+            const rawSentences = data.text
+              .replace(/\[\s*(music|song|applause|sound|cheering|laughter|instrumental)\s*\]/gi, ' ')
+              .replace(/\(\s*(music|song|applause|sound|cheering|laughter|instrumental)\s*\)/gi, ' ')
+              .replace(/\[[A-Za-z0-9_]+(?:\s|\]|$)/g, ' ')
+              .replace(/[[\]()]/g, ' ')
+              .split(/[.\n?!,]+/)
+              .map((s) => s.trim())
+              .filter((s) => s.length > 1);
+
+            if (rawSentences.length > 0) {
+              const duration = audioBuffer.duration || 60;
+              const interval = Math.max(2, (duration * 0.85) / rawSentences.length);
+              lines = rawSentences.map((sentence, idx) => ({
+                id: idx,
+                time: Math.round((idx * interval) * 100) / 100,
+                text: sentence
+              }));
+              console.log('[aiTranscriptionService] Fallback sentences generated from text:', lines);
+            }
+          }
+
           worker.terminate();
           resolve({
             lines,

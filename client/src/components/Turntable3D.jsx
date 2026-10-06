@@ -154,15 +154,21 @@ export default function Turntable3D({
   const currentCoverTextureRef = useRef(null);
   const defaultLabelTextureRef = useRef(null);
 
-  // Tham chiếu hệ thống hạt bụi ánh sáng
+  // Tham chiếu hệ thống hạt xoắn ốc (Spiral Vortex Particles)
   const dustGeomRef = useRef(null);
   const dustMatRef = useRef(null);
   const dustTextureRef = useRef(null);
 
+  // Tham chiếu hiệu ứng sóng xung kích âm thanh 3D (Bass Shockwaves) & Đèn gầm (Chassis Underglow)
+  const shockwavesRef = useRef([]);
+  const shockwaveGeomRef = useRef(null);
+  const underglowMatRef = useRef(null);
+  const underglowGeomRef = useRef(null);
+
   // Tham chiếu theo dõi tiến độ cần kim (Progress Tracking Tonearm)
   const currentTimeRef = useRef(currentTime);
   const durationRef = useRef(duration);
-  const targetGrooveYawRef = useRef(0.46);
+  const targetGrooveYawRef = useRef(-0.26);
   const isTransitioningRef = useRef(false);
 
   // Tốc độ quay và quán tính (Angular Velocity)
@@ -177,8 +183,8 @@ export default function Turntable3D({
     const progress = (duration > 0 && currentTime > 0)
       ? Math.min(1, Math.max(0, currentTime / duration))
       : 0;
-    // Góc xoay ngang từ mép ngoài rãnh (0.46 rad) đến sát tem nhãn giữa (0.73 rad)
-    targetGrooveYawRef.current = 0.46 + progress * 0.27;
+    // Góc xoay ngang từ mép ngoài rãnh (-0.26 rad) đến sát tem nhãn giữa (-0.64 rad)
+    targetGrooveYawRef.current = -0.26 - progress * 0.38;
   }, [currentTime, duration]);
 
   // Chuẩn hóa tọa độ chuột cho hiệu ứng Tilt Parallax
@@ -196,9 +202,9 @@ export default function Turntable3D({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
-    // Góc máy Isometric Hero Turntable cao cấp
-    camera.position.set(0, 6.8, 7.2);
+    const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 100);
+    // Góc máy Isometric Hero Turntable cân đối, có khoảng đệm thở không bị sát viền
+    camera.position.set(0, 7.8, 8.2);
     camera.lookAt(0, -0.15, 0);
 
     const renderer = new THREE.WebGLRenderer({
@@ -255,6 +261,21 @@ export default function Turntable3D({
     const chassis = new THREE.Mesh(chassisGeom, chassisMat);
     chassis.position.set(0, -0.22, 0);
     turntableGroup.add(chassis);
+
+    // Vòng hào quang viền gầm mâm đĩa (Chassis Neon Underglow)
+    const underglowGeom = new THREE.TorusGeometry(3.55, 0.045, 16, 64);
+    underglowGeomRef.current = underglowGeom;
+    const underglowMat = new THREE.MeshBasicMaterial({
+      color: ambientColors?.hexPrimary || 0xf59e0b,
+      transparent: true,
+      opacity: 0.32,
+      blending: THREE.AdditiveBlending
+    });
+    underglowMatRef.current = underglowMat;
+    const underglowMesh = new THREE.Mesh(underglowGeom, underglowMat);
+    underglowMesh.rotation.x = Math.PI / 2;
+    underglowMesh.position.set(0, -0.42, 0);
+    turntableGroup.add(underglowMesh);
 
     // 4 Chân đế chống rung mạ chrome bóng (Shock Absorbing Feet)
     const footGeom = new THREE.CylinderGeometry(0.32, 0.28, 0.25, 32);
@@ -341,6 +362,35 @@ export default function Turntable3D({
     });
     const recordMesh = new THREE.Mesh(recordGeom, recordMat);
     recordGroup.add(recordMesh);
+
+    // Bể chứa 3 vòng sóng xung kích âm thanh 3D (Audio Bass Shockwaves Pool)
+    const shockwaveCount = 3;
+    const shockwaveGeom = new THREE.RingGeometry(2.35, 2.45, 64);
+    shockwaveGeomRef.current = shockwaveGeom;
+    const shockwaves = [];
+    for (let i = 0; i < shockwaveCount; i++) {
+      const swMat = new THREE.MeshBasicMaterial({
+        color: ambientColors?.hexPrimary || 0xfde68a,
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      const swMesh = new THREE.Mesh(shockwaveGeom, swMat);
+      swMesh.rotation.x = -Math.PI / 2;
+      swMesh.position.set(-0.65, 0.19, 0.1);
+      swMesh.visible = false;
+      turntableGroup.add(swMesh);
+      shockwaves.push({
+        mesh: swMesh,
+        mat: swMat,
+        active: false,
+        scale: 1,
+        opacity: 0
+      });
+    }
+    shockwavesRef.current = shockwaves;
 
     // Tem nhãn giữa đĩa (Center Label)
     const defaultLabelTexture = createDefaultLabelTexture();
@@ -454,7 +504,7 @@ export default function Turntable3D({
     });
     const headshell = new THREE.Mesh(headshellGeom, headshellMat);
     headshell.position.set(-0.62, -0.02, 2.95);
-    headshell.rotation.y = 0.22;
+    headshell.rotation.y = 0.26;
     tonearmPitch.add(headshell);
 
     // Mũi kim (Stylus Needle) tiếp xúc với rãnh đĩa
@@ -469,16 +519,27 @@ export default function Turntable3D({
     stylus.rotation.x = Math.PI;
     tonearmPitch.add(stylus);
 
-    // Bệ đỡ cần kim khi nghỉ (Arm Rest Stand)
-    const restStandGeom = new THREE.CylinderGeometry(0.04, 0.05, 0.42, 16);
+    // Bệ đỡ cần kim khi nghỉ (Arm Rest Stand & Cradle Clip)
+    const restStandGeom = new THREE.CylinderGeometry(0.04, 0.05, 0.28, 16);
     const restStand = new THREE.Mesh(restStandGeom, metalChromeMat);
-    restStand.position.set(1.9, 0.2, 0.6);
+    restStand.position.set(1.90, 0.14, 0.60);
     turntableGroup.add(restStand);
 
-    const restClipGeom = new THREE.BoxGeometry(0.16, 0.08, 0.14);
+    // Chạc kẹp nâng đỡ cần kim (U-shaped Cradle Base)
+    const restClipGeom = new THREE.BoxGeometry(0.18, 0.05, 0.14);
     const restClip = new THREE.Mesh(restClipGeom, gimbalMat);
-    restClip.position.set(1.9, 0.42, 0.6);
+    restClip.position.set(1.90, 0.30, 0.60);
     turntableGroup.add(restClip);
+
+    // Tai kẹp hai bên chạc
+    const clipProngGeom = new THREE.BoxGeometry(0.025, 0.09, 0.12);
+    const leftProng = new THREE.Mesh(clipProngGeom, gimbalMat);
+    leftProng.position.set(1.82, 0.35, 0.60);
+    turntableGroup.add(leftProng);
+
+    const rightProng = new THREE.Mesh(clipProngGeom, gimbalMat);
+    rightProng.position.set(1.98, 0.35, 0.60);
+    turntableGroup.add(rightProng);
 
     // 6. XỬ LÝ SỰ KIỆN CHUỘT (Mouse Tilt Parallax)
     const handlePointerMove = (e) => {
@@ -515,20 +576,26 @@ export default function Turntable3D({
     });
     resizeObserver.observe(container);
 
-    // 7.5. HỆ THỐNG HẠT BỤI ÁNH SÁNG KHÔNG GIAN (Ambient Dust Particles)
-    const dustCount = 60;
+    // 7.5. HỆ THỐNG BÃO HẠT NĂNG LƯỢNG XOẮN ỐC (Spiral Vortex Particles - 150 Particles)
+    const dustCount = 150;
     const dustPositions = new Float32Array(dustCount * 3);
     const dustSpecksData = [];
 
     for (let i = 0; i < dustCount; i++) {
-      dustPositions[i * 3 + 0] = (Math.random() - 0.5) * 6.2;
-      dustPositions[i * 3 + 1] = 0.3 + Math.random() * 3.8;
-      dustPositions[i * 3 + 2] = (Math.random() - 0.5) * 5.6;
+      const angle = Math.random() * Math.PI * 2;
+      const baseRadius = 1.1 + Math.random() * 3.8;
+      const y = 0.2 + Math.random() * 3.8;
+
+      dustPositions[i * 3 + 0] = -0.65 + Math.cos(angle) * baseRadius;
+      dustPositions[i * 3 + 1] = y;
+      dustPositions[i * 3 + 2] = 0.1 + Math.sin(angle) * baseRadius;
 
       dustSpecksData.push({
-        speedX: 0.8 + Math.random() * 1.6,
-        speedY: 0.6 + Math.random() * 1.2,
-        speedZ: 0.7 + Math.random() * 1.5,
+        angle,
+        angularSpeed: 0.35 + Math.random() * 0.85,
+        baseRadius,
+        y,
+        verticalSpeed: 0.16 + Math.random() * 0.36,
         phase: Math.random() * Math.PI * 2
       });
     }
@@ -541,10 +608,10 @@ export default function Turntable3D({
     dustTextureRef.current = dustTexture;
 
     const dustMat = new THREE.PointsMaterial({
-      size: 0.14,
+      size: 0.13,
       map: dustTexture,
       transparent: true,
-      opacity: 0.68,
+      opacity: 0.72,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       color: ambientColors?.hexPrimary || 0xfde68a
@@ -556,6 +623,8 @@ export default function Turntable3D({
 
     // 8. RENDER LOOP (60 FPS Physical Simulation)
     let lastTime = performance.now();
+    let lastShockwaveTime = 0;
+
     const render = () => {
       const now = performance.now();
       const delta = (now - lastTime) / 1000;
@@ -578,8 +647,12 @@ export default function Turntable3D({
         // Mâm nhôm cũng xoay đồng bộ
         platterMesh.rotation.y += spinSpeedRef.current * delta;
 
-        // Phản ứng thị giác màng đĩa: Nhún nhẹ theo nhịp bass trống kick
-        recordGroupRef.current.position.y = 0.17 + bassEnergy * 0.015;
+        // Phản ứng thị giác màng đĩa: Rung màng đĩa vi mô và nhún nảy theo nhịp bass trống kick
+        const microBounce = Math.sin(now * 0.035) * (bassEnergy > 0.15 ? 0.0025 : 0.0006);
+        recordGroupRef.current.position.y = 0.17 + bassEnergy * 0.026 + microBounce;
+
+        // Vi rung rãnh đĩa (micro wobble) theo chuyển động quay cơ học
+        recordGroupRef.current.rotation.z = Math.sin(recordGroupRef.current.rotation.y * 2) * 0.001 + (bassEnergy * 0.002 * Math.sin(now * 0.025));
       }
 
       // Cần kim bám sát tiến độ bài hát thời gian thực (Progress Tracking Tonearm)
@@ -591,53 +664,110 @@ export default function Turntable3D({
           delta * 2.5
         );
 
-        // Rung động vi cơ học cực nhỏ theo rãnh nhựa quay và năng lượng âm bass
+        // Cần kim nhún nhẹ đầu stylus theo nhịp nhạc và rung vi cơ học theo rãnh nhựa
         if (tonearmPitchRef.current) {
-          tonearmPitchRef.current.rotation.z = Math.sin(now * 0.02) * 0.0015 + bassEnergy * 0.002;
+          tonearmPitchRef.current.rotation.z = Math.sin(now * 0.02) * 0.002 + bassEnergy * 0.0055;
         }
       }
 
-      // Cập nhật chuyển động Brownian motion cho 60 hạt bụi ánh sáng không gian
+      // KÍCH HOẠT VÒNG SÓNG XUNG KÍCH ÂM THANH 3D KHI GẶP ĐỈNH BASS (Audio Bass Shockwaves)
+      const shockwaves = shockwavesRef.current || [];
+      if (isPlayingRef.current && bassEnergy > 0.68 && (now - lastShockwaveTime > 220)) {
+        const idleSw = shockwaves.find((sw) => !sw.active);
+        if (idleSw) {
+          idleSw.active = true;
+          idleSw.scale = 1.0;
+          idleSw.opacity = 0.72;
+          idleSw.mesh.visible = true;
+          idleSw.mesh.scale.set(1, 1, 1);
+          idleSw.mat.opacity = 0.72;
+          lastShockwaveTime = now;
+        }
+      }
+
+      // Cập nhật động học bung nở cho các vòng sóng xung kích đang hoạt động
+      for (let i = 0; i < shockwaves.length; i++) {
+        const sw = shockwaves[i];
+        if (sw.active) {
+          sw.scale += delta * 4.2; // Bung nở từ bán kính ~2.4 lên ~5.2
+          sw.opacity -= delta * 1.5;
+          sw.mesh.scale.set(sw.scale, sw.scale, 1);
+          sw.mat.opacity = Math.max(0, sw.opacity);
+          if (sw.opacity <= 0.01 || sw.scale >= 2.25) {
+            sw.active = false;
+            sw.mesh.visible = false;
+          }
+        }
+      }
+
+      // Vòng hào quang viền gầm mâm đĩa nhấp nháy theo năng lượng âm thanh (Chassis Underglow Pulse)
+      if (underglowMatRef.current) {
+        const targetUnderglowOpacity = isPlayingRef.current ? 0.32 + bassEnergy * 0.65 : 0.18;
+        underglowMatRef.current.opacity = THREE.MathUtils.lerp(
+          underglowMatRef.current.opacity,
+          targetUnderglowOpacity,
+          delta * 8
+        );
+      }
+
+      // CẬP NHẬT QUỸ ĐẠO BÃO HẠT XOẮN ỐC QUANH TRỤC MÂM ĐĨA (Spiral Vortex Particles)
       if (dustGeomRef.current) {
         const pos = dustGeomRef.current.attributes.position.array;
         for (let i = 0; i < dustCount; i++) {
           const idx = i * 3;
           const data = dustSpecksData[i];
 
-          // Dao động sóng sin Brownian êm dịu
-          pos[idx + 0] += Math.sin(now * 0.001 * data.speedX + data.phase) * delta * 0.08;
-          pos[idx + 1] += (Math.cos(now * 0.0012 * data.speedY + data.phase) * 0.45 + 0.55) * delta * 0.06;
-          pos[idx + 2] += Math.cos(now * 0.0009 * data.speedZ + data.phase) * delta * 0.08;
+          // Chuyển động xoắn ốc quanh tâm trục mâm đĩa (-0.65, y, 0.1)
+          const spinBoost = isPlayingRef.current ? spinSpeedRef.current * 0.12 : 0;
+          data.angle += (data.angularSpeed + spinBoost) * delta;
+          data.y += (data.verticalSpeed + (isPlayingRef.current ? bassEnergy * 0.22 : 0)) * delta;
 
-          // Wrap hạt bụi khi bay lên quá cao
-          if (pos[idx + 1] > 4.2) {
-            pos[idx + 1] = 0.35;
-            pos[idx + 0] = (Math.random() - 0.5) * 5.4;
-            pos[idx + 2] = (Math.random() - 0.5) * 4.8;
+          // Bán kính xoắn ốc co giãn theo nhịp âm thanh
+          const dynRadius = data.baseRadius + Math.sin(now * 0.002 + data.phase) * 0.2 + (isPlayingRef.current ? bassEnergy * 0.42 : 0);
+
+          pos[idx + 0] = -0.65 + Math.cos(data.angle) * dynRadius;
+          pos[idx + 1] = data.y;
+          pos[idx + 2] = 0.1 + Math.sin(data.angle) * dynRadius;
+
+          // Khi hạt bay lên quá cao: Tái sinh ở đáy mâm xoay
+          if (data.y > 4.2) {
+            data.y = 0.2 + Math.random() * 0.25;
+            data.baseRadius = 1.1 + Math.random() * 3.8;
+            data.angle = Math.random() * Math.PI * 2;
           }
         }
         dustGeomRef.current.attributes.position.needsUpdate = true;
       }
 
-      // Đèn Strobe Prism & Đèn Rọi Platter phát xung nhịp theo nhịp trống Kick
+      // Đèn Strobe Prism & Đèn Rọi Platter phát xung nhịp phản xạ ánh sáng mạnh mẽ theo nhịp trống Kick
       if (strobeTowerRef.current) {
         strobeTowerRef.current.material.emissiveIntensity = isPlayingRef.current
-          ? 0.35 + bassEnergy * 1.4
+          ? 0.4 + bassEnergy * 2.2
           : 0.2;
       }
       if (platterSpotRef.current) {
         platterSpotRef.current.intensity = isPlayingRef.current
-          ? 1.6 + bassEnergy * 2.2
+          ? 1.8 + bassEnergy * 3.4
           : 1.2;
       }
 
-      // Lerp Mouse Parallax mượt mà
-      mouseNormRef.current.x = THREE.MathUtils.lerp(mouseNormRef.current.x, mouseTargetRef.current.x, 0.08);
-      mouseNormRef.current.y = THREE.MathUtils.lerp(mouseNormRef.current.y, mouseTargetRef.current.y, 0.08);
+      // CAMERA ĐIỆN ẢNH NHÚN THEO BASS (Camera Bass Punch & Damped Floating)
+      const baseCameraZ = 8.2;
+      const baseCameraY = 7.8;
+      const punchZ = isPlayingRef.current ? (Math.sin(now * 0.012) * 0.02 - bassEnergy * 0.065) : 0;
+      const punchY = isPlayingRef.current ? (bassEnergy * 0.045) : 0;
+
+      camera.position.z = THREE.MathUtils.lerp(camera.position.z, baseCameraZ + punchZ, delta * 10);
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, baseCameraY + punchY, delta * 10);
+      camera.lookAt(0, -0.15, 0);
+
+      // Làm mượt góc nghiêng chuột với hệ số tắt dần 0.04 tạo cảm giác trôi bồng bềnh
+      mouseNormRef.current.x = THREE.MathUtils.lerp(mouseNormRef.current.x, mouseTargetRef.current.x, 0.04);
+      mouseNormRef.current.y = THREE.MathUtils.lerp(mouseNormRef.current.y, mouseTargetRef.current.y, 0.04);
 
       if (turntableGroupRef.current) {
-        turntableGroupRef.current.rotation.y = mouseNormRef.current.x * 0.12;
-        turntableGroupRef.current.rotation.x = mouseNormRef.current.y * 0.08;
+        turntableGroupRef.current.rotation.y = mouseNormRef.current.x * 0.10;
+        turntableGroupRef.current.rotation.x = mouseNormRef.current.y * 0.06;
       }
 
       renderer.render(scene, camera);
@@ -664,6 +794,25 @@ export default function Turntable3D({
       if (dustTextureRef.current) dustTextureRef.current.dispose();
       if (dustGeomRef.current) dustGeomRef.current.dispose();
       if (dustMatRef.current) dustMatRef.current.dispose();
+
+      // Thu hồi tài nguyên Shockwaves Pool & Chassis Underglow
+      if (shockwaveGeomRef.current) shockwaveGeomRef.current.dispose();
+      if (shockwavesRef.current) {
+        shockwavesRef.current.forEach((sw) => {
+          if (sw.mat) sw.mat.dispose();
+        });
+        shockwavesRef.current = [];
+      }
+      if (underglowGeomRef.current) underglowGeomRef.current.dispose();
+      if (underglowMatRef.current) {
+        underglowMatRef.current.dispose();
+        underglowMatRef.current = null;
+      }
+
+      if (recordGroupRef.current) {
+        gsap.killTweensOf(recordGroupRef.current.position);
+        gsap.killTweensOf(recordGroupRef.current.rotation);
+      }
 
       scene.traverse((obj) => {
         if (obj.isMesh || obj.isPoints) {
@@ -772,9 +921,27 @@ export default function Turntable3D({
     }
   }, [isPlaying]);
 
-  // 11. CẬP NHẬT TEM NHÃN KHI CÓ COVER ART (Kèm dọn dẹp Texture cũ tránh rò rỉ GPU)
+  // 11. CẬP NHẬT TEM NHÃN & KÍCH HOẠT HIỆU ỨNG ĐĨA BAY VÀO MÂM (Vinyl Drop-in Animation)
   useEffect(() => {
     if (!labelMeshRef.current) return;
+
+    // HIỆU ỨNG ĐĨA BAY VÀO MÂM (VINYL DROP-IN ANIMATION)
+    if (recordGroupRef.current) {
+      gsap.killTweensOf(recordGroupRef.current.position);
+      gsap.killTweensOf(recordGroupRef.current.rotation);
+      recordGroupRef.current.position.y = 1.8;
+      recordGroupRef.current.rotation.x = -0.35;
+      gsap.to(recordGroupRef.current.position, {
+        y: 0.17,
+        duration: 0.9,
+        ease: 'power2.out'
+      });
+      gsap.to(recordGroupRef.current.rotation, {
+        x: 0,
+        duration: 0.9,
+        ease: 'power2.out'
+      });
+    }
 
     if (!coverUrl) {
       // Khôi phục tem nhãn mặc định nếu coverUrl bị xóa hoặc không có
@@ -814,7 +981,7 @@ export default function Turntable3D({
     );
   }, [coverUrl]);
 
-  // 12. CẬP NHẬT ÁNH SÁNG MÂM ĐĨA & HẠT BỤI THEO BẢNG MÀU CHỦ ĐẠO
+  // 12. CẬP NHẬT ÁNH SÁNG MÂM ĐĨA, HẠT BÃO & SHOCKWAVES THEO BẢNG MÀU CHỦ ĐẠO
   useEffect(() => {
     if (!ambientColors?.hexPrimary) return;
     try {
@@ -823,6 +990,14 @@ export default function Turntable3D({
       }
       if (dustMatRef.current) {
         dustMatRef.current.color.set(ambientColors.hexPrimary);
+      }
+      if (underglowMatRef.current) {
+        underglowMatRef.current.color.set(ambientColors.hexPrimary);
+      }
+      if (shockwavesRef.current) {
+        shockwavesRef.current.forEach((sw) => {
+          if (sw.mat) sw.mat.color.set(ambientColors.hexPrimary);
+        });
       }
     } catch (e) {}
   }, [ambientColors]);

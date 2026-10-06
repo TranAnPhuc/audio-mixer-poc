@@ -16,7 +16,9 @@ import {
   Sliders,
   Radio,
   FileAudio,
-  FileText
+  FileText,
+  FileEdit,
+  X
 } from 'lucide-react';
 import { playHapticClick, playHoverBlip } from '../utils/soundEffects';
 import Turntable3D from '../components/Turntable3D';
@@ -33,12 +35,20 @@ import {
 import KineticLyrics from '../components/KineticLyrics';
 import { fetchSyncedLyrics, parseLrc, readLrcFile, downloadLrcFile } from '../services/lyricsService';
 import { transcribeAudioFile } from '../services/aiTranscriptionService';
+import ToastNotification from '../components/ToastNotification';
 
 /**
  * AuraVinyl — 3D Interactive Vinyl & Kinetic Lyrics Player
  * Giao diện Dark Minimalist chuẩn phong cách nghệ thuật đĩa than hoài niệm
  */
 export default function LandingPage() {
+  // Trạng thái thông báo Toast Notification
+  const [toast, setToast] = useState(null);
+
+  const showToast = ({ message, type = 'info', actions = [], duration = 4500 }) => {
+    setToast({ message, type, actions, duration });
+  };
+
   // Trạng thái phát nhạc
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -53,7 +63,9 @@ export default function LandingPage() {
   const [lyricsLines, setLyricsLines] = useState([]);
   const [isLyricsLoading, setIsLyricsLoading] = useState(false);
   const [isInstrumental, setIsInstrumental] = useState(false);
-  const [lyricsSource, setLyricsSource] = useState(null); // 'file' | 'embedded' | 'lrclib' | 'ai-whisper' | null
+  const [lyricsSource, setLyricsSource] = useState(null); // 'file' | 'embedded' | 'lrclib' | 'ai-whisper' | 'manual' | null
+  const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
+  const [pastedText, setPastedText] = useState('');
 
   // Trạng thái AI Whisper bóc lời trực tiếp trên trình duyệt
   const [isAiTranscribing, setIsAiTranscribing] = useState(false);
@@ -170,13 +182,23 @@ export default function LandingPage() {
         setLyricsLines(lines);
         setLyricsSource('file');
         setIsInstrumental(false);
+        showToast({
+          message: `Đã nạp thành công lời bài hát (${lines.length} câu)!`,
+          type: 'success'
+        });
       } else {
-        alert('Tệp .lrc không chứa định dạng mốc thời gian [mm:ss.xx] hợp lệ!');
+        showToast({
+          message: 'Tệp .lrc không chứa định dạng mốc thời gian [mm:ss.xx] hợp lệ!',
+          type: 'warning'
+        });
       }
     } catch (err) {
       console.warn('Lỗi đọc tệp .lrc:', err);
       setIsLyricsLoading(false);
-      alert('Không thể đọc tệp .lrc. Vui lòng kiểm tra lại định dạng!');
+      showToast({
+        message: 'Không thể đọc tệp .lrc. Vui lòng kiểm tra lại định dạng!',
+        type: 'error'
+      });
     }
   };
 
@@ -312,7 +334,10 @@ export default function LandingPage() {
       return;
     }
 
-    alert('Vui lòng chọn tệp âm thanh (.mp3, .wav, .ogg, .flac) hoặc tệp lời bài hát (.lrc)!');
+    showToast({
+      message: 'Vui lòng chọn tệp âm thanh (.mp3, .wav, .ogg, .flac) hoặc tệp lời bài hát (.lrc)!',
+      type: 'info'
+    });
   };
 
   const handleDrop = (e) => {
@@ -336,7 +361,10 @@ export default function LandingPage() {
   const handleAiTranscribe = async () => {
     const file = currentAudioFileRef.current;
     if (!file) {
-      alert('Vui lòng chọn hoặc kéo thả một bài hát vào mâm đĩa than trước khi bóc lời AI!');
+      showToast({
+        message: 'Vui lòng chọn hoặc kéo thả một bài hát vào mâm đĩa than trước khi bóc lời AI!',
+        type: 'info'
+      });
       fileInputRef.current?.click();
       return;
     }
@@ -360,13 +388,43 @@ export default function LandingPage() {
         setLyricsLines(result.lines);
         setLyricsSource('ai-whisper');
         setIsInstrumental(false);
+        showToast({
+          message: `AI đã bóc lời và canh nhịp thành công (${result.lines.length} câu)!`,
+          type: 'success'
+        });
       } else {
-        alert('AI Whisper đã lắng nghe nhưng không nhận diện được câu hát rõ ràng trong bài này.');
+        showToast({
+          message: 'Không thể nhận diện rõ giọng hát do beat nhạc quá lớn.',
+          type: 'warning',
+          actions: [
+            {
+              label: '📝 Dán Lời',
+              onClick: () => setIsPasteModalOpen(true)
+            },
+            {
+              label: '📂 Nạp .LRC',
+              onClick: () => lyricsFileInputRef.current?.click()
+            }
+          ]
+        });
       }
     } catch (err) {
       console.error('Lỗi khi bóc lời AI Whisper:', err);
       setIsAiTranscribing(false);
-      alert(`Không thể bóc lời bằng AI: ${err.message || 'Lỗi không xác định'}`);
+      showToast({
+        message: `Không thể bóc lời bằng AI: ${err.message || 'Lỗi không xác định'}`,
+        type: 'error',
+        actions: [
+          {
+            label: '📝 Dán Lời',
+            onClick: () => setIsPasteModalOpen(true)
+          },
+          {
+            label: '📂 Nạp .LRC',
+            onClick: () => lyricsFileInputRef.current?.click()
+          }
+        ]
+      });
     }
   };
 
@@ -452,9 +510,85 @@ export default function LandingPage() {
     });
   };
 
+  // Xử lý nạp văn bản lời bài hát dán thủ công và tự động phân bổ timestamp theo duration
+  const handleApplyPastedLyrics = () => {
+    if (!pastedText.trim()) {
+      showToast({
+        message: 'Vui lòng dán lời bài hát vào ô văn bản!',
+        type: 'warning'
+      });
+      return;
+    }
+    playHapticClick();
+
+    // 1. Kiểm tra xem văn bản dán vào có chứa timestamp [mm:ss] không
+    const lrcLines = parseLrc(pastedText);
+    if (lrcLines && lrcLines.length > 0) {
+      setLyricsLines(lrcLines);
+      setLyricsSource('manual');
+      setIsInstrumental(false);
+      setIsPasteModalOpen(false);
+      setPastedText('');
+      showToast({
+        message: `Đã nạp lời đồng bộ từ văn bản (${lrcLines.length} câu)!`,
+        type: 'success'
+      });
+      return;
+    }
+
+    // 2. Nếu là văn bản thuần không có mốc thời gian:
+    // Tách các dòng chữ (bỏ dòng trống), tự động phân bổ mốc thời gian đều theo duration bài hát
+    const rawLines = pastedText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    if (rawLines.length === 0) {
+      showToast({
+        message: 'Không tìm thấy dòng lời bài hát hợp lệ.',
+        type: 'warning'
+      });
+      return;
+    }
+
+    const totalDuration = (audioRef.current && audioRef.current.duration > 0)
+      ? audioRef.current.duration
+      : (duration > 0 ? duration : 180);
+
+    const startOffset = 2.0;
+    const effectiveDuration = Math.max(10, totalDuration * 0.92 - startOffset);
+    const step = effectiveDuration / Math.max(1, rawLines.length);
+
+    const generatedLines = rawLines.map((text, idx) => ({
+      id: idx,
+      time: Math.round((startOffset + idx * step) * 100) / 100,
+      text
+    }));
+
+    setLyricsLines(generatedLines);
+    setLyricsSource('manual');
+    setIsInstrumental(false);
+    setIsPasteModalOpen(false);
+    setPastedText('');
+    showToast({
+      message: `Đã tự động khớp nhịp cho ${generatedLines.length} câu hát!`,
+      type: 'success'
+    });
+  };
+
   // Hệ thống phím tắt toàn cục (Global Keyboard Shortcuts)
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Đóng modal khi nhấn Escape
+      if (isPasteModalOpen) {
+        if (e.code === 'Escape') {
+          e.preventDefault();
+          playHapticClick();
+          setIsPasteModalOpen(false);
+        }
+        return;
+      }
+
       // Bỏ qua nếu người dùng đang nhập văn bản trong input/textarea
       if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName)) return;
 
@@ -510,7 +644,7 @@ export default function LandingPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, duration, isZenMode, isMuted, volume]);
+  }, [isPlaying, duration, isZenMode, isMuted, volume, isPasteModalOpen, pastedText]);
 
   return (
     <div className="relative w-full min-h-screen bg-[#090a0f] text-slate-100 flex flex-col justify-between selection:bg-amber-500/30 selection:text-amber-200 overflow-x-hidden font-sans">
@@ -553,6 +687,13 @@ export default function LandingPage() {
 
       {/* Ánh sáng Aurora nền biến đổi màu theo ảnh bìa album (Dynamic Ambient Aurora) */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden transition-all duration-1000">
+        {/* Quầng sáng thở Ambient Aurora phía sau mâm đĩa than (Breathing Glow đồng nhịp 33⅓ RPM) */}
+        <div
+          className={`absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[140px] transition-all duration-1000 ${
+            isPlaying ? 'animate-aurora-breath' : 'opacity-20 scale-95'
+          } ${isZenMode ? 'w-[1000px] h-[1000px]' : 'w-[750px] h-[750px]'}`}
+          style={{ backgroundColor: ambientColors.primaryColor }}
+        />
         <div
           className={`absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[150px] transition-all duration-1000 ${
             isZenMode
@@ -670,7 +811,7 @@ export default function LandingPage() {
                   isDragging
                     ? 'border-amber-400/60 bg-amber-500/[0.04] shadow-2xl shadow-amber-500/10'
                     : 'border-white/[0.06] hover:border-white/[0.12]'
-                } p-6`
+                } p-6 sm:p-8`
           }`}
         >
           {/* Mâm Đĩa Than 3D Tương Tác (Three.js WebGL Turntable) */}
@@ -745,6 +886,7 @@ export default function LandingPage() {
             ambientColors={ambientColors}
             isInstrumental={isInstrumental}
             onUploadLyrics={() => lyricsFileInputRef.current?.click()}
+            onPasteLyrics={() => setIsPasteModalOpen(true)}
             onAiTranscribe={handleAiTranscribe}
             isAiTranscribing={isAiTranscribing}
             aiProgress={aiProgress}
@@ -765,6 +907,8 @@ export default function LandingPage() {
                   ? 'KINETIC LYRICS // ID3 EMBEDDED SYNC'
                   : lyricsSource === 'ai-whisper'
                   ? 'KINETIC LYRICS // AI WHISPER SYNC'
+                  : lyricsSource === 'manual'
+                  ? 'KINETIC LYRICS // MANUAL TEXT SYNC'
                   : lyricsSource === 'lrclib'
                   ? 'KINETIC LYRICS // LRCLIB API SYNC'
                   : lyricsLines.length > 0
@@ -773,21 +917,6 @@ export default function LandingPage() {
               </span>
             </div>
             <div className="flex items-center gap-3">
-              {/* Nút Xuất .LRC nếu có lời bài hát */}
-              {lyricsLines.length > 0 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleExportLyrics}
-                    className="text-amber-300 hover:text-amber-200 transition-colors cursor-pointer flex items-center gap-1 hover:underline font-semibold"
-                    title="Xuất file lời bài hát đồng bộ (.lrc)"
-                  >
-                    <Download className="w-3.5 h-3.5 text-amber-400" />
-                    <span>📥 Xuất .LRC</span>
-                  </button>
-                  <span className="text-slate-600">•</span>
-                </>
-              )}
               <button
                 type="button"
                 onClick={() => {
@@ -814,6 +943,34 @@ export default function LandingPage() {
                 <FileText className="w-3 h-3 text-amber-400" />
                 <span>Nạp .LRC</span>
               </button>
+              <span className="text-slate-600">•</span>
+              <button
+                type="button"
+                onClick={() => {
+                  playHapticClick();
+                  setIsPasteModalOpen(true);
+                }}
+                className="text-slate-400 hover:text-amber-300 transition-colors cursor-pointer flex items-center gap-1 hover:underline"
+                title="Dán văn bản lời bài hát thủ công"
+              >
+                <FileEdit className="w-3 h-3 text-amber-400" />
+                <span>📝 Dán Lời</span>
+              </button>
+              {/* Nút Xuất .LRC nằm duy nhất và gọn gàng bên cạnh Nạp .LRC */}
+              {lyricsLines.length > 0 && (
+                <>
+                  <span className="text-slate-600">•</span>
+                  <button
+                    type="button"
+                    onClick={handleExportLyrics}
+                    className="text-amber-300 hover:text-amber-200 transition-colors cursor-pointer flex items-center gap-1 hover:underline font-semibold"
+                    title="Xuất file lời bài hát đồng bộ (.lrc)"
+                  >
+                    <Download className="w-3.5 h-3.5 text-amber-400" />
+                    <span>📥 Xuất .LRC</span>
+                  </button>
+                </>
+              )}
               <span className="text-slate-600">•</span>
               <span>DSP 44.1 KHZ</span>
             </div>
@@ -941,6 +1098,72 @@ export default function LandingPage() {
 
       </footer>
       )}
+
+      {/* 4. MODAL DÁN LỜI BÀI HÁT (PASTE LYRICS MODAL) */}
+      {isPasteModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in select-none">
+          <div className="bg-[#0f1016] border border-white/10 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <div className="flex items-center gap-2">
+                <FileEdit className="w-4 h-4 text-amber-400" />
+                <h3 className="text-base font-bold text-white">Dán Lời Bài Hát</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  playHapticClick();
+                  setIsPasteModalOpen(false);
+                }}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 leading-relaxed font-sans">
+              Dán lời bài hát thô hoặc văn bản có sẵn mốc thời gian <code className="text-amber-300 font-mono">[mm:ss.xx]</code>.
+              AuraVinyl sẽ tự động phân bổ nhịp thời gian đều theo thời lượng bài hát.
+            </p>
+
+            <textarea
+              value={pastedText}
+              onChange={(e) => setPastedText(e.target.value)}
+              placeholder={`Dán lời bài hát vào đây...\nVí dụ:\nTừng hạt mưa rơi tí tách bên thềm\nGió lay khẽ hàng cây êm đềm\n...\n(Hoặc dán văn bản có sẵn mốc [00:15.20])`}
+              className="w-full h-56 bg-black/50 border border-white/10 focus:border-amber-400/60 rounded-2xl p-4 text-xs font-sans text-slate-200 placeholder-slate-500 resize-none outline-none focus:ring-1 focus:ring-amber-400/30"
+              autoFocus
+            />
+
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-[10px] font-mono text-slate-500">
+                {pastedText ? `${pastedText.split('\n').filter((l) => l.trim()).length} dòng câu hát` : 'Chưa có nội dung'}
+              </span>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playHapticClick();
+                    setIsPasteModalOpen(false);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyPastedLyrics}
+                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-gradient-to-tr from-amber-500 to-amber-400 text-slate-950 hover:brightness-110 active:scale-95 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+                >
+                  ✨ Khớp Lời
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. TOAST NOTIFICATION CAO CẤP */}
+      <ToastNotification toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 }

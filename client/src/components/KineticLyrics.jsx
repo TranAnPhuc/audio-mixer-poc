@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import gsap from 'gsap';
-import { Sparkles, Music, Loader2, FileText, Download } from 'lucide-react';
+import { Sparkles, Music, Loader2, FileText, Download, FileEdit } from 'lucide-react';
 import { playHapticClick } from '../utils/soundEffects';
 import { downloadLrcFile } from '../services/lyricsService';
 
@@ -17,6 +17,7 @@ export default function KineticLyrics({
   ambientColors = null,
   isInstrumental = false,
   onUploadLyrics = null,
+  onPasteLyrics = null,
   onAiTranscribe = null,
   isAiTranscribing = false,
   aiProgress = { status: '', message: '', progress: 0 },
@@ -187,20 +188,37 @@ export default function KineticLyrics({
             </button>
           )}
 
-          {onUploadLyrics && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                playHapticClick();
-                onUploadLyrics();
-              }}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] hover:border-white/20 transition-all cursor-pointer shadow-sm active:scale-95"
-            >
-              <FileText className="w-3.5 h-3.5 text-slate-400" />
-              <span>Tải file lời (.lrc)</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {onUploadLyrics && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  playHapticClick();
+                  onUploadLyrics();
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] hover:border-white/20 transition-all cursor-pointer shadow-sm active:scale-95"
+              >
+                <FileText className="w-3.5 h-3.5 text-slate-400" />
+                <span>Nạp .LRC</span>
+              </button>
+            )}
+
+            {onPasteLyrics && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  playHapticClick();
+                  onPasteLyrics();
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] hover:border-white/20 transition-all cursor-pointer shadow-sm active:scale-95"
+              >
+                <FileEdit className="w-3.5 h-3.5 text-amber-400" />
+                <span>📝 Dán lời</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.02] border border-white/[0.06] text-[10px] font-mono text-slate-500">
@@ -235,46 +253,78 @@ export default function KineticLyrics({
         const distance = Math.abs(idx - activeIndex);
 
         // Tính toán độ mờ theo khoảng cách tới dòng đang hát
-        let opacityClass = 'opacity-20 text-slate-500 hover:opacity-75';
+        let opacityClass = 'opacity-25 text-slate-500 hover:opacity-75';
         let sizeClass = 'text-sm sm:text-base font-medium';
 
         if (isActive) {
           opacityClass = 'opacity-100 font-bold';
-          sizeClass = 'text-lg sm:text-2xl';
+          sizeClass = 'text-2xl sm:text-3xl font-bold tracking-wide scale-105';
         } else if (distance === 1) {
-          opacityClass = 'opacity-50 text-slate-300 hover:opacity-85';
-          sizeClass = 'text-sm sm:text-lg font-semibold';
+          opacityClass = 'opacity-55 text-slate-300 hover:opacity-85';
+          sizeClass = 'text-base sm:text-xl font-semibold';
         } else if (distance === 2) {
-          opacityClass = 'opacity-30 text-slate-400 hover:opacity-75';
+          opacityClass = 'opacity-35 text-slate-400 hover:opacity-75';
         }
+
+        // Tính toán tỷ lệ quét chữ theo thời gian thực (Real-time Karaoke Sweep)
+        let percent = 0;
+        if (isActive) {
+          const nextLine = lines[idx + 1];
+          const lineDuration = Math.max(0.8, (nextLine?.time ?? (line.time + 4)) - line.time);
+          const rawProgress = (currentTime - line.time) / lineDuration;
+          const progress = Math.min(1, Math.max(0, rawProgress));
+          percent = Math.round(progress * 1000) / 10; // 0% -> 100.0%
+        }
+
+        // Dynamic Text Fill Gradient: Chữ quét sáng từ trái sang phải theo nhịp hát
+        const activeSweepStyle = isActive
+          ? {
+              background: `linear-gradient(to right, ${primaryColor} 0%, ${primaryColor} ${percent}%, rgba(255, 255, 255, 0.25) ${percent}%, rgba(255, 255, 255, 0.25) 100%)`,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              color: 'transparent',
+              filter: `drop-shadow(0 0 20px ${glowColor}) drop-shadow(0 0 36px ${glowColor})`,
+              willChange: 'background'
+            }
+          : undefined;
 
         return (
           <div
             key={line.id}
             ref={(el) => (lineRefs.current[idx] = el)}
             onClick={() => handleLineClick(line.time)}
-            className={`transition-all duration-300 cursor-pointer text-center px-4 py-2 rounded-2xl group flex flex-col items-center justify-center relative ${opacityClass}`}
+            className={`transition-all duration-300 cursor-pointer text-center px-4 py-2.5 rounded-2xl group flex flex-col items-center justify-center relative ${opacityClass}`}
           >
+            {/* Vầng sáng nhẹ Ambient phía sau câu đang hát */}
+            {isActive && (
+              <div
+                className="absolute inset-0 pointer-events-none rounded-3xl blur-2xl opacity-40 -z-10 transition-opacity duration-500"
+                style={{
+                  background: `radial-gradient(circle, ${glowColor} 0%, transparent 75%)`
+                }}
+              />
+            )}
+
             <p
-              className={`leading-relaxed transition-all duration-300 ${sizeClass}`}
-              style={
-                isActive
-                  ? {
-                      color: primaryColor,
-                      textShadow: `0 0 24px ${glowColor}, 0 0 45px ${glowColor}`
-                    }
-                  : undefined
-              }
+              className={`leading-relaxed transition-all duration-150 ${sizeClass}`}
+              style={activeSweepStyle}
             >
               {line.text}
             </p>
 
-            {/* Dấu chấm phát sáng nhỏ dưới dòng đang hát */}
+            {/* Thanh tiến trình mini quét sáng đồng điệu dưới câu hát */}
             {isActive && (
-              <span
-                className="w-1.5 h-1.5 rounded-full mt-2 animate-pulse"
-                style={{ backgroundColor: primaryColor }}
-              />
+              <div className="w-20 h-1 bg-white/10 rounded-full mt-3 overflow-hidden p-px">
+                <div
+                  className="h-full rounded-full transition-all duration-75 ease-linear"
+                  style={{
+                    width: `${percent}%`,
+                    backgroundColor: primaryColor,
+                    boxShadow: `0 0 10px ${primaryColor}`
+                  }}
+                />
+              </div>
             )}
           </div>
         );
@@ -283,21 +333,6 @@ export default function KineticLyrics({
       {/* Khoảng đệm đáy */}
       <div className="h-24 pointer-events-none" />
     </div>
-
-    {/* Nút Xuất .LRC thanh lịch góc dưới cột lời khi có dữ liệu lời */}
-    {lines && lines.length > 0 && (
-      <div className="absolute bottom-3 right-4 z-20 pointer-events-auto">
-        <button
-          type="button"
-          onClick={handleExportClick}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/85 backdrop-blur-md border border-white/10 hover:border-amber-400/50 text-[11px] font-mono text-amber-300 hover:text-amber-200 shadow-xl cursor-pointer transition-all active:scale-95 group/btn"
-          title={`Xuất file .lrc đồng bộ (${trackTitle || 'lyrics'})`}
-        >
-          <Download className="w-3.5 h-3.5 text-amber-400 group-hover/btn:-translate-y-0.5 transition-transform" />
-          <span>📥 Xuất .LRC</span>
-        </button>
-      </div>
-    )}
   </div>
   );
 }

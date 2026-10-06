@@ -474,6 +474,30 @@ async function main() {
     assert(lines[0].id === 0 && lines[1].id === 1 && lines[2].id === 2, 'ID numbering sai');
   });
 
+  await runTest('convertWhisperChunksToLrc: Triệt tiêu triệt để ảo giác AI ([music], [Song], lặp từ >3 lần, noise)', () => {
+    const hallucinationChunks = [
+      { timestamp: [0.0, 3.0], text: '[music] [music] [music] [Song] [S [S' }, // Ảo giác thẻ lặp
+      { timestamp: [3.2, 5.0], text: '(applause) (cheering)' }, // Tiếng ồn
+      { timestamp: [5.1, 5.4], text: '[S' }, // Ký tự cụt đứng riêng
+      { timestamp: [5.4, 5.5], text: 'a' }, // Dòng 1 ký tự vô nghĩa
+      { timestamp: [5.5, 8.0], text: 'la la la la la la' }, // Lặp từ > 3 lần
+      { timestamp: [8.5, 10.0], text: '...' }, // Chỉ có dấu câu
+      { timestamp: [10.5, 14.0], text: 'Một chiều mưa bay qua phố nhỏ [music] [S' } // Câu hợp lệ kèm thẻ thừa và thẻ cụt
+    ];
+    const filtered = convertWhisperChunksToLrc(hallucinationChunks);
+    assert(filtered.length === 1, `Mong đợi 1 dòng hợp lệ duy nhất, nhận được: ${filtered.length}`);
+    assert(filtered[0].text === 'Một chiều mưa bay qua phố nhỏ', `Câu hát chưa làm sạch đúng: "${filtered[0].text}"`);
+    assert(filtered[0].time === 10.5, 'Thời gian câu hát hợp lệ sai');
+
+    // Trường hợp toàn bộ là nhạc nền hoặc ảo giác: trả về mảng rỗng
+    const beatOnlyChunks = [
+      { timestamp: [0.0, 5.0], text: '[music]' },
+      { timestamp: [5.0, 10.0], text: '[instrumental]' }
+    ];
+    const emptyResult = convertWhisperChunksToLrc(beatOnlyChunks);
+    assert(emptyResult.length === 0, 'Phải trả về mảng rỗng khi toàn bộ là beat không lời');
+  });
+
   await runTest('16kHz Pipeline Math: Độ dài mẫu resample theo chuẩn Whisper', () => {
     const durationSec = 185.4; // ~3 phút 5 giây
     const targetSampleRate = 16000;
