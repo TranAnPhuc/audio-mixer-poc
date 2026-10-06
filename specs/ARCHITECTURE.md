@@ -16,7 +16,7 @@
 |   - HUD Telemetry Overlay & Magnetic Reticle Cursor                               |
 |                                                                                   |
 |  [Route: "/studio"] Studio Workspace (Mini-DAW)                                   |
-|   - DualDropzone (File Ingestion & Client Validation)                             |
+|   - DualDropzone (File Ingestion, AI Stem Toggle & Client Validation)             |
 |   - DualWaveformTimeline (Stacked WaveSurfer Canvas Track A & Track B)            |
 |   - Direct Drag-to-Offset Engine (Mouse Drag -> Delta X -> vocalOffsetMs)         |
 |   - Harmonic Key & Pitch Controls (Camelot Badges & Semitone Stepper)             |
@@ -26,7 +26,8 @@
 +-----------------------------------------------------------------------------------+
                                            |
                                            | POST multipart/form-data
-                                           | (trackA, trackB, vocalOffsetMs, pitchShift)
+                                           | (trackA, trackB, vocalOffsetMs,
+                                           |  pitchShift, autoHarmonize, enableStemSeparation)
                                            v
 +-----------------------------------------------------------------------------------+
 |                            SERVER (Node.js + Express ESM)                         |
@@ -43,13 +44,16 @@
 |              v                                   |                                |
 |  +-----------------------------------------+     |                                |
 |  | Worker Pipeline                         |     |                                |
-|  |  1. Parallel Detection (Promise.all):   |     |                                |
+|  |  1. Stem Separation (Optional):         |     |                                |
+|  |     StemSeparatorService -> Python CLI  |     |                                |
+|  |     (A -> vocals.wav, B -> no_vocal.wav)|     |                                |
+|  |  2. Parallel Detection (Promise.all):   |     |                                |
 |  |     - BpmDetectorService (Onset PCM)    |     |                                |
 |  |     - KeyDetectorService (Chroma STFT)  |     |                                |
-|  |  2. Calculate Ratio r = BpmB / BpmA     |     |                                |
-|  |  3. Calculate Optimal Pitch Shift       |     |                                |
+|  |  3. Calculate Ratio r = BpmB / BpmA     |     |                                |
+|  |  4. Calculate Optimal Pitch Shift       |     |                                |
 |  |     (Circle of Fifths / Camelot Wheel)  |     |                                |
-|  |  4. AudioMixerService (FFmpeg Graph)    |     |                                |
+|  |  5. AudioMixerService (FFmpeg Graph)    |     |                                |
 |  |     [asetrate, atempo, adelay/atrim,    |     |                                |
 |  |      amix, alimiter]                    |     |                                |
 |  +-----------+-------------------------+---+     |                                |
@@ -82,7 +86,8 @@ audio-mashup/
 │   │   └── migrations/
 │   ├── storage/
 │   │   ├── uploads/
-│   │   └── outputs/
+│   │   ├── outputs/
+│   │   └── stems/
 │   ├── src/
 │   │   ├── config/
 │   │   │   └── db.js                 # Prisma Singleton instance
@@ -92,10 +97,13 @@ audio-mashup/
 │   │   │   └── uploadMiddleware.js   # Multer validation & error handler
 │   │   ├── routes/
 │   │   │   └── mixRoutes.js          # Express route bindings
+│   │   ├── scripts/
+│   │   │   └── separate_stems.py     # Python Demucs v4 runner script
 │   │   ├── services/
 │   │   │   ├── AudioMixerService.js  # FFmpeg mixing & rendering pipeline
 │   │   │   ├── BpmDetectorService.js # Audio PCM decoding & tempo detection
-│   │   │   └── KeyDetectorService.js # Chroma STFT & Krumhansl-Schmuckler key detection
+│   │   │   ├── KeyDetectorService.js # Chroma STFT & Krumhansl-Schmuckler key detection
+│   │   │   └── StemSeparatorService.js # ChildProcess runner for Python AI Demucs
 │   │   ├── utils/
 │   │   │   └── checkFfmpeg.js        # Fail-Fast binary validator
 │   │   └── app.js                    # Express bootstrap & CORS
@@ -118,6 +126,8 @@ audio-mashup/
 │   │   ├── test_key_detector.js
 │   │   ├── test_mixer_pitch.js
 │   │   ├── test_api_key_mix.js
+│   │   ├── test_stem_separator.js
+│   │   ├── test_api_stem_mix.js
 │   │   └── test_e2e_full_cycle.js
 │   ├── package.json
 │   ├── .env
@@ -125,9 +135,9 @@ audio-mashup/
 ├── client/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── DualDropzone.jsx          # File ingestion & drag-drop wrapper
+│   │   │   ├── DualDropzone.jsx          # File ingestion, AI Stem toggle & drag-drop wrapper
 │   │   │   ├── DualWaveformTimeline.jsx  # Mini-DAW Stacked Waveform with drag offset & audio sync
-│   │   │   ├── MixingStatus.jsx          # Polling progress card, tempo & key badges
+│   │   │   ├── MixingStatus.jsx          # Polling progress card, tempo, key & stem badges
 │   │   │   ├── ThreeAudioVisualizer.jsx  # Three.js 3D Audio Orb Visualizer
 │   │   │   ├── ThemeToggle.jsx           # Sun/Moon theme switcher
 │   │   │   └── WaveformPlayer.jsx        # Output WaveSurfer.js player
@@ -161,6 +171,8 @@ CORS_ORIGIN="http://localhost:5173"
 MAX_FILE_SIZE_MB=25
 STORAGE_UPLOAD_DIR="./storage/uploads"
 STORAGE_OUTPUT_DIR="./storage/outputs"
+STORAGE_STEMS_DIR="./storage/stems"
+PYTHON_BIN="python"
 ```
 
 ---
@@ -184,7 +196,7 @@ model MixJob {
   status                     String    @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED
   progress                   Int       @default(0)         // Tiến độ từ 0 -> 100%
 
-  // Thông tin tệp gốc A (Vocal)
+  // Thông tin tệp gốc A (Vocal / Song A)
   trackAOriginalName         String
   trackAPath                 String
   trackAMimeType             String
@@ -193,7 +205,7 @@ model MixJob {
   trackAKey                  String?   // Tông nhạc Track A (ví dụ: "Am", "C")
   trackACamelot              String?   // Mã Camelot Track A (ví dụ: "8A", "8B")
 
-  // Thông tin tệp gốc B (Beat)
+  // Thông tin tệp gốc B (Beat / Song B)
   trackBOriginalName         String
   trackBPath                 String
   trackBMimeType             String
@@ -201,6 +213,12 @@ model MixJob {
   trackBBpm                  Float?    // Nhịp độ nhận diện của Track B
   trackBKey                  String?   // Tông nhạc Track B (ví dụ: "C", "G")
   trackBCamelot              String?   // Mã Camelot Track B (ví dụ: "8B", "9B")
+
+  // Cấu hình & Kết quả bóc tách thân âm bằng AI (Stem Separation)
+  enableStemSeparation       Boolean   @default(false)
+  trackAStemPath             String?   // Đường dẫn tệp vocal sau khi tách
+  trackBStemPath             String?   // Đường dẫn tệp instrumental sau khi tách
+  stemSeparationTimeMs       Int?      // Thời gian thực thi mô hình AI (ms)
 
   // Thông số điều chỉnh âm học (DSP Adjustments)
   appliedTempoRatio          Float?    // Tỷ lệ co/dãn r = trackBBpm / trackABpm
@@ -226,9 +244,24 @@ model MixJob {
 
 ---
 
-### 4. Chi Tiết Kỹ Thuật Pipeline Âm Thanh (Audio DSP Pipeline)
+### 4. Chi Tiết Kỹ Thuật Pipeline Âm Thanh & AI (Audio DSP & AI Pipeline)
 
-#### 4.1. Giải thuật Nhận diện Tông nhạc (`KeyDetectorService.js`)
+#### 4.1. Kiến trúc Bóc Tách Thân Âm AI (`StemSeparatorService.js`)
+
+```text
+Audio Input Stream (MP3/WAV)
+       │
+       ▼
+Python Demucs Runner (separate_stems.py)
+       │
+       ├── Case 1: Demucs/Torch Available -> htdemucs model (--two-stems=vocals)
+       └── Case 2: Test/Lightweight Env -> DSP Mid/Side Phase Cancellation Fallback
+       │
+       ▼
+Output: { vocalsPath: ".../vocals.wav", instrumentalPath: ".../no_vocals.wav" }
+```
+
+#### 4.2. Giải thuật Nhận diện Tông nhạc (`KeyDetectorService.js`)
 
 ```text
 Raw Audio Stream (FFmpeg PCM 16-bit 22.05kHz Mono)
@@ -246,15 +279,7 @@ Pearson Correlation với 24 Krumhansl-Schmuckler Key Profiles (12 Major + 12 Mi
 Output: { key: "Am", scale: "minor", camelot: "8A", confidence: 0.84 }
 ```
 
-#### 4.2. FFmpeg Complex FilterGraph Tổng Hợp (Tempo + Pitch + Offset Alignment)
-
-Khi áp dụng đồng thời:
-
-1. Dịch cao độ $\Delta\text{semitones}$ ($\text{factor} = 2^{\frac{\Delta}{12}}$).
-2. Co dãn nhịp điệu $r = \frac{BPM_B}{BPM_A}$ (tỷ lệ atempo tổng hợp: $r_{\text{atempo}} = \frac{r}{\text{factor}}$).
-3. Căn chỉnh độ trễ `vocalOffsetMs` ($> 0$ dùng `adelay`, $< 0$ dùng `atrim + asetpts`).
-
-**Cấu trúc FilterGraph hoàn chỉnh cho Track A (Vocal):**
+#### 4.3. FFmpeg Complex FilterGraph Tổng Hợp (Tempo + Pitch + Offset Alignment)
 
 ```text
 [0:a]aresample=44100,
@@ -281,7 +306,8 @@ Khi áp dụng đồng thời:
   - `trackB` (Audio Binary, bắt buộc)
   - `vocalOffsetMs` (Integer, tùy chọn, mặc định: 0, phạm vi: -3000 đến 3000)
   - `pitchShiftSemitones` (Integer, tùy chọn, mặc định: 0, phạm vi: -6 đến 6)
-  - `autoHarmonize` (Boolean, tùy chọn, mặc định: false)
+  - `autoHarmonize` (Boolean, tùy chọn, mặc định: true)
+  - `enableStemSeparation` (Boolean, tùy chọn, mặc định: false)
 - **Response 202 Accepted:**
 
 ```json
@@ -319,6 +345,10 @@ Khi áp dụng đồng thời:
       "trackBKey": "C",
       "trackBCamelot": "8B",
       "appliedPitchShiftSemitones": 0
+    },
+    "stems": {
+      "enabled": true,
+      "separationTimeMs": 14200
     },
     "vocalOffsetMs": 500,
     "result": {

@@ -14,7 +14,7 @@ export default function StudioPage() {
   const [currentJobId, setCurrentJobId] = useState(null);
 
   // Kích hoạt polling tự động khi currentJobId có giá trị
-  const { status, progress, tempo, harmonic, vocalOffsetMs, result, error, reset } = useJobPolling(currentJobId, {
+  const { status, progress, tempo, harmonic, stems, vocalOffsetMs, result, error, reset } = useJobPolling(currentJobId, {
     intervalMs: 1500,
     onSuccess: (res) => {
       console.log('[Studio] Tác vụ phối âm hoàn tất:', res);
@@ -98,6 +98,7 @@ export default function StudioPage() {
                 progress={progress}
                 tempo={tempo}
                 harmonic={harmonic}
+                stems={stems}
                 vocalOffsetMs={vocalOffsetMs}
                 jobId={currentJobId}
                 result={result}

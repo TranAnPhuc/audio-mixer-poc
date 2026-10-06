@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Mic, Disc3, UploadCloud, FileAudio, X, AlertCircle, Sparkles, Loader2, SlidersHorizontal, RotateCcw, Music2, Minus, Plus } from 'lucide-react';
+import { Mic, Disc3, UploadCloud, FileAudio, X, AlertCircle, Sparkles, Loader2, SlidersHorizontal, RotateCcw, Music2, Minus, Plus, Bot, Cpu } from 'lucide-react';
 import { uploadTracksForMixing } from '../services/api';
 import DualWaveformTimeline from './DualWaveformTimeline';
 
@@ -185,6 +185,7 @@ export default function DualDropzone({ onJobCreated }) {
   const [vocalOffsetMs, setVocalOffsetMs] = useState(0);
   const [autoHarmonize, setAutoHarmonize] = useState(true);
   const [pitchShiftSemitones, setPitchShiftSemitones] = useState(0);
+  const [enableStemSeparation, setEnableStemSeparation] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [globalError, setGlobalError] = useState(null);
@@ -215,6 +216,7 @@ export default function DualDropzone({ onJobCreated }) {
         vocalOffsetMs,
         pitchShiftSemitones: autoHarmonize ? 0 : pitchShiftSemitones,
         autoHarmonize,
+        enableStemSeparation,
         onUploadProgress: (progress) => {
           setUploadProgress(progress);
         }
@@ -514,6 +516,69 @@ export default function DualDropzone({ onJobCreated }) {
                 +6 st (Bổng)
               </span>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Khối Bóc Tách Thân Âm AI (AI Stem Separation Engine) */}
+      <div className={`p-4 sm:p-5 rounded-2xl border shadow-md space-y-3 transition-all duration-300 ${
+        enableStemSeparation
+          ? 'bg-purple-950/20 dark:bg-purple-950/30 border-purple-500/40 shadow-purple-500/10'
+          : 'bg-slate-50/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800/80'
+      }`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-xl transition-colors ${
+              enableStemSeparation
+                ? 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30 shadow-sm'
+                : 'bg-slate-200/60 dark:bg-slate-800 text-slate-400'
+            }`}>
+              <Bot className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <span>Bóc Tách Thân Âm AI (AI Stem Separation Engine)</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gradient-to-r from-purple-500/20 to-cyan-500/20 text-purple-600 dark:text-purple-300 font-mono font-medium border border-purple-500/30">
+                  Demucs v4 Hybrid
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Tự động bóc tách Vocals sạch từ Track A và Instrumental không lời từ Track B.
+              </p>
+            </div>
+          </div>
+
+          {/* Công tắc Toggle switch */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={enableStemSeparation}
+            onClick={() => !isUploading && setEnableStemSeparation(!enableStemSeparation)}
+            disabled={isUploading}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none self-end sm:self-auto ${
+              enableStemSeparation ? 'bg-gradient-to-r from-purple-500 to-indigo-500' : 'bg-slate-300 dark:bg-slate-700'
+            } ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                enableStemSeparation ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Thông báo chi tiết chế độ */}
+        {enableStemSeparation ? (
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-500/10 border border-purple-500/25 text-purple-700 dark:text-purple-300 text-xs animate-fade-in">
+            <Cpu className="w-4 h-4 flex-shrink-0 text-purple-500 mt-0.5" />
+            <span>
+              <strong>Chế độ AI Stems đang BẬT:</strong> Hệ thống sẽ tự động tách giọng hát (Vocals) từ Track A và nhạc nền (Instrumental) từ Track B trước khi dò nhịp, dò tông và phối âm. Thích hợp cho ca khúc thương mại hoàn chỉnh.
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-600" />
+            <span>Chế độ hòa âm trực tiếp (Tối ưu tốc độ, dành cho tệp đã là Acappella & Beat riêng rẽ).</span>
           </div>
         )}
       </div>

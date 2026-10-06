@@ -189,3 +189,20 @@
   - **Mô tả:** Cập nhật `StudioPage.jsx`, `DualDropzone.jsx` và `MixingStatus.jsx` hiển thị huy hiệu tông nhạc kèm mã Camelot (ví dụ: `8A • Am` và `8B • C`), bộ điều khiển chọn bán âm ($-6$ đến $+6$ semitones) kèm công tắc "Tự động hòa âm (Auto-Harmonize)".
   - **File tác động:** `client/src/components/DualDropzone.jsx`, `client/src/components/MixingStatus.jsx`, `client/src/services/api.js`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Người dùng thấy rõ tông gốc của 2 bài, có thể bật Auto-Harmonize hoặc tự chỉnh $\pm$ bán âm trước khi bấm Tạo bản mashup.
+
+---
+
+## Giai đoạn 11: Bóc Tách Thân Âm Tự Động Bằng AI (AI Stem Separation)
+
+- [x] **Task 11.1: Xây dựng StemSeparatorService & Python Demucs Runner**
+  - **Mô tả:** Tạo runner script `server/src/scripts/separate_stems.py` sử dụng thư viện Demucs (hoặc bộ tách phổ STFT/Demucs CLI) và module `server/src/services/StemSeparatorService.js` để gọi tiến trình con. Tích hợp cơ chế kiểm tra môi trường Python và chế độ fallback an toàn. Viết script kiểm thử độc lập `server/tests/test_stem_separator.js`.
+  - **File tác động:** `server/src/scripts/separate_stems.py`, `server/src/services/StemSeparatorService.js`, `server/tests/test_stem_separator.js`.
+  - **Tiêu chuẩn nghiệm thu (DoD):** Chạy script kiểm thử tiếp nhận 1 file audio hỗn hợp, trích xuất thành công 2 file `vocals.wav` và `no_vocals.wav` vào thư mục lưu trữ; phân tích năng lượng sóng âm xác nhận tách bạch tín hiệu.
+
+- [x] **Task 11.2: Tích hợp Stem Separation vào Background Worker & API**
+  - **Mô tả:** Chạy Prisma migration bổ sung các trường Stem vào SQLite; cập nhật `mixController.js` nhận cờ `enableStemSeparation` từ `req.body`. Nếu bật, worker sẽ kích hoạt tách thân âm trước khi đưa vào luồng song song `detectBpm`, `detectKey` và `mixAudioTracks`.
+  - **File tác động:** `server/prisma/schema.prisma`, `server/src/controllers/mixController.js`, `server/tests/test_api_stem_mix.js`.
+  - **Tiêu chuẩn nghiệm thu (DoD):** Gửi request tạo mix job kèm `enableStemSeparation: true`, background worker tách file thành công, bản mix đầu ra được tạo từ các stem tách biệt và DB cập nhật các trường liên quan.
+
+- [x] **Task 11.3: Tích hợp Giao diện Điều Khiển AI Stem Trên Studio Page**
+  - **Mô tả:** Thêm công tắc gạt _"Tách Giọng Hát & Nhạc Nền Bằng AI (AI Stem Separation)"_ vào `DualDropzone.jsx`. Cập nhật thanh tiến trình `MixingStatus.jsx` hiển thị bước _"Đang bóc tách thân âm bằng mô hình AI Demucs..."_

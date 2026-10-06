@@ -5,14 +5,19 @@ import prisma, { JobStatus } from '../config/db.js';
 import { mixAudioTracks } from '../services/AudioMixerService.js';
 import { BpmDetectorService } from '../services/BpmDetectorService.js';
 import { KeyDetectorService } from '../services/KeyDetectorService.js';
+import StemSeparatorService from '../services/StemSeparatorService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Xác định thư mục output
+// Xác định thư mục output & stems
 const outputDir = process.env.STORAGE_OUTPUT_DIR
   ? path.resolve(process.env.STORAGE_OUTPUT_DIR)
   : path.resolve(__dirname, '../../storage/outputs');
+
+const stemsDir = process.env.STORAGE_STEMS_DIR
+  ? path.resolve(process.env.STORAGE_STEMS_DIR)
+  : path.resolve(__dirname, '../../storage/stems');
 
 /**
  * Xử lý ngầm tiến trình phối âm thanh (Background Worker)
@@ -24,6 +29,7 @@ export async function processMixJobInBackground(jobId, options = {}) {
   let lastDbUpdateTimestamp = 0;
   let lastDbProgress = -1;
   const autoHarmonize = Boolean(options.autoHarmonize);
+  const enableStemSeparation = Boolean(options.enableStemSeparation);
 
   try {
     // 1. Chuyển trạng thái sang PROCESSING
@@ -38,7 +44,50 @@ export async function processMixJobInBackground(jobId, options = {}) {
     const outputFileName = `mixed-${jobId}.mp3`;
     const outputPath = path.join(outputDir, outputFileName);
 
-    // 2. Phân tích song song 4 luồng âm học (BPM Track A/B + Key Track A/B qua Promise.all)
+    // 2. Tiền xử lý: Tách thân âm AI nếu enableStemSeparation bật
+    let workingPathA = job.trackAPath;
+    let workingPathB = job.trackBPath;
+    let trackAStemPath = null;
+    let trackBStemPath = null;
+    let stemSeparationTimeMs = null;
+
+    if (job.enableStemSeparation || enableStemSeparation) {
+      const jobStemDir = path.join(stemsDir, jobId);
+      fs.mkdirSync(jobStemDir, { recursive: true });
+
+      console.log(`[MixJob ${jobId}] Kích hoạt AI Stem Separation (Demucs / DSP Fallback)...`);
+      const stemStart = performance.now();
+
+      try {
+        const [stemA, stemB] = await Promise.all([
+          StemSeparatorService.separateStems({
+            inputPath: job.trackAPath,
+            outputDir: path.join(jobStemDir, 'trackA'),
+            trackType: 'vocal'
+          }),
+          StemSeparatorService.separateStems({
+            inputPath: job.trackBPath,
+            outputDir: path.join(jobStemDir, 'trackB'),
+            trackType: 'beat'
+          })
+        ]);
+
+        workingPathA = stemA.targetStemPath;
+        workingPathB = stemB.targetStemPath;
+        trackAStemPath = stemA.targetStemPath;
+        trackBStemPath = stemB.targetStemPath;
+        stemSeparationTimeMs = Math.round(performance.now() - stemStart);
+
+        console.log(
+          `[MixJob ${jobId}] Tách thân âm hoàn tất trong ${stemSeparationTimeMs}ms (TrackA: ${path.basename(workingPathA)}, TrackB: ${path.basename(workingPathB)}).`
+        );
+      } catch (stemErr) {
+        console.error(`[MixJob ${jobId}] Tách thân âm thất bại:`, stemErr.message);
+        throw stemErr;
+      }
+    }
+
+    // 3. Phân tích song song 4 luồng âm học (BPM Track A/B + Key Track A/B qua Promise.all)
     let bpmResultA = { bpm: null, isAmbiguous: true };
     let bpmResultB = { bpm: null, isAmbiguous: true };
     let keyResultA = { key: null, scale: null, camelot: null, confidence: 0 };
@@ -46,16 +95,16 @@ export async function processMixJobInBackground(jobId, options = {}) {
 
     try {
       [bpmResultA, bpmResultB, keyResultA, keyResultB] = await Promise.all([
-        BpmDetectorService.detectBpm(job.trackAPath),
-        BpmDetectorService.detectBpm(job.trackBPath),
-        KeyDetectorService.detectKey(job.trackAPath),
-        KeyDetectorService.detectKey(job.trackBPath)
+        BpmDetectorService.detectBpm(workingPathA),
+        BpmDetectorService.detectBpm(workingPathB),
+        KeyDetectorService.detectKey(workingPathA),
+        KeyDetectorService.detectKey(workingPathB)
       ]);
     } catch (analysisErr) {
       console.warn(`[MixJob ${jobId}] Cảnh báo khi phân tích âm học song song:`, analysisErr.message);
     }
 
-    // 3. Tính toán tỷ lệ co dãn nhịp điệu (Tempo Ratio)
+    // 4. Tính toán tỷ lệ co dãn nhịp điệu (Tempo Ratio)
     let tempoRatio = 1.0;
     const canMatchTempo =
       !bpmResultA?.isAmbiguous &&
@@ -73,7 +122,7 @@ export async function processMixJobInBackground(jobId, options = {}) {
       `[MixJob ${jobId}] Dò nhịp hoàn tất: TrackA=${bpmResultA?.bpm} BPM, TrackB=${bpmResultB?.bpm} BPM => Tỷ lệ co dãn r=${tempoRatio}`
     );
 
-    // 4. Quyết định số bán âm cần dịch chuyển cao độ (Harmonic Pitch Shifting Decision)
+    // 5. Quyết định số bán âm cần dịch chuyển cao độ (Harmonic Pitch Shifting Decision)
     let effectivePitchShift = job.appliedPitchShiftSemitones ?? 0;
 
     if (autoHarmonize && keyResultA?.camelot && keyResultB?.camelot) {
@@ -90,10 +139,10 @@ export async function processMixJobInBackground(jobId, options = {}) {
       );
     }
 
-    // 5. Kích hoạt AudioMixerService với cơ chế Throttle cập nhật DB
+    // 6. Kích hoạt AudioMixerService với cơ chế Throttle cập nhật DB
     const mixResult = await mixAudioTracks({
-      trackAPath: job.trackAPath,
-      trackBPath: job.trackBPath,
+      trackAPath: workingPathA,
+      trackBPath: workingPathB,
       outputPath,
       tempoRatio,
       vocalOffsetMs: job.vocalOffsetMs ?? 0,
@@ -119,7 +168,7 @@ export async function processMixJobInBackground(jobId, options = {}) {
       }
     });
 
-    // 6. Hoàn tất thành công: Cập nhật SUCCESS kèm đầy đủ siêu dữ liệu nhịp độ & hòa âm
+    // 7. Hoàn tất thành công: Cập nhật SUCCESS kèm đầy đủ siêu dữ liệu nhịp độ & hòa âm & stems
     await prisma.mixJob.update({
       where: { id: jobId },
       data: {
@@ -136,7 +185,10 @@ export async function processMixJobInBackground(jobId, options = {}) {
         trackBKey: keyResultB?.key ?? null,
         trackBCamelot: keyResultB?.camelot ?? null,
         appliedTempoRatio: tempoRatio,
-        appliedPitchShiftSemitones: effectivePitchShift
+        appliedPitchShiftSemitones: effectivePitchShift,
+        trackAStemPath,
+        trackBStemPath,
+        stemSeparationTimeMs
       }
     });
 
@@ -189,6 +241,9 @@ export async function createMixJob(req, res, next) {
     // Kiểm định cờ autoHarmonize (boolean)
     const autoHarmonize = req.body?.autoHarmonize === 'true' || req.body?.autoHarmonize === true;
 
+    // Kiểm định cờ enableStemSeparation (boolean, mặc định: false)
+    const enableStemSeparation = req.body?.enableStemSeparation === 'true' || req.body?.enableStemSeparation === true;
+
     // 1. Tạo bản ghi ban đầu với trạng thái PENDING
     const job = await prisma.mixJob.create({
       data: {
@@ -203,13 +258,14 @@ export async function createMixJob(req, res, next) {
         trackBMimeType: trackB.mimetype,
         trackBSize: trackB.size,
         vocalOffsetMs,
-        appliedPitchShiftSemitones: pitchShiftSemitones
+        appliedPitchShiftSemitones: pitchShiftSemitones,
+        enableStemSeparation
       }
     });
 
     // 2. Kích hoạt tác vụ nền bất đồng bộ (Fire-and-forget, không chặn response)
     setImmediate(() => {
-      processMixJobInBackground(job.id, { autoHarmonize }).catch((workerErr) => {
+      processMixJobInBackground(job.id, { autoHarmonize, enableStemSeparation }).catch((workerErr) => {
         console.error(`[Background Worker Error] Job ${job.id}:`, workerErr);
       });
     });
@@ -252,7 +308,7 @@ export async function getJobStatus(req, res, next) {
       });
     }
 
-    // Trường hợp 1: SUCCESS - Trả về đầy đủ thông tin thành phẩm, nhịp độ & hòa âm
+    // Trường hợp 1: SUCCESS - Trả về đầy đủ thông tin thành phẩm, nhịp độ & hòa âm & stems
     if (job.status === JobStatus.SUCCESS) {
       return res.status(200).json({
         success: true,
@@ -271,6 +327,10 @@ export async function getJobStatus(req, res, next) {
             trackBKey: job.trackBKey,
             trackBCamelot: job.trackBCamelot,
             appliedPitchShiftSemitones: job.appliedPitchShiftSemitones ?? 0
+          },
+          stems: {
+            enabled: job.enableStemSeparation,
+            separationTimeMs: job.stemSeparationTimeMs ?? null
           },
           vocalOffsetMs: job.vocalOffsetMs ?? 0,
           result: {

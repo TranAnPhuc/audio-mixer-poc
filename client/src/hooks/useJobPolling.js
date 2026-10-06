@@ -17,6 +17,7 @@ export function useJobPolling(jobId, options = {}) {
   const [progress, setProgress] = useState(0);
   const [tempo, setTempo] = useState(null);
   const [harmonic, setHarmonic] = useState(null);
+  const [stems, setStems] = useState(null);
   const [vocalOffsetMs, setVocalOffsetMs] = useState(0);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -33,6 +34,7 @@ export function useJobPolling(jobId, options = {}) {
     setProgress(0);
     setTempo(null);
     setHarmonic(null);
+    setStems(null);
     setVocalOffsetMs(0);
     setResult(null);
     setError(null);
@@ -55,6 +57,7 @@ export function useJobPolling(jobId, options = {}) {
     setResult(null);
     setTempo(null);
     setHarmonic(null);
+    setStems(null);
 
     const checkStatus = async () => {
       try {
@@ -62,7 +65,17 @@ export function useJobPolling(jobId, options = {}) {
         if (!isMounted) return;
 
         if (response.success && response.data) {
-          const { status: jobStatus, progress: jobProgress, tempo: jobTempo, harmonic: jobHarmonic, vocalOffsetMs: jobOffset, result: jobResult, errorMessage, error: jobError } = response.data;
+          const {
+            status: jobStatus,
+            progress: jobProgress,
+            tempo: jobTempo,
+            harmonic: jobHarmonic,
+            stems: jobStems,
+            vocalOffsetMs: jobOffset,
+            result: jobResult,
+            errorMessage,
+            error: jobError
+          } = response.data;
 
           setStatus(jobStatus);
           setProgress(typeof jobProgress === 'number' ? jobProgress : 0);
@@ -79,12 +92,17 @@ export function useJobPolling(jobId, options = {}) {
             setHarmonic(jobHarmonic);
           }
 
+          if (jobStems) {
+            setStems(jobStems);
+          }
+
           if (jobStatus === 'SUCCESS') {
             if (timerId) clearInterval(timerId);
             setIsPolling(false);
             setProgress(100);
             if (jobTempo) setTempo(jobTempo);
             if (jobHarmonic) setHarmonic(jobHarmonic);
+            if (jobStems) setStems(jobStems);
             if (typeof jobOffset === 'number') setVocalOffsetMs(jobOffset);
             setResult(jobResult);
             onSuccessRef.current?.(jobResult);
@@ -123,6 +141,7 @@ export function useJobPolling(jobId, options = {}) {
     progress,
     tempo,
     harmonic,
+    stems,
     vocalOffsetMs,
     result,
     error,

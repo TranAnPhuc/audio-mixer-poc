@@ -21,6 +21,7 @@ export async function uploadTracksForMixing({
   vocalOffsetMs = 0,
   pitchShiftSemitones = 0,
   autoHarmonize = true,
+  enableStemSeparation = false,
   onUploadProgress
 }) {
   const formData = new FormData();
@@ -29,6 +30,7 @@ export async function uploadTracksForMixing({
   formData.append('vocalOffsetMs', vocalOffsetMs);
   formData.append('pitchShiftSemitones', pitchShiftSemitones);
   formData.append('autoHarmonize', autoHarmonize);
+  formData.append('enableStemSeparation', enableStemSeparation);
 
   const response = await apiClient.post('/mix', formData, {
     headers: {

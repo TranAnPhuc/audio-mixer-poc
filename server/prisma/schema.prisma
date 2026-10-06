@@ -37,6 +37,12 @@ model MixJob {
   vocalOffsetMs              Int      @default(0)         // Độ trễ vocal tính bằng mili-giây (-3000 đến +3000)
   appliedPitchShiftSemitones Int      @default(0)         // Số bán âm đã dịch chuyển (-6 đến +6)
 
+  // Cấu hình Bóc tách Thân âm AI (Stem Separation)
+  enableStemSeparation       Boolean  @default(false)
+  trackAStemPath             String?                      // Đường dẫn thân âm giọng hát sạch (vocals.wav)
+  trackBStemPath             String?                      // Đường dẫn thân âm nhạc nền (no_vocals.wav)
+  stemSeparationTimeMs       Int?                         // Thời gian xử lý bóc tách thân âm (ms)
+
   // Thông tin kết quả
   outputFileName             String?
   outputPath                 String?

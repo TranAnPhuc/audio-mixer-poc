@@ -7,33 +7,34 @@
 ### 1. Tổng Quan & Mục Tiêu Sản Phẩm
 
 - **Tên dự án:** Web Audio Mashup Studio.
-- **Mục tiêu:** Cung cấp dịch vụ web cho phép người dùng tải lên 2 tệp âm thanh độc lập (Track A: Vocal/Chính, Track B: Beat/Nền), hệ thống tự động nhận diện nhịp độ (BPM), đồng bộ cao độ/tông nhạc (Harmonic Key Matching), căn chỉnh độ trễ/phách trực quan trên timeline đa tầng, phối ghép (mix), cân bằng âm lượng và xuất bản phẩm chất lượng cao.
-- **Giá trị cốt lõi:** Tự động hóa toàn bộ quy trình beat-matching, key-matching, offset-alignment và mixing phức tạp thành một pipeline tự động, kết hợp giao diện Mini-DAW tương tác trực tiếp và trải nghiệm thị giác điện ảnh 3D cao cấp.
+- **Mục tiêu:** Cung cấp dịch vụ web cho phép người dùng tải lên 2 tệp âm thanh độc lập (Track A: Vocal/Chính, Track B: Beat/Nền), hệ thống tự động bóc tách thân âm AI (AI Stem Separation), nhận diện nhịp độ (BPM), đồng bộ cao độ/tông nhạc (Harmonic Key Matching), căn chỉnh độ trễ/phách trực quan trên timeline đa tầng, phối ghép (mix), cân bằng âm lượng và xuất bản phẩm chất lượng phòng thu.
+- **Giá trị cốt lõi:** Tự động hóa toàn bộ quy trình stem-separation, beat-matching, key-matching, offset-alignment và mixing phức tạp thành một pipeline tự động, kết hợp giao diện Mini-DAW tương tác trực tiếp và trải nghiệm thị giác điện ảnh 3D cao cấp.
 
 ---
 
 ### 2. Đối Tượng Người Dùng & Ca Sử Dụng (Use Cases)
 
-- **Người sáng tạo nội dung / DJ nghiệp dư:** Muốn ghép nhanh một đoạn Acappella vào một Beat có sẵn, cần nhìn thấy trực quan dạng sóng của cả 2 bài xếp chồng lên nhau, tự động hòa âm cùng tông nhạc và căn chỉnh câu hát rơi đúng phách trống trước khi xuất file.
+- **Người sáng tạo nội dung / DJ nghiệp dư:** Muốn ghép nhanh 2 bài hát thương mại hoàn chỉnh với nhau mà không cần chuẩn bị sẵn file Acappella hay Instrumental tách rời; cần nhìn thấy trực quan dạng sóng của cả 2 bài xếp chồng lên nhau, tự động hòa âm cùng tông nhạc và căn chỉnh câu hát rơi đúng phách trống trước khi xuất file.
 - **Người nghe phổ thông:** Muốn tạo các bản phối cá nhân hóa nhanh chóng từ hai ca khúc yêu thích với khả năng nghe thử tức thời không độ trễ trên trình duyệt.
 
 ---
 
 ### 3. Phạm Vi Triển Khai (Scope Matrix)
 
-| Hạng mục                   | Trong phạm vi (In-Scope - Giai đoạn 1 đến 10)                                                                                                            | Ngoài phạm vi (Out-of-Scope - Tương lai)                |
-| :------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------ |
-| **Định dạng vào**          | MP3, WAV (MIME: `audio/mpeg`, `audio/wav`)                                                                                                               | FLAC, AAC, OGG, M4A                                     |
-| **Kích thước tệp**         | Tối đa 25MB / tệp, thời lượng $\le 5\text{ phút}$ / tệp                                                                                                  | Tệp dung lượng lớn, video MP4                           |
-| **Xử lý âm thanh**         | Chuẩn hóa sample rate, gain staging, amix, limiter chống vỡ tiếng                                                                                        | Tách stem bằng AI (Demucs v4/Spleeter)                  |
-| **Đồng bộ nhịp điệu**      | Tự động phát hiện BPM (Onset detection), time-stretch bằng filter `atempo`                                                                               | Tự động căn chỉnh lưới ô nhịp (Quantize to Beatgrid)    |
-| **Khớp tông hòa âm**       | Dò tông tự động (Chroma + Krumhansl-Schmuckler), mã hóa Camelot Wheel, dịch cao độ pitch-shift qua FFmpeg                                                | Hòa âm bè phụ thông minh (Multi-voice auto-harmony)     |
-| **Căn chỉnh độ trễ**       | Tinh chỉnh độ trễ (`vocalOffsetMs` từ $-3000\text{ ms}$ đến $+3000\text{ ms}$) qua filter `adelay` và `atrim`                                            | Tự động dò phase alignment bằng AI                      |
-| **Trực quan hóa timeline** | Timeline đa tầng (Dual-track Waveform Canvas), thước đo thời gian (Ruler), kéo trượt trực quan Vocal và nghe thử cục bộ (Zero-latency Web Audio Preview) | Tự động cắt ghép nhiều phân đoạn (Multi-region slicing) |
-| **Trải nghiệm thị giác**   | Landing Page 3D Three.js 60 FPS, GSAP ScrollTrigger HUD Telemetry, chuyển đổi Dark/Light mode                                                            | Trình chỉnh sửa hiệu ứng ánh sáng sân khấu              |
-| **Xử lý tác vụ**           | Xử lý bất đồng bộ (Non-blocking Child Process) với trạng thái lưu DB                                                                                     | Message Queue phân tán (RabbitMQ, Redis BullMQ)         |
-| **Lưu trữ**                | Hệ thống tệp cục bộ (Local File System) có phân cấp thư mục                                                                                              | Cloud Storage (AWS S3, Cloudflare R2)                   |
-| **Bảo mật / Auth**         | Không yêu cầu đăng nhập (Public access theo Session/Job ID)                                                                                              | JWT Authentication, quản lý thư viện cá nhân            |
+| Hạng mục                   | Trong phạm vi (In-Scope - Giai đoạn 1 đến 11)                                                                                                            | Ngoài phạm vi (Out-of-Scope - Tương lai)                 |
+| :------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------- |
+| **Định dạng vào**          | MP3, WAV (MIME: `audio/mpeg`, `audio/wav`)                                                                                                               | FLAC, AAC, OGG, M4A                                      |
+| **Kích thước tệp**         | Tối đa 25MB / tệp, thời lượng $\le 5\text{ phút}$ / tệp                                                                                                  | Tệp dung lượng lớn, video MP4                            |
+| **Tách thân âm AI**        | Tách 2 thân âm Vocals / Instrumental qua mô hình Demucs v4 (Hybrid Transformer)                                                                          | Tách 4-6 thân âm chi tiết (Drums, Bass, Piano, Guitar)   |
+| **Xử lý âm thanh**         | Chuẩn hóa sample rate, gain staging, amix, limiter chống vỡ tiếng                                                                                        | Hòa âm bè phụ thông minh (Multi-voice auto-harmony)      |
+| **Đồng bộ nhịp điệu**      | Tự động phát hiện BPM (Onset detection), time-stretch bằng filter `atempo`                                                                               | Tự động căn chỉnh lưới ô nhịp (Quantize to Beatgrid)     |
+| **Khớp tông hòa âm**       | Dò tông tự động (Chroma + Krumhansl-Schmuckler), mã hóa Camelot Wheel, dịch cao độ pitch-shift qua FFmpeg                                                | Nhận diện vòng hòa âm phức tạp nhiều hợp âm chuyển giọng |
+| **Căn chỉnh độ trễ**       | Tinh chỉnh độ trễ (`vocalOffsetMs` từ $-3000\text{ ms}$ đến $+3000\text{ ms}$) qua filter `adelay` và `atrim`                                            | Tự động dò phase alignment bằng AI                       |
+| **Trực quan hóa timeline** | Timeline đa tầng (Dual-track Waveform Canvas), thước đo thời gian (Ruler), kéo trượt trực quan Vocal và nghe thử cục bộ (Zero-latency Web Audio Preview) | Tự động cắt ghép nhiều phân đoạn (Multi-region slicing)  |
+| **Trải nghiệm thị giác**   | Landing Page 3D Three.js 60 FPS, GSAP ScrollTrigger HUD Telemetry, chuyển đổi Dark/Light mode                                                            | Trình chỉnh sửa hiệu ứng ánh sáng sân khấu               |
+| **Xử lý tác vụ**           | Xử lý bất đồng bộ (Non-blocking Child Process) với trạng thái lưu DB                                                                                     | Message Queue phân tán (RabbitMQ, Redis BullMQ)          |
+| **Lưu trữ**                | Hệ thống tệp cục bộ (Local File System) có phân cấp thư mục                                                                                              | Cloud Storage (AWS S3, Cloudflare R2)                    |
+| **Bảo mật / Auth**         | Không yêu cầu đăng nhập (Public access theo Session/Job ID)                                                                                              | JWT Authentication, quản lý thư viện cá nhân             |
 
 ---
 
@@ -42,8 +43,8 @@
 #### FR-01: Tiếp nhận và kiểm định tệp (File Ingestion & Validation)
 
 - Hệ thống cung cấp 2 trường tải lên riêng biệt:
-  - `trackA` (Vocal / Lead Audio).
-  - `trackB` (Beat / Instrumental Audio).
+  - `trackA` (Vocal / Lead Audio hoặc Full Song A).
+  - `trackB` (Beat / Instrumental Audio hoặc Full Song B).
 - **Ràng buộc kiểm tra (Validation):**
   - Định dạng: Kiểm tra phần mở rộng và MIME type hợp lệ (`audio/mpeg`, `audio/wav`).
   - Dung lượng: Từ chối nếu file $> 25\text{MB}$ với mã lỗi `413 Payload Too Large`.
@@ -99,7 +100,7 @@
 #### FR-07: Trực quan hóa và Phát lại Thành Phẩm (Playback & Visualization)
 
 - Khi trạng thái là `SUCCESS`, giao diện hiển thị:
-  - Thông số BPM, tỷ lệ co dãn nhịp điệu, độ trễ phách và tông nhạc đã áp dụng.
+  - Thông số BPM, tỷ lệ co dãn nhịp điệu, độ trễ phách, tông nhạc và trạng thái tách thân âm đã áp dụng.
   - Dạng sóng âm thanh tương tác dựng bằng Wavesurfer.js.
   - Hỗ trợ tua nhạc tức thì (Audio Seeking) thông qua chuẩn **HTTP 206 Partial Content**.
   - Các nút điều khiển: Play/Pause, thời gian hiện tại / tổng thời gian, nút phát lại từ đầu.
@@ -130,10 +131,24 @@
     `asetrate=44100*factor,atempo=1/factor,aresample=44100`
   - Đảm bảo giữ nguyên $100\%$ tốc độ tempo và thời lượng đã căn chỉnh trong khi cao độ được dịch chuẩn xác.
 
+#### FR-10: Bóc Tách Thân Âm Tự Động Bằng AI (AI Stem Separation)
+
+- **Cơ chế bóc tách nguồn âm (Audio Source Separation Engine):**
+  - Tích hợp mô hình AI Demucs v4 (Hybrid Transformer) qua một Python CLI runner ngầm được điều phối bởi `StemSeparatorService.js`.
+  - Hỗ trợ chế độ tách 2 thân âm độc lập (`--two-stems=vocals`):
+    - Track A (Ca khúc hoàn chỉnh): Trích xuất phần giọng hát sạch (`vocals.wav`), triệt tiêu nhạc nền để phục vụ beat-matching và pitch-shifting.
+    - Track B (Ca khúc hoàn chỉnh): Trích xuất phần hòa âm nhạc cụ (`no_vocals.wav` / Instrumental), loại bỏ giọng hát gốc để làm beat chủ.
+- **Tùy chọn tương tác trên giao diện (User Preference Controls):**
+  - Công tắc chuyển đổi: _"Kích hoạt AI Tách Lời & Nhạc Nền (AI Stem Separation)"_.
+  - Cho phép người dùng tùy chọn bật/tắt tách thân âm trước khi đưa vào pipeline xử lý.
+- **Cơ chế Fallback & Tối ưu hiệu năng:**
+  - Nếu tệp tải lên đã là Acappella hoặc Instrumental (người dùng tắt cờ AI), bỏ qua tiến trình AI để tiết kiệm tài nguyên tính toán.
+  - Tự động kiểm tra môi trường Python & PyTorch; nếu thiếu GPU/CUDA, chạy chế độ CPU đa luồng có giới hạn thời lượng hoặc kích hoạt fallback DSP thông minh (Center-Channel Phase Inversion) trong môi trường test nhẹ.
+
 ---
 
 ### 5. Yêu Cầu Phi Chức Năng (Non-Functional Requirements)
 
-- **Hiệu năng:** Thời gian phân tích BPM, nhận diện Key và trộn 2 file 3 phút không vượt quá $20\text{ giây}$ trên môi trường tiêu chuẩn. Thao tác kéo trượt waveform trên giao diện đạt 60 FPS.
+- **Hiệu năng:** Thời gian phân tích BPM, nhận diện Key và trộn 2 file 3 phút không vượt quá $20\text{ giây}$ trên môi trường tiêu chuẩn (không bật AI tách stem) và $\le 60\text{ giây}$ (khi bật AI stem). Thao tác kéo trượt waveform trên giao diện đạt 60 FPS.
 - **Toàn vẹn bộ nhớ:** Phải có cơ chế giải phóng tài nguyên triệt để (Cleanup Functions trong React hooks, thu hồi Blob URL qua `URL.revokeObjectURL`, hủy AudioContext của Web Audio API, gọi `.dispose()` trên toàn bộ geometry/material/texture/renderer của Three.js).
 - **Tính khả chuyển (Portability):** Cấu hình cơ sở dữ liệu qua Prisma ORM, sẵn sàng chuyển đổi từ SQLite sang PostgreSQL khi triển khai Cloud.

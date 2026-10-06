@@ -12,7 +12,9 @@ import {
   Gauge,
   Activity,
   SlidersHorizontal,
-  Music2
+  Music2,
+  Bot,
+  Cpu
 } from 'lucide-react';
 import WaveformPlayer from './WaveformPlayer';
 
@@ -24,6 +26,7 @@ export default function MixingStatus({
   progress,
   tempo,
   harmonic,
+  stems,
   vocalOffsetMs = 0,
   jobId,
   result,
@@ -97,7 +100,9 @@ export default function MixingStatus({
             </div>
 
             <p className="text-[11px] text-slate-500 text-center italic">
-              Đang phân tích BPM, co dãn nhịp điệu và phối ghép luồng âm thanh...
+              {stems?.enabled
+                ? 'Đang bóc tách thân âm qua mô hình AI Demucs, phân tích BPM và căn chỉnh hòa âm...'
+                : 'Đang phân tích BPM, co dãn nhịp điệu và phối ghép luồng âm thanh...'}
             </p>
           </div>
         )}
@@ -106,9 +111,17 @@ export default function MixingStatus({
         {isSuccess && result && (
           <div className="space-y-5">
             <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
-              <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
-                <Sparkles className="w-4 h-4" />
-                <span>Bản mix đã sẵn sàng để phát trực tuyến!</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
+                  <Sparkles className="w-4 h-4" />
+                  <span>Bản mix đã sẵn sàng để phát trực tuyến!</span>
+                </div>
+                {stems?.enabled && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30 self-start sm:self-auto">
+                    <Bot className="w-3.5 h-3.5 text-purple-400" />
+                    <span>AI Stems Separated ({stems.separationTimeMs ? `${stems.separationTimeMs}ms` : 'Demucs v4'})</span>
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-400">
                 Tệp âm thanh MP3 320kbps đã được render hoàn chỉnh. Bạn có thể nghe thử, kéo tua trực tiếp trên dạng sóng bên dưới hoặc tải về máy.
@@ -257,7 +270,14 @@ export default function MixingStatus({
                       <Mic className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="text-[10px] text-indigo-400/80 uppercase font-semibold block">Track A (Vocal Key)</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-indigo-400/80 uppercase font-semibold block">Track A (Vocal Key)</span>
+                        {stems?.enabled && (
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-500/40 font-semibold">
+                            Clean Vocals
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {harmonic.trackACamelot && (
                           <span className="font-mono font-bold text-xs px-1.5 py-0.5 rounded bg-indigo-500/30 border border-indigo-500/40 text-indigo-200">
@@ -277,7 +297,14 @@ export default function MixingStatus({
                       <Disc className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="text-[10px] text-emerald-400/80 uppercase font-semibold block">Track B (Beat Key Master)</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-emerald-400/80 uppercase font-semibold block">Track B (Beat Key Master)</span>
+                        {stems?.enabled && (
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-200 border border-emerald-500/40 font-semibold">
+                            Pure Instrumental
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {harmonic.trackBCamelot && (
                           <span className="font-mono font-bold text-xs px-1.5 py-0.5 rounded bg-emerald-500/30 border border-emerald-500/40 text-emerald-200">
@@ -352,7 +379,7 @@ export default function MixingStatus({
               tempo={tempo}
             />
 
-            <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+            <div className={`grid grid-cols-2 ${stems?.enabled ? 'sm:grid-cols-3' : ''} gap-3 text-xs font-mono`}>
               <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
                 <span className="text-slate-500 block">Thời lượng bản phối:</span>
                 <span className="text-slate-200 font-semibold text-sm">
@@ -365,6 +392,17 @@ export default function MixingStatus({
                   {result.executionTimeMs ? `${result.executionTimeMs}ms` : 'N/A'}
                 </span>
               </div>
+              {stems?.enabled && (
+                <div className="p-3 bg-slate-950/60 rounded-xl border border-purple-900/40 col-span-2 sm:col-span-1 bg-purple-950/10">
+                  <span className="text-purple-400 block flex items-center gap-1">
+                    <Cpu className="w-3.5 h-3.5 text-purple-400" />
+                    AI Stem Separator:
+                  </span>
+                  <span className="text-purple-200 font-semibold text-sm">
+                    {stems.separationTimeMs ? `${stems.separationTimeMs}ms` : 'Demucs v4'}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}
