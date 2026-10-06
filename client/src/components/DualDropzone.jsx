@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Mic, Disc3, UploadCloud, FileAudio, X, AlertCircle, Sparkles, Loader2, SlidersHorizontal, RotateCcw } from 'lucide-react';
 import { uploadTracksForMixing } from '../services/api';
+import DualWaveformTimeline from './DualWaveformTimeline';
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 const ALLOWED_EXTENSIONS = ['.mp3', '.wav'];
@@ -259,6 +260,17 @@ export default function DualDropzone({ onJobCreated }) {
           disabled={isUploading}
         />
       </div>
+
+      {/* Bàn Phối Sóng Âm Đa Tầng (Studio Dual-Track Waveform Timeline) */}
+      {trackA.file && trackB.file && !trackA.error && !trackB.error && (
+        <DualWaveformTimeline
+          trackAFile={trackA.file}
+          trackBFile={trackB.file}
+          vocalOffsetMs={vocalOffsetMs}
+          onOffsetChange={setVocalOffsetMs}
+          disabled={isUploading}
+        />
+      )}
 
       {/* Khối Căn Chỉnh Độ Trễ Vocal (Offset Alignment Slider) */}
       <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 shadow-md space-y-3">

@@ -7,30 +7,31 @@
 ### 1. Tổng Quan & Mục Tiêu Sản Phẩm
 
 - **Tên dự án:** Web Audio Mashup Studio.
-- **Mục tiêu:** Cung cấp dịch vụ web cho phép người dùng tải lên 2 tệp âm thanh độc lập (Track A: Vocal/Chính, Track B: Beat/Nền), hệ thống tự động nhận diện nhịp độ (BPM), chuẩn hóa, co/dãn thời gian (time-stretching) để đồng bộ nhịp điệu, căn chỉnh độ trễ/phách (offset alignment), phối ghép (mix), cân bằng âm lượng và trả về một bản nhạc duy nhất có thể nghe trực tuyến và tải về.
-- **Giá trị cốt lõi:** Tự động hóa toàn bộ quy trình beat-matching, offset-alignment và mixing phức tạp thành một pipeline tự động, giúp tạo ra các bản mashup hài hòa về nhịp điệu mà không cần can thiệp thủ công bằng phần mềm DAW chuyên dụng.
+- **Mục tiêu:** Cung cấp dịch vụ web cho phép người dùng tải lên 2 tệp âm thanh độc lập (Track A: Vocal/Chính, Track B: Beat/Nền), hệ thống tự động nhận diện nhịp độ (BPM), chuẩn hóa, co/dãn thời gian (time-stretching) để đồng bộ nhịp điệu, căn chỉnh độ trễ/phách trực quan trên timeline đa tầng, phối ghép (mix), cân bằng âm lượng và xuất bản phẩm chất lượng cao.
+- **Giá trị cốt lõi:** Tự động hóa toàn bộ quy trình beat-matching, offset-alignment và mixing phức tạp thành một pipeline tự động, kết hợp giao diện Mini-DAW tương tác trực tiếp giúp người dùng kiểm soát chính xác điểm rơi của câu hát mà không cần phần mềm âm thanh chuyên nghiệp.
 
 ---
 
 ### 2. Đối Tượng Người Dùng & Ca Sử Dụng (Use Cases)
 
-- **Người sáng tạo nội dung / DJ nghiệp dư:** Muốn ghép nhanh một đoạn Acappella vào một Beat có sẵn mà không phải tự gõ nhịp (tap tempo), chỉnh time-stretch thủ công, hay căn phách bằng tay.
-- **Người nghe phổ thông:** Muốn tạo các bản phối nhạc cá nhân hóa nhanh chóng từ hai ca khúc yêu thích.
+- **Người sáng tạo nội dung / DJ nghiệp dư:** Muốn ghép nhanh một đoạn Acappella vào một Beat có sẵn, cần nhìn thấy trực quan dạng sóng của cả 2 bài xếp chồng lên nhau để căn chỉnh câu hát rơi đúng phách trống trước khi bấm render.
+- **Người nghe phổ thông:** Muốn tạo các bản phối cá nhân hóa nhanh chóng từ hai ca khúc yêu thích với khả năng nghe thử tức thời trên trình duyệt.
 
 ---
 
 ### 3. Phạm Vi Triển Khai (Scope Matrix)
 
-| Hạng mục              | Trong phạm vi (In-Scope - MVP & Phase 2)                                                                               | Ngoài phạm vi (Out-of-Scope - Phase 3+)                                  |
-| :-------------------- | :--------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------- |
-| **Định dạng vào**     | MP3, WAV (MIME: `audio/mpeg`, `audio/wav`)                                                                             | FLAC, AAC, OGG, M4A                                                      |
-| **Kích thước tệp**    | Tối đa 25MB / tệp, thời lượng $\le 5\text{ phút}$ / tệp                                                                | Tệp dung lượng lớn, video MP4                                            |
-| **Xử lý âm thanh**    | Chuẩn hóa sample rate, gain staging, amix, limiter chống vỡ tiếng                                                      | Stem separation bằng AI (Demucs/Spleeter), Pitch shifting (Harmonic Key) |
-| **Đồng bộ nhịp điệu** | Tự động phát hiện BPM (Onset detection), time-stretch bằng filter `atempo`                                             | Nhận diện vòng hòa âm Camelot, tự động bắt phách mạnh (Auto Downbeat)    |
-| **Căn chỉnh độ trễ**  | Tinh chỉnh độ trễ thủ công (`vocalOffsetMs` từ $-3000\text{ ms}$ đến $+3000\text{ ms}$) qua filter `adelay` và `atrim` | Tự động dò phase alignment bằng AI                                       |
-| **Xử lý tác vụ**      | Xử lý bất đồng bộ (Non-blocking Child Process) với trạng thái lưu DB                                                   | Message Queue phân tán (RabbitMQ, Redis BullMQ)                          |
-| **Lưu trữ**           | Hệ thống tệp cục bộ (Local File System) có phân cấp thư mục                                                            | Cloud Storage (AWS S3, Cloudflare R2)                                    |
-| **Bảo mật / Auth**    | Không yêu cầu đăng nhập (Public access theo Session/Job ID)                                                            | JWT Authentication, quản lý thư viện cá nhân                             |
+| Hạng mục                   | Trong phạm vi (In-Scope - Giai đoạn hiện tại)                                                                                                            | Ngoài phạm vi (Out-of-Scope - Tương lai)                                 |
+| :------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------- |
+| **Định dạng vào**          | MP3, WAV (MIME: `audio/mpeg`, `audio/wav`)                                                                                                               | FLAC, AAC, OGG, M4A                                                      |
+| **Kích thước tệp**         | Tối đa 25MB / tệp, thời lượng $\le 5\text{ phút}$ / tệp                                                                                                  | Tệp dung lượng lớn, video MP4                                            |
+| **Xử lý âm thanh**         | Chuẩn hóa sample rate, gain staging, amix, limiter chống vỡ tiếng                                                                                        | Stem separation bằng AI (Demucs/Spleeter), Pitch shifting (Harmonic Key) |
+| **Đồng bộ nhịp điệu**      | Tự động phát hiện BPM (Onset detection), time-stretch bằng filter `atempo`                                                                               | Nhận diện vòng hòa âm Camelot                                            |
+| **Căn chỉnh độ trễ**       | Tinh chỉnh độ trễ thủ công (`vocalOffsetMs` từ $-3000\text{ ms}$ đến $+3000\text{ ms}$) qua filter `adelay` và `atrim`                                   | Tự động dò phase alignment bằng AI                                       |
+| **Trực quan hóa timeline** | Timeline đa tầng (Dual-track Waveform Canvas), thước đo thời gian (Ruler), kéo trượt trực quan Vocal và nghe thử cục bộ (Zero-latency Web Audio Preview) | Tự động căn chỉnh lưới ô nhịp (Quantize to Beatgrid)                     |
+| **Xử lý tác vụ**           | Xử lý bất đồng bộ (Non-blocking Child Process) với trạng thái lưu DB                                                                                     | Message Queue phân tán (RabbitMQ, Redis BullMQ)                          |
+| **Lưu trữ**                | Hệ thống tệp cục bộ (Local File System) có phân cấp thư mục                                                                                              | Cloud Storage (AWS S3, Cloudflare R2)                                    |
+| **Bảo mật / Auth**         | Không yêu cầu đăng nhập (Public access theo Session/Job ID)                                                                                              | JWT Authentication, quản lý thư viện cá nhân                             |
 
 ---
 
@@ -86,7 +87,18 @@
   - Nếu `vocalOffsetMs < 0`: Áp dụng bộ lọc cắt đầu `atrim=start={abs(offsetSec)},asetpts=PTS-STARTPTS` để giọng hát vào sớm hơn.
   - Nếu `vocalOffsetMs === 0`: Bỏ qua bộ lọc căn chỉnh để tối ưu thời gian render.
 
-#### FR-06: Trực quan hóa và Phát lại (Playback & Visualization)
+#### FR-06: Trực Quan Hóa Đa Tầng & Nghe Thử Trực Tiếp (Dual-Track Timeline & Zero-Latency Preview)
+
+- **Dựng sóng âm xếp chồng (Stacked Multitrack Canvas):**
+  - Ngay khi người dùng chọn đủ 2 tệp, client tự động tạo Blob Object URL và dựng 2 dải sóng xếp chồng (Dải trên: Vocal màu Indigo, Dải dưới: Beat màu Emerald).
+  - Thước đo thời gian (Time Ruler) hiển thị mốc giây/phút liên tục bên trên.
+- **Tương tác kéo dải sóng (Interactive Track Dragging):**
+  - Cho phép dùng chuột nắm và kéo dải sóng Vocal dịch chuyển sang trái hoặc sang phải trực tiếp trên timeline.
+  - Tọa độ kéo được quy đổi theo tỷ lệ khung hình sang mili-giây và đồng bộ hai chiều với `vocalOffsetMs` ($-3000\text{ms} \leftrightarrow +3000\text{ms}$).
+- **Nghe thử đồng bộ không độ trễ (Zero-Latency Web Audio Preview):**
+  - Nút Play Preview phát đồng thời cả 2 track từ bộ đệm trình duyệt (Web Audio API / WaveSurfer sync) với độ trễ đúng bằng `vocalOffsetMs` đang chọn, giúp người dùng nghe thẩm định ngay lập tức trước khi gửi lệnh render lên server.
+
+#### FR-07: Trực quan hóa và Phát lại Thành Phẩm (Playback & Visualization)
 
 - Khi trạng thái là `SUCCESS`, giao diện hiển thị:
   - Thông số BPM của cả 2 bài hát, tỷ lệ co dãn nhịp điệu đã áp dụng, và độ trễ phách đã chọn.
@@ -99,6 +111,6 @@
 
 ### 5. Yêu Cầu Phi Chức Năng (Non-Functional Requirements)
 
-- **Hiệu năng:** Thời gian phân tích BPM và trộn 2 file 3 phút không vượt quá $20\text{ giây}$ trên môi trường tiêu chuẩn.
-- **Toàn vẹn bộ nhớ:** Phải có cơ chế giải phóng tài nguyên triệt để (Cleanup Functions trong React hooks, hủy AudioContext của Web Audio API, dọn dẹp file tạm mồ côi trên máy chủ).
+- **Hiệu năng:** Thời gian phân tích BPM và trộn 2 file 3 phút không vượt quá $20\text{ giây}$ trên môi trường tiêu chuẩn. Thao tác kéo trượt waveform trên giao diện đạt 60 FPS.
+- **Toàn vẹn bộ nhớ:** Phải có cơ chế giải phóng tài nguyên triệt để (Cleanup Functions trong React hooks, thu hồi Blob URL qua `URL.revokeObjectURL`, hủy AudioContext của Web Audio API).
 - **Tính khả chuyển (Portability):** Cấu hình cơ sở dữ liệu qua Prisma ORM, sẵn sàng chuyển đổi từ SQLite sang PostgreSQL khi triển khai Cloud.

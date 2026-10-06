@@ -9,15 +9,21 @@
 ```text
 +-----------------------------------------------------------------------------------+
 |                            CLIENT (React 18 + Vite)                               |
-|  +-----------------------+  +--------------------------+  +---------------------+ |
-|  |  DualDropzone (Files) |  |  MixingStatus            |  | WaveformPlayer      | |
-|  |  + Offset Slider      |  |  - Tempo Badges          |  | - Interactive Wave  | |
-|  |  Client Validation    |  |  - Polling Progress      |  | - HTTP 206 Seeking  | |
-|  +-----------+-----------+  +------------^-------------+  +----------^----------+ |
-+--------------|---------------------------|---------------------------|------------+
-               | 1. POST multipart         | 3. GET :jobId             | 5. Stream
-               | (files + vocalOffsetMs)   | (Polling 1.5s)            |
-+--------------v---------------------------|---------------------------|------------+
+|  +------------------------------------------------------------------------------+ |
+|  | DualDropzone & Mini-DAW Studio                                               | |
+|  |  + Dual-Track Timeline (Stacked Waveform Canvas Track A & Track B)           | |
+|  |  + Drag-to-Offset Engine (Mouse Drag -> Delta X -> vocalOffsetMs)             | |
+|  |  + Web Audio Synchronized Preview (Zero-Latency in-browser playback)         | |
+|  +---------------------------------------+--------------------------------------+ |
+|                                          | POST multipart                         |
+|                                          | (files + vocalOffsetMs)                |
+|  +--------------------------+            v            +-------------------------+ |
+|  | MixingStatus             |  GET :jobId (Polling)   | WaveformPlayer (Output) | |
+|  | - Status Badges & Tempo  |<------------------------| - HTTP 206 Stream Player| |
+|  +--------------------------+                         +-------------------------+ |
++-----------------------------------------------------------------------------------+
+                                           |
++------------------------------------------v----------------------------------------+
 |                            SERVER (Node.js + Express ESM)                         |
 |  +-----------------------+   +---------------------------------------+            |
 |  | Multer Middleware     |   | Stream & Download Controller          |            |
@@ -28,7 +34,7 @@
 |  | Mix Job Controller    |                       |                                |
 |  | (Immediate 202 Spawn) |                       |                                |
 |  +-----------+-----------+                       |                                |
-|              | 2. Async Background               |                                |
+|              | Async Background Worker           |                                |
 |              v                                   |                                |
 |  +-----------------------------------------+     |                                |
 |  | Worker Pipeline                         |     |                                |
@@ -105,13 +111,15 @@ audio-mashup/
 ├── client/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── DualDropzone.jsx      # Multi-file drag & drop, validation, offset slider
-│   │   │   ├── MixingStatus.jsx      # Polling progress card & tempo badges
-│   │   │   └── WaveformPlayer.jsx    # Interactive WaveSurfer.js player
+│   │   │   ├── DualDropzone.jsx          # File ingestion & drag-drop wrapper
+│   │   │   ├── DualWaveformTimeline.jsx  # Mini-DAW Stacked Waveform with drag offset & audio sync
+│   │   │   ├── MixingStatus.jsx          # Polling progress card & tempo badges
+│   │   │   └── WaveformPlayer.jsx        # Output WaveSurfer.js player
 │   │   ├── hooks/
-│   │   │   └── useJobPolling.js      # Polling lifecycle hook with memory cleanup
+│   │   │   ├── useJobPolling.js          # Polling lifecycle hook with memory cleanup
+│   │   │   └── useDualTrackSync.js       # Web Audio API dual playback synchronization
 │   │   ├── services/
-│   │   │   └── api.js                # Axios client with upload progress
+│   │   │   └── api.js                    # Axios client with upload progress
 │   │   ├── App.jsx
 │   │   ├── main.jsx
 │   │   └── index.css
@@ -119,20 +127,8 @@ audio-mashup/
 │   ├── tailwind.config.js
 │   ├── postcss.config.js
 │   └── vite.config.js
-├── package.json                      # Monorepo root orchestration
+├── package.json                          # Monorepo root orchestration
 └── .gitignore
-```
-
-#### Cấu hình biến môi trường (`server/.env.example`):
-
-```env
-PORT=5000
-NODE_ENV=development
-DATABASE_URL="file:./dev.db"
-CORS_ORIGIN="http://localhost:5173"
-MAX_FILE_SIZE_MB=25
-STORAGE_UPLOAD_DIR="./storage/uploads"
-STORAGE_OUTPUT_DIR="./storage/outputs"
 ```
 
 ---
@@ -193,54 +189,37 @@ model MixJob {
 
 ---
 
-### 4. Chi Tiết Kỹ Thuật Pipeline Âm Thanh (Audio DSP Pipeline)
+### 4. Chi Tiết Kỹ Thuật Pipeline Âm Thanh & Cơ Chế Preview Trình Duyệt
 
-Lõi xử lý nằm trong `AudioMixerService.js` tương tác với binary `ffmpeg`:
-
-#### Biểu thức Complex FilterGraph mở rộng (Hỗ trợ Tempo Matching & Offset Alignment):
-
-**Trường hợp 1: `vocalOffsetMs > 0` (Vocal vào trễ):**
+#### 4.1. FFmpeg Complex FilterGraph (Server-Side Final Rendering)
 
 ```text
+// Trường hợp vocalOffsetMs > 0 (Trễ):
 [0:a]aresample=44100,{atempoChain}adelay={vocalOffsetMs}|{vocalOffsetMs},volume=1.0[vocal_norm];
 [1:a]aresample=44100,volume=0.75[beat_norm];
 [vocal_norm][beat_norm]amix=inputs=2:duration=longest:dropout_transition=2:weights=1.0 0.75[raw_mixed];
 [raw_mixed]alimiter=limit=0.95:level=true[final_output]
-```
 
-**Trường hợp 2: `vocalOffsetMs < 0` (Vocal vào sớm):**
-
-```text
+// Trường hợp vocalOffsetMs < 0 (Sớm):
 [0:a]aresample=44100,{atempoChain}atrim=start={absOffsetSec},asetpts=PTS-STARTPTS,volume=1.0[vocal_norm];
 [1:a]aresample=44100,volume=0.75[beat_norm];
 [vocal_norm][beat_norm]amix=inputs=2:duration=longest:dropout_transition=2:weights=1.0 0.75[raw_mixed];
 [raw_mixed]alimiter=limit=0.95:level=true[final_output]
 ```
 
-**Trường hợp 3: `vocalOffsetMs === 0` (Không điều chỉnh offset):**
+#### 4.2. Cơ chế Đồng bộ Phát Đa Tầng Cục Bộ (Client Zero-Latency Preview)
 
-```text
-[0:a]aresample=44100,{atempoChain}volume=1.0[vocal_norm];
-[1:a]aresample=44100,volume=0.75[beat_norm];
-[vocal_norm][beat_norm]amix=inputs=2:duration=longest:dropout_transition=2:weights=1.0 0.75[raw_mixed];
-[raw_mixed]alimiter=limit=0.95:level=true[final_output]
-```
-
-#### Phân tích chi tiết:
-
-1. `aresample=44100`: Đồng bộ tần số lấy mẫu của cả 2 file về 44.1 kHz, loại trừ hiện tượng lệch pha và biến dạng âm thanh do mismatch sample rate.
-2. `atempo={tempoRatio}`:
-   - Co dãn thời gian giọng hát theo nhịp của beat mà không làm thay đổi cao độ (pitch-neutral time-stretching).
-   - _Ràng buộc kỹ thuật:_ Bộ lọc `atempo` của FFmpeg chỉ chấp nhận giá trị trong đoạn $[0.5, 2.0]$. Nếu $tempoRatio > 2.0$ hoặc $< 0.5$, chuỗi bộ lọc phải được phân rã thành nhiều tầng liên tiếp (ví dụ tỷ lệ $2.5 \rightarrow$ `atempo=2.0,atempo=1.25`).
-3. `adelay={ms}|{ms}` vs `atrim=start={sec},asetpts=PTS-STARTPTS`:
-   - `adelay` thêm khoảng lặng (silence padding) vào đầu luồng âm thanh trên cả 2 kênh trái và phải.
-   - `atrim` cắt bỏ đoạn đầu và bắt buộc phải dùng `asetpts=PTS-STARTPTS` để đặt lại mốc thời gian trình bày (Presentation Timestamp) về 0, tránh việc FFmpeg bù đắp khoảng lặng thừa vào đầu luồng.
-4. `volume=1.0` vs `volume=0.75`: Cân bằng biên độ (Gain Staging), nhường $2.5\text{dB}$ headroom cho giọng hát.
-5. `amix=inputs=2:duration=longest:dropout_transition=2:weights=1.0 0.75`:
-   - `duration=longest`: Giữ độ dài theo tệp dài hơn.
-   - `dropout_transition=2`: Tự động fade trong 2 giây khi một luồng kết thúc trước luồng kia.
-6. `alimiter=limit=0.95:level=true`: Giới hạn mức biên độ trần ở $-0.45\text{dBFS}$ ($0.95$), triệt tiêu hoàn toàn hiện tượng vỡ tiếng số (Digital Clipping) khi 2 sóng âm cộng hưởng biên độ đỉnh.
-7. **Thông số Codec đầu ra:** `-c:a libmp3lame -b:a 320k -ar 44100`.
+1. **Blob URL Generation:** Khi người dùng chọn 2 tệp, client khởi tạo URL cục bộ qua `URL.createObjectURL(file)`.
+2. **Dual WaveSurfer Instance:**
+   - WaveSurfer Track A (Vocal): Tone Indigo, chiều cao 70px.
+   - WaveSurfer Track B (Beat): Tone Emerald, chiều cao 70px.
+3. **Offset Visual Transformation:** Khi `vocalOffsetMs` thay đổi (qua kéo chuột hoặc slider), container của Track A áp dụng dịch chuyển CSS:
+   $$\Delta x = \frac{\text{vocalOffsetMs}}{1000} \times \text{pixelsPerSecond}$$
+   Hiệu ứng `transform: translateX(Δx px)` cập nhật ngay lập tức ở 60 FPS mà không cần vẽ lại Canvas.
+4. **Đồng bộ Phát lại (Web Audio Scheduler):**
+   - Khi bấm "Nghe thử Preview":
+     - Nếu $offset \ge 0$: Beat phát ngay tại $t = 0$; Vocal lên lịch phát trễ qua `setTimeout` hoặc Web Audio API `AudioBufferSourceNode.start(audioCtx.currentTime + offsetSec)`.
+     - Nếu $offset < 0$: Vocal phát ngay từ mốc $\vert{}offset\vert{}$ giây; Beat phát ngay tại $t = 0$.
 
 ---
 
@@ -296,14 +275,3 @@ Lõi xử lý nằm trong `AudioMixerService.js` tương tác với binary `ffmp
   }
 }
 ```
-
-#### 5.3. Stream âm thanh
-
-- **Endpoint:** `GET /api/v1/mix/:jobId/stream`
-- **Header hỗ trợ:** HTTP `Range: bytes=start-end`
-- **Mã phản hồi:** `HTTP 206 Partial Content` (kèm headers `Content-Range`, `Accept-Ranges`, `Content-Length`, `Content-Type: audio/mpeg`).
-
-#### 5.4. Tải xuống tệp thành phẩm
-
-- **Endpoint:** `GET /api/v1/mix/:jobId/download`
-- **Header phản hồi:** `Content-Disposition: attachment; filename="mashup-[id].mp3"`
