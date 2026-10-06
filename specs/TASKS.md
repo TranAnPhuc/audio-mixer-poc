@@ -180,12 +180,12 @@
   - **File tác động:** `server/src/services/AudioMixerService.js`, `server/tests/test_mixer_pitch.js`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Render thử với $+2$ bán âm và $-2$ bán âm; phân tích autocorrelation xác nhận tần số pitch thay đổi chuẩn xác, không bị méo tiếng, âm lượng đạt chuẩn không clipping.
 
-- [ ] **Task 10.3: Cập nhật Prisma Schema, Worker Pipeline & API Khớp Tông Tự Động**
+- [x] **Task 10.3: Cập nhật Prisma Schema, Worker Pipeline & API Khớp Tông Tự Động**
   - **Mô tả:** Chạy Prisma migration bổ sung các trường Key & Pitch vào SQLite; cập nhật `mixController.js` chạy song song `detectKey` cùng `detectBpm` qua `Promise.all`; hiện thực hàm tính toán bán âm tối ưu theo Camelot Wheel; trả về metadata tông nhạc trong endpoint `GET /api/v1/mix/:jobId`.
   - **File tác động:** `server/prisma/schema.prisma`, `server/src/controllers/mixController.js`, `server/tests/test_api_key_mix.js`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Gửi job mix qua API, hệ thống tự động dò Key cả 2 bài, tự động tính số bán âm cần dịch và cập nhật đầy đủ các trường vào database.
 
-- [ ] **Task 10.4: Bàn Điều Khiển Cao Độ & Thẻ Camelot Wheel Trên Giao Diện Studio**
+- [x] **Task 10.4: Bàn Điều Khiển Cao Độ & Thẻ Camelot Wheel Trên Giao Diện Studio**
   - **Mô tả:** Cập nhật `StudioPage.jsx`, `DualDropzone.jsx` và `MixingStatus.jsx` hiển thị huy hiệu tông nhạc kèm mã Camelot (ví dụ: `8A • Am` và `8B • C`), bộ điều khiển chọn bán âm ($-6$ đến $+6$ semitones) kèm công tắc "Tự động hòa âm (Auto-Harmonize)".
   - **File tác động:** `client/src/components/DualDropzone.jsx`, `client/src/components/MixingStatus.jsx`, `client/src/services/api.js`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Người dùng thấy rõ tông gốc của 2 bài, có thể bật Auto-Harmonize hoặc tự chỉnh $\pm$ bán âm trước khi bấm Tạo bản mashup.

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Mic, Disc3, UploadCloud, FileAudio, X, AlertCircle, Sparkles, Loader2, SlidersHorizontal, RotateCcw } from 'lucide-react';
+import { Mic, Disc3, UploadCloud, FileAudio, X, AlertCircle, Sparkles, Loader2, SlidersHorizontal, RotateCcw, Music2, Minus, Plus } from 'lucide-react';
 import { uploadTracksForMixing } from '../services/api';
 import DualWaveformTimeline from './DualWaveformTimeline';
 
@@ -183,6 +183,8 @@ export default function DualDropzone({ onJobCreated }) {
   const [trackA, setTrackA] = useState({ file: null, error: null });
   const [trackB, setTrackB] = useState({ file: null, error: null });
   const [vocalOffsetMs, setVocalOffsetMs] = useState(0);
+  const [autoHarmonize, setAutoHarmonize] = useState(true);
+  const [pitchShiftSemitones, setPitchShiftSemitones] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [globalError, setGlobalError] = useState(null);
@@ -211,6 +213,8 @@ export default function DualDropzone({ onJobCreated }) {
         trackAFile: trackA.file,
         trackBFile: trackB.file,
         vocalOffsetMs,
+        pitchShiftSemitones: autoHarmonize ? 0 : pitchShiftSemitones,
+        autoHarmonize,
         onUploadProgress: (progress) => {
           setUploadProgress(progress);
         }
@@ -349,6 +353,169 @@ export default function DualDropzone({ onJobCreated }) {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Khối Hòa Âm & Dịch Chuyển Cao Độ (Harmonic Pitch & Key) */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 shadow-md space-y-4 transition-colors">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Music2 className="w-4 h-4 text-purple-500 dark:text-purple-400" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-800 dark:text-slate-300">
+              Hòa Âm & Dịch Chuyển Cao Độ (Harmonic Pitch & Key)
+            </span>
+          </div>
+
+          {!autoHarmonize && pitchShiftSemitones !== 0 && (
+            <button
+              type="button"
+              onClick={() => setPitchShiftSemitones(0)}
+              disabled={isUploading}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300 bg-white dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700/60 transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Đặt lại 0</span>
+            </button>
+          )}
+        </div>
+
+        {/* Toggle Switch: Tự động hòa âm Camelot */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-white/70 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-xl transition-colors ${autoHarmonize ? 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400' : 'bg-slate-200/60 dark:bg-slate-800 text-slate-400'}`}>
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <span>Tự Động Hòa Âm (Auto-Harmonize theo Camelot Wheel)</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-mono font-normal border border-purple-500/20">
+                  AI Smart Assist
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Tự động nhận diện tông Track A & Track B, dịch chuyển Vocal tối đa ±3 bán âm để khớp hòa âm hoàn hảo.
+              </p>
+            </div>
+          </div>
+
+          {/* Công tắc Toggle switch */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoHarmonize}
+            onClick={() => !isUploading && setAutoHarmonize(!autoHarmonize)}
+            disabled={isUploading}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              autoHarmonize ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
+            } ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                autoHarmonize ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Khối chi tiết: Bật Auto hoặc Tùy chỉnh thủ công */}
+        {autoHarmonize ? (
+          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs">
+            <Sparkles className="w-4 h-4 flex-shrink-0 text-emerald-500" />
+            <span>
+              Chế độ <strong>Auto-Harmonize đang bật</strong>: Hệ thống sẽ phân tích phổ Chromagram và đối sánh tương quan Krumhansl-Schmuckler để chọn bước dịch chuyển bán âm mượt mà nhất.
+            </span>
+          </div>
+        ) : (
+          <div className="space-y-3 pt-1">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Tự do dịch chuyển cao độ Vocal từ -6 đến +6 bán âm (Semitones):
+              </p>
+              <div className="font-mono text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 inline-flex items-center justify-center self-start sm:self-auto">
+                {pitchShiftSemitones > 0 && (
+                  <span className="text-amber-500 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded">
+                    +{pitchShiftSemitones} bán âm (Tăng cao độ)
+                  </span>
+                )}
+                {pitchShiftSemitones < 0 && (
+                  <span className="text-sky-500 dark:text-sky-400 border-sky-500/30 bg-sky-500/10 px-2 py-0.5 rounded">
+                    {pitchShiftSemitones} bán âm (Hạ cao độ)
+                  </span>
+                )}
+                {pitchShiftSemitones === 0 && (
+                  <span className="text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 bg-slate-200/50 dark:bg-slate-800/50 px-2 py-0.5 rounded">
+                    0 bán âm (Giữ nguyên gốc)
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => !isUploading && setPitchShiftSemitones((prev) => Math.max(-6, prev - 1))}
+                disabled={isUploading || pitchShiftSemitones <= -6}
+                className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="Giảm 1 bán âm"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+
+              <input
+                type="range"
+                min="-6"
+                max="6"
+                step="1"
+                value={pitchShiftSemitones}
+                onChange={(e) => setPitchShiftSemitones(parseInt(e.target.value, 10))}
+                disabled={isUploading}
+                className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+
+              <button
+                type="button"
+                onClick={() => !isUploading && setPitchShiftSemitones((prev) => Math.min(6, prev + 1))}
+                disabled={isUploading || pitchShiftSemitones >= 6}
+                className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="Tăng 1 bán âm"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex justify-between text-[10px] font-mono text-slate-500 px-1 select-none">
+              <span
+                className="hover:text-sky-400 cursor-pointer transition-colors"
+                onClick={() => !isUploading && setPitchShiftSemitones(-6)}
+              >
+                -6 st (Trầm)
+              </span>
+              <span
+                className="hover:text-sky-400 cursor-pointer transition-colors"
+                onClick={() => !isUploading && setPitchShiftSemitones(-3)}
+              >
+                -3 st
+              </span>
+              <span
+                className="hover:text-slate-300 cursor-pointer transition-colors"
+                onClick={() => !isUploading && setPitchShiftSemitones(0)}
+              >
+                0 st (Gốc)
+              </span>
+              <span
+                className="hover:text-amber-400 cursor-pointer transition-colors"
+                onClick={() => !isUploading && setPitchShiftSemitones(3)}
+              >
+                +3 st
+              </span>
+              <span
+                className="hover:text-amber-400 cursor-pointer transition-colors"
+                onClick={() => !isUploading && setPitchShiftSemitones(6)}
+              >
+                +6 st (Bổng)
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Thông báo lỗi tổng quát */}

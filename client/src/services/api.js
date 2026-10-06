@@ -15,11 +15,20 @@ const apiClient = axios.create({
  * @param {function} [params.onUploadProgress] Callback nhận tiến độ upload (0 -> 100%)
  * @returns {Promise<{ success: boolean, statusCode: number, data: { jobId: string, status: string, message: string } }>}
  */
-export async function uploadTracksForMixing({ trackAFile, trackBFile, vocalOffsetMs = 0, onUploadProgress }) {
+export async function uploadTracksForMixing({
+  trackAFile,
+  trackBFile,
+  vocalOffsetMs = 0,
+  pitchShiftSemitones = 0,
+  autoHarmonize = true,
+  onUploadProgress
+}) {
   const formData = new FormData();
   formData.append('trackA', trackAFile);
   formData.append('trackB', trackBFile);
   formData.append('vocalOffsetMs', vocalOffsetMs);
+  formData.append('pitchShiftSemitones', pitchShiftSemitones);
+  formData.append('autoHarmonize', autoHarmonize);
 
   const response = await apiClient.post('/mix', formData, {
     headers: {

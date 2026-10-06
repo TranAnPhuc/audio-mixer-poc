@@ -10,39 +10,44 @@ generator client {
 // Đối với SQLite, Enum được biểu diễn dưới dạng String @default("PENDING")
 // Các trạng thái chuẩn hóa: PENDING, PROCESSING, SUCCESS, FAILED
 model MixJob {
-  id                 String   @id @default(uuid())
-  status             String   @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED
-  progress           Int      @default(0)         // Tiến độ từ 0 -> 100%
+  id                         String   @id @default(uuid())
+  status                     String   @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED
+  progress                   Int      @default(0)         // Tiến độ từ 0 -> 100%
 
   // Thông tin tệp gốc A (Vocal)
-  trackAOriginalName String
-  trackAPath         String
-  trackAMimeType     String
-  trackASize         Int
-  trackABpm          Float?                       // Nhịp độ nhận diện của Track A (BPM)
+  trackAOriginalName         String
+  trackAPath                 String
+  trackAMimeType             String
+  trackASize                 Int
+  trackABpm                  Float?                       // Nhịp độ nhận diện của Track A (BPM)
+  trackAKey                  String?                      // Tông nhạc Track A (ví dụ: "Am", "C")
+  trackACamelot              String?                      // Mã Camelot Track A (ví dụ: "8A", "8B")
 
   // Thông tin tệp gốc B (Beat)
-  trackBOriginalName String
-  trackBPath         String
-  trackBMimeType     String
-  trackBSize         Int
-  trackBBpm          Float?                       // Nhịp độ nhận diện của Track B (BPM)
+  trackBOriginalName         String
+  trackBPath                 String
+  trackBMimeType             String
+  trackBSize                 Int
+  trackBBpm                  Float?                       // Nhịp độ nhận diện của Track B (BPM)
+  trackBKey                  String?                      // Tông nhạc Track B (ví dụ: "C", "G")
+  trackBCamelot              String?                      // Mã Camelot Track B (ví dụ: "8B", "9B")
 
-  // Thông số biến đổi nhịp điệu (Tempo Matching) & Căn chỉnh phách (Offset)
-  appliedTempoRatio  Float?                       // Tỷ lệ co/dãn r = trackBBpm / trackABpm
-  vocalOffsetMs      Int      @default(0)         // Độ trễ vocal tính bằng mili-giây (-3000 đến +3000)
+  // Thông số biến đổi nhịp điệu (Tempo Matching) & Căn chỉnh phách (Offset) & Cao độ (Pitch)
+  appliedTempoRatio          Float?                       // Tỷ lệ co/dãn r = trackBBpm / trackABpm
+  vocalOffsetMs              Int      @default(0)         // Độ trễ vocal tính bằng mili-giây (-3000 đến +3000)
+  appliedPitchShiftSemitones Int      @default(0)         // Số bán âm đã dịch chuyển (-6 đến +6)
 
   // Thông tin kết quả
-  outputFileName     String?
-  outputPath         String?
-  outputDuration     Float?                       // Thời lượng file kết quả (giây)
+  outputFileName             String?
+  outputPath                 String?
+  outputDuration             Float?                       // Thời lượng file kết quả (giây)
 
   // Ghi nhận lỗi và hiệu năng
-  errorMessage       String?
-  executionTimeMs    Int?                         // Tổng thời gian xử lý của FFmpeg (ms)
+  errorMessage               String?
+  executionTimeMs            Int?                         // Tổng thời gian xử lý của FFmpeg (ms)
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
 
   @@index([status])
   @@index([createdAt])

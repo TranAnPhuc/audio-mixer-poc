@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import prisma, { JobStatus } from '../config/db.js';
 import { mixAudioTracks } from '../services/AudioMixerService.js';
 import { BpmDetectorService } from '../services/BpmDetectorService.js';
+import { KeyDetectorService } from '../services/KeyDetectorService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,10 +17,13 @@ const outputDir = process.env.STORAGE_OUTPUT_DIR
 /**
  * Xử lý ngầm tiến trình phối âm thanh (Background Worker)
  * @param {string} jobId ID của bản ghi MixJob
+ * @param {object} [options] Tùy chọn xử lý tác vụ
+ * @param {boolean} [options.autoHarmonize=false] Tự động tính toán bán âm tối ưu theo Camelot Wheel
  */
-export async function processMixJobInBackground(jobId) {
+export async function processMixJobInBackground(jobId, options = {}) {
   let lastDbUpdateTimestamp = 0;
   let lastDbProgress = -1;
+  const autoHarmonize = Boolean(options.autoHarmonize);
 
   try {
     // 1. Chuyển trạng thái sang PROCESSING
@@ -34,25 +38,30 @@ export async function processMixJobInBackground(jobId) {
     const outputFileName = `mixed-${jobId}.mp3`;
     const outputPath = path.join(outputDir, outputFileName);
 
-    // 2. Dò tìm BPM song song cho cả Track A và Track B (Promise.all)
+    // 2. Phân tích song song 4 luồng âm học (BPM Track A/B + Key Track A/B qua Promise.all)
     let bpmResultA = { bpm: null, isAmbiguous: true };
     let bpmResultB = { bpm: null, isAmbiguous: true };
+    let keyResultA = { key: null, scale: null, camelot: null, confidence: 0 };
+    let keyResultB = { key: null, scale: null, camelot: null, confidence: 0 };
+
     try {
-      [bpmResultA, bpmResultB] = await Promise.all([
+      [bpmResultA, bpmResultB, keyResultA, keyResultB] = await Promise.all([
         BpmDetectorService.detectBpm(job.trackAPath),
-        BpmDetectorService.detectBpm(job.trackBPath)
+        BpmDetectorService.detectBpm(job.trackBPath),
+        KeyDetectorService.detectKey(job.trackAPath),
+        KeyDetectorService.detectKey(job.trackBPath)
       ]);
-    } catch (bpmErr) {
-      console.warn(`[MixJob ${jobId}] Cảnh báo khi phân tích BPM:`, bpmErr.message);
+    } catch (analysisErr) {
+      console.warn(`[MixJob ${jobId}] Cảnh báo khi phân tích âm học song song:`, analysisErr.message);
     }
 
     // 3. Tính toán tỷ lệ co dãn nhịp điệu (Tempo Ratio)
     let tempoRatio = 1.0;
     const canMatchTempo =
-      !bpmResultA.isAmbiguous &&
-      !bpmResultB.isAmbiguous &&
-      bpmResultA.bpm &&
-      bpmResultB.bpm &&
+      !bpmResultA?.isAmbiguous &&
+      !bpmResultB?.isAmbiguous &&
+      bpmResultA?.bpm &&
+      bpmResultB?.bpm &&
       bpmResultA.bpm > 0 &&
       bpmResultB.bpm > 0;
 
@@ -61,16 +70,34 @@ export async function processMixJobInBackground(jobId) {
     }
 
     console.log(
-      `[MixJob ${jobId}] Dò nhịp hoàn tất: TrackA=${bpmResultA.bpm} BPM, TrackB=${bpmResultB.bpm} BPM => Tỷ lệ co dãn r=${tempoRatio}`
+      `[MixJob ${jobId}] Dò nhịp hoàn tất: TrackA=${bpmResultA?.bpm} BPM, TrackB=${bpmResultB?.bpm} BPM => Tỷ lệ co dãn r=${tempoRatio}`
     );
 
-    // 4. Kích hoạt AudioMixerService với cơ chế Throttle cập nhật DB
+    // 4. Quyết định số bán âm cần dịch chuyển cao độ (Harmonic Pitch Shifting Decision)
+    let effectivePitchShift = job.appliedPitchShiftSemitones ?? 0;
+
+    if (autoHarmonize && keyResultA?.camelot && keyResultB?.camelot) {
+      effectivePitchShift = KeyDetectorService.calculateOptimalPitchShift(
+        keyResultA.camelot,
+        keyResultB.camelot
+      );
+      console.log(
+        `[MixJob ${jobId}] Auto-Harmonize Kích Hoạt: Vocal=${keyResultA.camelot} (${keyResultA.key}), Beat=${keyResultB.camelot} (${keyResultB.key}) => Tự động dịch ${effectivePitchShift} bán âm`
+      );
+    } else {
+      console.log(
+        `[MixJob ${jobId}] Pitch Shift Thủ Công: Áp dụng ${effectivePitchShift} bán âm đã chọn (Vocal=${keyResultA?.camelot || 'N/A'}, Beat=${keyResultB?.camelot || 'N/A'})`
+      );
+    }
+
+    // 5. Kích hoạt AudioMixerService với cơ chế Throttle cập nhật DB
     const mixResult = await mixAudioTracks({
       trackAPath: job.trackAPath,
       trackBPath: job.trackBPath,
       outputPath,
       tempoRatio,
       vocalOffsetMs: job.vocalOffsetMs ?? 0,
+      pitchShiftSemitones: effectivePitchShift,
       onProgress: async (percent) => {
         const now = Date.now();
         // Throttle: Chỉ ghi DB nếu cách lần trước >= 500ms hoặc bước nhảy tiến độ >= 10%
@@ -92,7 +119,7 @@ export async function processMixJobInBackground(jobId) {
       }
     });
 
-    // 5. Hoàn tất thành công: Cập nhật SUCCESS kèm siêu dữ liệu nhịp độ
+    // 6. Hoàn tất thành công: Cập nhật SUCCESS kèm đầy đủ siêu dữ liệu nhịp độ & hòa âm
     await prisma.mixJob.update({
       where: { id: jobId },
       data: {
@@ -102,9 +129,14 @@ export async function processMixJobInBackground(jobId) {
         outputFileName: mixResult.outputFileName,
         outputDuration: mixResult.outputDuration,
         executionTimeMs: mixResult.executionTimeMs,
-        trackABpm: bpmResultA.bpm ?? null,
-        trackBBpm: bpmResultB.bpm ?? null,
-        appliedTempoRatio: tempoRatio
+        trackABpm: bpmResultA?.bpm ?? null,
+        trackBBpm: bpmResultB?.bpm ?? null,
+        trackAKey: keyResultA?.key ?? null,
+        trackACamelot: keyResultA?.camelot ?? null,
+        trackBKey: keyResultB?.key ?? null,
+        trackBCamelot: keyResultB?.camelot ?? null,
+        appliedTempoRatio: tempoRatio,
+        appliedPitchShiftSemitones: effectivePitchShift
       }
     });
 
@@ -112,7 +144,7 @@ export async function processMixJobInBackground(jobId) {
   } catch (err) {
     console.error(`[MixJob ${jobId}] Xử lý ngầm thất bại:`, err.message);
 
-    // 4. Bắt lỗi và cập nhật FAILED để job không bị treo vô hạn
+    // Bắt lỗi và cập nhật FAILED để job không bị treo vô hạn
     try {
       await prisma.mixJob.update({
         where: { id: jobId },
@@ -145,6 +177,18 @@ export async function createMixJob(req, res, next) {
       }
     }
 
+    // Chuẩn hóa và kiểm định pitchShiftSemitones từ req.body (phạm vi: -6 đến +6 bán âm, mặc định: 0)
+    let pitchShiftSemitones = 0;
+    if (req.body?.pitchShiftSemitones !== undefined && req.body?.pitchShiftSemitones !== null && req.body?.pitchShiftSemitones !== '') {
+      const parsedPitch = parseInt(req.body.pitchShiftSemitones, 10);
+      if (!isNaN(parsedPitch)) {
+        pitchShiftSemitones = Math.max(-6, Math.min(6, parsedPitch));
+      }
+    }
+
+    // Kiểm định cờ autoHarmonize (boolean)
+    const autoHarmonize = req.body?.autoHarmonize === 'true' || req.body?.autoHarmonize === true;
+
     // 1. Tạo bản ghi ban đầu với trạng thái PENDING
     const job = await prisma.mixJob.create({
       data: {
@@ -158,13 +202,14 @@ export async function createMixJob(req, res, next) {
         trackBPath: trackB.path,
         trackBMimeType: trackB.mimetype,
         trackBSize: trackB.size,
-        vocalOffsetMs
+        vocalOffsetMs,
+        appliedPitchShiftSemitones: pitchShiftSemitones
       }
     });
 
     // 2. Kích hoạt tác vụ nền bất đồng bộ (Fire-and-forget, không chặn response)
     setImmediate(() => {
-      processMixJobInBackground(job.id).catch((workerErr) => {
+      processMixJobInBackground(job.id, { autoHarmonize }).catch((workerErr) => {
         console.error(`[Background Worker Error] Job ${job.id}:`, workerErr);
       });
     });
@@ -207,7 +252,7 @@ export async function getJobStatus(req, res, next) {
       });
     }
 
-    // Trường hợp 1: SUCCESS - Trả về đầy đủ thông tin thành phẩm và URLs
+    // Trường hợp 1: SUCCESS - Trả về đầy đủ thông tin thành phẩm, nhịp độ & hòa âm
     if (job.status === JobStatus.SUCCESS) {
       return res.status(200).json({
         success: true,
@@ -219,6 +264,13 @@ export async function getJobStatus(req, res, next) {
             trackABpm: job.trackABpm,
             trackBBpm: job.trackBBpm,
             appliedTempoRatio: job.appliedTempoRatio
+          },
+          harmonic: {
+            trackAKey: job.trackAKey,
+            trackACamelot: job.trackACamelot,
+            trackBKey: job.trackBKey,
+            trackBCamelot: job.trackBCamelot,
+            appliedPitchShiftSemitones: job.appliedPitchShiftSemitones ?? 0
           },
           vocalOffsetMs: job.vocalOffsetMs ?? 0,
           result: {

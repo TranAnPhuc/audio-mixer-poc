@@ -11,7 +11,8 @@ import {
   Disc,
   Gauge,
   Activity,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Music2
 } from 'lucide-react';
 import WaveformPlayer from './WaveformPlayer';
 
@@ -22,6 +23,7 @@ export default function MixingStatus({
   status,
   progress,
   tempo,
+  harmonic,
   vocalOffsetMs = 0,
   jobId,
   result,
@@ -216,6 +218,125 @@ export default function MixingStatus({
                           Chuẩn phách (0.0s)
                         </span>
                       )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Khối Thông số Đồng bộ Cao độ & Vòng Tròn Camelot (Harmonic Key Matching) */}
+            {harmonic && (
+              <div className="p-4 rounded-xl bg-slate-950/70 border border-purple-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    <Music2 className="w-4 h-4 text-purple-400" />
+                    <span>Đồng Bộ Hòa Âm (Harmonic Key Matching)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-mono px-2 py-0.5 rounded-full border ${
+                      harmonic.appliedPitchShiftSemitones > 0
+                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                        : harmonic.appliedPitchShiftSemitones < 0
+                        ? 'bg-sky-500/10 text-sky-400 border-sky-500/30'
+                        : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                    }`}>
+                      {harmonic.appliedPitchShiftSemitones > 0
+                        ? `Pitch Shift: +${harmonic.appliedPitchShiftSemitones} st`
+                        : harmonic.appliedPitchShiftSemitones < 0
+                        ? `Pitch Shift: ${harmonic.appliedPitchShiftSemitones} st`
+                        : 'Chuẩn tông (0 st)'}
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-mono hidden sm:inline">Camelot Wheel</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  {/* Track A: Vocal Key & Camelot */}
+                  <div className="flex items-center gap-2.5 p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/20 text-indigo-300">
+                    <div className="p-2 rounded-lg bg-indigo-500/20 text-indigo-400">
+                      <Mic className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-indigo-400/80 uppercase font-semibold block">Track A (Vocal Key)</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {harmonic.trackACamelot && (
+                          <span className="font-mono font-bold text-xs px-1.5 py-0.5 rounded bg-indigo-500/30 border border-indigo-500/40 text-indigo-200">
+                            {harmonic.trackACamelot}
+                          </span>
+                        )}
+                        <span className="font-mono font-bold text-sm text-indigo-100">
+                          {harmonic.trackAKey || 'Không rõ'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Track B: Beat Key & Camelot */}
+                  <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/20 text-emerald-300">
+                    <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400">
+                      <Disc className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-emerald-400/80 uppercase font-semibold block">Track B (Beat Key Master)</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {harmonic.trackBCamelot && (
+                          <span className="font-mono font-bold text-xs px-1.5 py-0.5 rounded bg-emerald-500/30 border border-emerald-500/40 text-emerald-200">
+                            {harmonic.trackBCamelot}
+                          </span>
+                        )}
+                        <span className="font-mono font-bold text-sm text-emerald-100">
+                          {harmonic.trackBKey || 'Không rõ'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mức độ dịch chuyển cao độ thực tế */}
+                  <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-200">
+                    <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
+                      <Music2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Dịch chuyển cao độ</span>
+                      {(() => {
+                        const shift = harmonic.appliedPitchShiftSemitones ?? 0;
+                        if (shift === 0) {
+                          return (
+                            <span className="inline-flex items-center text-xs font-semibold text-emerald-400 font-mono">
+                              Khớp tự nhiên (0 st)
+                            </span>
+                          );
+                        }
+                        if (shift > 0) {
+                          return (
+                            <span className="inline-flex items-center text-xs font-semibold text-amber-400 font-mono">
+                              +{shift} bán âm (Tăng)
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="inline-flex items-center text-xs font-semibold text-sky-400 font-mono">
+                            {shift} bán âm (Giảm)
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Trạng thái hòa âm Camelot */}
+                  <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-200">
+                    <div className="p-2 rounded-lg bg-cyan-500/20 text-cyan-400">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Hòa âm Camelot</span>
+                      <span className="inline-flex items-center text-xs font-semibold text-slate-200 font-mono">
+                        {harmonic.appliedPitchShiftSemitones === 0
+                          ? (harmonic.trackACamelot && harmonic.trackBCamelot && harmonic.trackACamelot === harmonic.trackBCamelot
+                              ? 'Trùng mã tông'
+                              : 'Tự nhiên / Chuẩn')
+                          : 'Đã khớp hợp âm'}
+                      </span>
                     </div>
                   </div>
                 </div>
