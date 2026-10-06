@@ -9,21 +9,26 @@
 ```text
 +-----------------------------------------------------------------------------------+
 |                            CLIENT (React 18 + Vite)                               |
-|  +------------------------------------------------------------------------------+ |
-|  | DualDropzone & Mini-DAW Studio                                               | |
-|  |  + Dual-Track Timeline (Stacked Waveform Canvas Track A & Track B)           | |
-|  |  + Drag-to-Offset Engine (Mouse Drag -> Delta X -> vocalOffsetMs)             | |
-|  |  + Web Audio Synchronized Preview (Zero-Latency in-browser playback)         | |
-|  +---------------------------------------+--------------------------------------+ |
-|                                          | POST multipart                         |
-|                                          | (files + vocalOffsetMs)                |
-|  +--------------------------+            v            +-------------------------+ |
-|  | MixingStatus             |  GET :jobId (Polling)   | WaveformPlayer (Output) | |
-|  | - Status Badges & Tempo  |<------------------------| - HTTP 206 Stream Player| |
-|  +--------------------------+                         +-------------------------+ |
+|                                                                                   |
+|  [Route: "/"] Landing Page (Cinematic Showcase)                                   |
+|   - Three.js Interactive 3D Audio Orb (WebGL 60 FPS)                              |
+|   - GSAP ScrollTrigger Pinned Deep-Tech Storytelling                              |
+|   - HUD Telemetry Overlay & Magnetic Reticle Cursor                               |
+|                                                                                   |
+|  [Route: "/studio"] Studio Workspace (Mini-DAW)                                   |
+|   - DualDropzone (File Ingestion & Client Validation)                             |
+|   - DualWaveformTimeline (Stacked WaveSurfer Canvas Track A & Track B)            |
+|   - Direct Drag-to-Offset Engine (Mouse Drag -> Delta X -> vocalOffsetMs)         |
+|   - Harmonic Key & Pitch Controls (Camelot Badges & Semitone Stepper)             |
+|   - Web Audio Synchronized Preview (Zero-Latency in-browser playback)             |
+|   - MixingStatus (Job Polling & Real-Time Metrics)                                |
+|   - WaveformPlayer (HTTP 206 Partial Content Stream Player)                       |
 +-----------------------------------------------------------------------------------+
                                            |
-+------------------------------------------v----------------------------------------+
+                                           | POST multipart/form-data
+                                           | (trackA, trackB, vocalOffsetMs, pitchShift)
+                                           v
++-----------------------------------------------------------------------------------+
 |                            SERVER (Node.js + Express ESM)                         |
 |  +-----------------------+   +---------------------------------------+            |
 |  | Multer Middleware     |   | Stream & Download Controller          |            |
@@ -38,10 +43,15 @@
 |              v                                   |                                |
 |  +-----------------------------------------+     |                                |
 |  | Worker Pipeline                         |     |                                |
-|  |  1. BpmDetectorService (PCM Stream)     |     |                                |
+|  |  1. Parallel Detection (Promise.all):   |     |                                |
+|  |     - BpmDetectorService (Onset PCM)    |     |                                |
+|  |     - KeyDetectorService (Chroma STFT)  |     |                                |
 |  |  2. Calculate Ratio r = BpmB / BpmA     |     |                                |
-|  |  3. AudioMixerService (FFmpeg Graph)    |     |                                |
-|  |     [atempo, adelay/atrim, amix, limit] |     |                                |
+|  |  3. Calculate Optimal Pitch Shift       |     |                                |
+|  |     (Circle of Fifths / Camelot Wheel)  |     |                                |
+|  |  4. AudioMixerService (FFmpeg Graph)    |     |                                |
+|  |     [asetrate, atempo, adelay/atrim,    |     |                                |
+|  |      amix, alimiter]                    |     |                                |
 |  +-----------+-------------------------+---+     |                                |
 |              |                         |         |                                |
 +--------------|-------------------------|---------|--------------------------------+
@@ -84,7 +94,8 @@ audio-mashup/
 │   │   │   └── mixRoutes.js          # Express route bindings
 │   │   ├── services/
 │   │   │   ├── AudioMixerService.js  # FFmpeg mixing & rendering pipeline
-│   │   │   └── BpmDetectorService.js # Audio PCM decoding & tempo detection
+│   │   │   ├── BpmDetectorService.js # Audio PCM decoding & tempo detection
+│   │   │   └── KeyDetectorService.js # Chroma STFT & Krumhansl-Schmuckler key detection
 │   │   ├── utils/
 │   │   │   └── checkFfmpeg.js        # Fail-Fast binary validator
 │   │   └── app.js                    # Express bootstrap & CORS
@@ -104,6 +115,9 @@ audio-mashup/
 │   │   ├── test_api_bpm_mix.js
 │   │   ├── test_mixer_offset.js
 │   │   ├── test_api_offset.js
+│   │   ├── test_key_detector.js
+│   │   ├── test_mixer_pitch.js
+│   │   ├── test_api_key_mix.js
 │   │   └── test_e2e_full_cycle.js
 │   ├── package.json
 │   ├── .env
@@ -113,14 +127,20 @@ audio-mashup/
 │   │   ├── components/
 │   │   │   ├── DualDropzone.jsx          # File ingestion & drag-drop wrapper
 │   │   │   ├── DualWaveformTimeline.jsx  # Mini-DAW Stacked Waveform with drag offset & audio sync
-│   │   │   ├── MixingStatus.jsx          # Polling progress card & tempo badges
+│   │   │   ├── MixingStatus.jsx          # Polling progress card, tempo & key badges
+│   │   │   ├── ThreeAudioVisualizer.jsx  # Three.js 3D Audio Orb Visualizer
+│   │   │   ├── ThemeToggle.jsx           # Sun/Moon theme switcher
 │   │   │   └── WaveformPlayer.jsx        # Output WaveSurfer.js player
+│   │   ├── context/
+│   │   │   └── ThemeContext.jsx          # Light/Dark mode state & localStorage persistence
+│   │   ├── pages/
+│   │   │   ├── LandingPage.jsx           # Cinematic GSAP + Three.js Showcase Page
+│   │   │   └── StudioPage.jsx            # Dedicated Mini-DAW Mashup Studio Page
 │   │   ├── hooks/
-│   │   │   ├── useJobPolling.js          # Polling lifecycle hook with memory cleanup
-│   │   │   └── useDualTrackSync.js       # Web Audio API dual playback synchronization
+│   │   │   └── useJobPolling.js          # Polling lifecycle hook with memory cleanup
 │   │   ├── services/
 │   │   │   └── api.js                    # Axios client with upload progress
-│   │   ├── App.jsx
+│   │   ├── App.jsx                       # React Router configuration
 │   │   ├── main.jsx
 │   │   └── index.css
 │   ├── package.json
@@ -129,6 +149,18 @@ audio-mashup/
 │   └── vite.config.js
 ├── package.json                          # Monorepo root orchestration
 └── .gitignore
+```
+
+#### Cấu hình biến môi trường (`server/.env.example`):
+
+```env
+PORT=5000
+NODE_ENV=development
+DATABASE_URL="file:./dev.db"
+CORS_ORIGIN="http://localhost:5173"
+MAX_FILE_SIZE_MB=25
+STORAGE_UPLOAD_DIR="./storage/uploads"
+STORAGE_OUTPUT_DIR="./storage/outputs"
 ```
 
 ---
@@ -148,39 +180,44 @@ generator client {
 }
 
 model MixJob {
-  id                 String    @id @default(uuid())
-  status             String    @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED
-  progress           Int       @default(0)         // Tiến độ từ 0 -> 100%
+  id                         String    @id @default(uuid())
+  status                     String    @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED
+  progress                   Int       @default(0)         // Tiến độ từ 0 -> 100%
 
   // Thông tin tệp gốc A (Vocal)
-  trackAOriginalName String
-  trackAPath         String
-  trackAMimeType     String
-  trackASize         Int
-  trackABpm          Float?    // Nhịp độ nhận diện của Track A
+  trackAOriginalName         String
+  trackAPath                 String
+  trackAMimeType             String
+  trackASize                 Int
+  trackABpm                  Float?    // Nhịp độ nhận diện của Track A
+  trackAKey                  String?   // Tông nhạc Track A (ví dụ: "Am", "C")
+  trackACamelot              String?   // Mã Camelot Track A (ví dụ: "8A", "8B")
 
   // Thông tin tệp gốc B (Beat)
-  trackBOriginalName String
-  trackBPath         String
-  trackBMimeType     String
-  trackBSize         Int
-  trackBBpm          Float?    // Nhịp độ nhận diện của Track B
+  trackBOriginalName         String
+  trackBPath                 String
+  trackBMimeType             String
+  trackBSize                 Int
+  trackBBpm                  Float?    // Nhịp độ nhận diện của Track B
+  trackBKey                  String?   // Tông nhạc Track B (ví dụ: "C", "G")
+  trackBCamelot              String?   // Mã Camelot Track B (ví dụ: "8B", "9B")
 
-  // Thông số biến đổi nhịp điệu (Tempo Matching) & Căn chỉnh phách (Offset)
-  appliedTempoRatio  Float?    // Tỷ lệ co/dãn r = trackBBpm / trackABpm
-  vocalOffsetMs      Int       @default(0) // Độ trễ vocal tính bằng mili-giây (-3000 đến +3000)
+  // Thông số điều chỉnh âm học (DSP Adjustments)
+  appliedTempoRatio          Float?    // Tỷ lệ co/dãn r = trackBBpm / trackABpm
+  vocalOffsetMs              Int       @default(0) // Độ trễ vocal tính bằng mili-giây (-3000 đến +3000)
+  appliedPitchShiftSemitones Int       @default(0) // Số bán âm đã dịch chuyển (-6 đến +6)
 
   // Thông tin kết quả đầu ra
-  outputFileName     String?
-  outputPath         String?
-  outputDuration     Float?    // Thời lượng tệp thành phẩm (giây)
+  outputFileName             String?
+  outputPath                 String?
+  outputDuration             Float?    // Thời lượng tệp thành phẩm (giây)
 
   // Ghi nhận hiệu năng và xử lý sự cố
-  errorMessage       String?
-  executionTimeMs    Int?      // Thời gian xử lý FFmpeg (ms)
+  errorMessage               String?
+  executionTimeMs            Int?      // Thời gian xử lý FFmpeg (ms)
 
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
 
   @@index([status])
   @@index([createdAt])
@@ -189,37 +226,47 @@ model MixJob {
 
 ---
 
-### 4. Chi Tiết Kỹ Thuật Pipeline Âm Thanh & Cơ Chế Preview Trình Duyệt
+### 4. Chi Tiết Kỹ Thuật Pipeline Âm Thanh (Audio DSP Pipeline)
 
-#### 4.1. FFmpeg Complex FilterGraph (Server-Side Final Rendering)
+#### 4.1. Giải thuật Nhận diện Tông nhạc (`KeyDetectorService.js`)
 
 ```text
-// Trường hợp vocalOffsetMs > 0 (Trễ):
-[0:a]aresample=44100,{atempoChain}adelay={vocalOffsetMs}|{vocalOffsetMs},volume=1.0[vocal_norm];
-[1:a]aresample=44100,volume=0.75[beat_norm];
-[vocal_norm][beat_norm]amix=inputs=2:duration=longest:dropout_transition=2:weights=1.0 0.75[raw_mixed];
-[raw_mixed]alimiter=limit=0.95:level=true[final_output]
+Raw Audio Stream (FFmpeg PCM 16-bit 22.05kHz Mono)
+       │
+       ▼
+Short-Time Fourier Transform (STFT / 4096-sample Window, Hanning, 50% Overlap)
+       │
+       ▼
+Pitch Class Profile (12-Bin Chroma Vector: C, C#, D, D#, E, F, F#, G, G#, A, A#, B)
+       │
+       ▼
+Pearson Correlation với 24 Krumhansl-Schmuckler Key Profiles (12 Major + 12 Minor)
+       │
+       ▼
+Output: { key: "Am", scale: "minor", camelot: "8A", confidence: 0.84 }
+```
 
-// Trường hợp vocalOffsetMs < 0 (Sớm):
-[0:a]aresample=44100,{atempoChain}atrim=start={absOffsetSec},asetpts=PTS-STARTPTS,volume=1.0[vocal_norm];
+#### 4.2. FFmpeg Complex FilterGraph Tổng Hợp (Tempo + Pitch + Offset Alignment)
+
+Khi áp dụng đồng thời:
+
+1. Dịch cao độ $\Delta\text{semitones}$ ($\text{factor} = 2^{\frac{\Delta}{12}}$).
+2. Co dãn nhịp điệu $r = \frac{BPM_B}{BPM_A}$ (tỷ lệ atempo tổng hợp: $r_{\text{atempo}} = \frac{r}{\text{factor}}$).
+3. Căn chỉnh độ trễ `vocalOffsetMs` ($> 0$ dùng `adelay`, $< 0$ dùng `atrim + asetpts`).
+
+**Cấu trúc FilterGraph hoàn chỉnh cho Track A (Vocal):**
+
+```text
+[0:a]aresample=44100,
+     asetrate=44100*{factor},
+     {combinedAtempoChain},
+     {offsetFilter},
+     aresample=44100,
+     volume=1.0[vocal_norm];
 [1:a]aresample=44100,volume=0.75[beat_norm];
 [vocal_norm][beat_norm]amix=inputs=2:duration=longest:dropout_transition=2:weights=1.0 0.75[raw_mixed];
 [raw_mixed]alimiter=limit=0.95:level=true[final_output]
 ```
-
-#### 4.2. Cơ chế Đồng bộ Phát Đa Tầng Cục Bộ (Client Zero-Latency Preview)
-
-1. **Blob URL Generation:** Khi người dùng chọn 2 tệp, client khởi tạo URL cục bộ qua `URL.createObjectURL(file)`.
-2. **Dual WaveSurfer Instance:**
-   - WaveSurfer Track A (Vocal): Tone Indigo, chiều cao 70px.
-   - WaveSurfer Track B (Beat): Tone Emerald, chiều cao 70px.
-3. **Offset Visual Transformation:** Khi `vocalOffsetMs` thay đổi (qua kéo chuột hoặc slider), container của Track A áp dụng dịch chuyển CSS:
-   $$\Delta x = \frac{\text{vocalOffsetMs}}{1000} \times \text{pixelsPerSecond}$$
-   Hiệu ứng `transform: translateX(Δx px)` cập nhật ngay lập tức ở 60 FPS mà không cần vẽ lại Canvas.
-4. **Đồng bộ Phát lại (Web Audio Scheduler):**
-   - Khi bấm "Nghe thử Preview":
-     - Nếu $offset \ge 0$: Beat phát ngay tại $t = 0$; Vocal lên lịch phát trễ qua `setTimeout` hoặc Web Audio API `AudioBufferSourceNode.start(audioCtx.currentTime + offsetSec)`.
-     - Nếu $offset < 0$: Vocal phát ngay từ mốc $\vert{}offset\vert{}$ giây; Beat phát ngay tại $t = 0$.
 
 ---
 
@@ -233,6 +280,8 @@ model MixJob {
   - `trackA` (Audio Binary, bắt buộc)
   - `trackB` (Audio Binary, bắt buộc)
   - `vocalOffsetMs` (Integer, tùy chọn, mặc định: 0, phạm vi: -3000 đến 3000)
+  - `pitchShiftSemitones` (Integer, tùy chọn, mặc định: 0, phạm vi: -6 đến 6)
+  - `autoHarmonize` (Boolean, tùy chọn, mặc định: false)
 - **Response 202 Accepted:**
 
 ```json
@@ -264,6 +313,13 @@ model MixJob {
       "trackBBpm": 170.9,
       "appliedTempoRatio": 1.27
     },
+    "harmonic": {
+      "trackAKey": "Am",
+      "trackACamelot": "8A",
+      "trackBKey": "C",
+      "trackBCamelot": "8B",
+      "appliedPitchShiftSemitones": 0
+    },
     "vocalOffsetMs": 500,
     "result": {
       "streamUrl": "/api/v1/mix/550e8400-e29b-41d4-a716-446655440000/stream",
@@ -271,7 +327,18 @@ model MixJob {
       "duration": 214.5,
       "executionTimeMs": 4230
     },
-    "createdAt": "2026-10-05T10:00:00.000Z"
+    "createdAt": "2026-10-06T03:00:00.000Z"
   }
 }
 ```
+
+#### 5.3. Stream âm thanh
+
+- **Endpoint:** `GET /api/v1/mix/:jobId/stream`
+- **Header hỗ trợ:** HTTP `Range: bytes=start-end`
+- **Mã phản hồi:** `HTTP 206 Partial Content`.
+
+#### 5.4. Tải xuống tệp thành phẩm
+
+- **Endpoint:** `GET /api/v1/mix/:jobId/download`
+- **Header phản hồi:** `Content-Disposition: attachment; filename="mashup-[id].mp3"`.

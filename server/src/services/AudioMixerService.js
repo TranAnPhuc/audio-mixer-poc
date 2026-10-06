@@ -51,6 +51,19 @@ export function getAudioMetadata(filePath) {
 }
 
 /**
+ * Tính hệ số biến đổi tần số theo số bán âm (Equal Temperament Pitch Factor)
+ * pitchFactor = 2^(semitones / 12)
+ * @param {number} semitones Số bán âm dịch chuyển (-12 đến +12)
+ * @returns {number} Hệ số nhân tần số
+ */
+export function calculatePitchFactor(semitones = 0) {
+  if (!semitones || typeof semitones !== 'number' || isNaN(semitones)) {
+    return 1.0;
+  }
+  return Math.pow(2, semitones / 12);
+}
+
+/**
  * Tạo chuỗi bộ lọc atempo an toàn cho FFmpeg
  * Bộ lọc atempo của FFmpeg chỉ chấp nhận giá trị trong khoảng [0.5, 2.0].
  * Nếu ratio vượt ngoài ngưỡng này, hàm tự động phân rã và nối chuỗi nhiều filter liên tiếp.
@@ -114,12 +127,19 @@ export function buildOffsetFilterChain(offsetMs = 0) {
 
 /**
  * Dịch vụ phối trộn âm thanh chuyên nghiệp sử dụng FFmpeg FilterGraph
+ * Hỗ trợ đồng thời:
+ * 1. Pitch Shifting (asetrate + atempo bù trừ)
+ * 2. Tempo Stretching (atempo WSOLA)
+ * 3. Offset Delay / Trim Alignment (adelay / atrim)
+ * 4. Gain Staging & True Peak Limiter (alimiter)
+ *
  * @param {object} params
  * @param {string} params.trackAPath Đường dẫn file Vocal (Track A)
  * @param {string} params.trackBPath Đường dẫn file Beat (Track B)
  * @param {string} params.outputPath Đường dẫn xuất file MP3 thành phẩm
  * @param {number} [params.tempoRatio=1.0] Tỷ lệ co/dãn thời gian áp dụng lên Track A (Vocal)
  * @param {number} [params.vocalOffsetMs=0] Độ lệch thời gian của Vocal (ms)
+ * @param {number} [params.pitchShiftSemitones=0] Số bán âm dịch chuyển cao độ Vocal (-6 đến +6)
  * @param {function} [params.onProgress] Callback nhận tiến độ xử lý (0 -> 100%)
  * @returns {Promise<{
  *   outputPath: string,
@@ -128,7 +148,8 @@ export function buildOffsetFilterChain(offsetMs = 0) {
  *   executionTimeMs: number,
  *   sizeBytes: number,
  *   appliedTempoRatio: number,
- *   appliedVocalOffsetMs: number
+ *   appliedVocalOffsetMs: number,
+ *   appliedPitchShiftSemitones: number
  * }>}
  */
 export async function mixAudioTracks({
@@ -137,6 +158,7 @@ export async function mixAudioTracks({
   outputPath,
   tempoRatio = 1.0,
   vocalOffsetMs = 0,
+  pitchShiftSemitones = 0,
   onProgress
 }) {
   if (!fs.existsSync(trackAPath)) {
@@ -156,6 +178,7 @@ export async function mixAudioTracks({
   let expectedTotalDuration = 0;
   const effectiveTempoRatio = (typeof tempoRatio === 'number' && tempoRatio > 0) ? tempoRatio : 1.0;
   const effectiveOffsetMs = (typeof vocalOffsetMs === 'number' && !isNaN(vocalOffsetMs)) ? Math.round(vocalOffsetMs) : 0;
+  const effectivePitchShift = (typeof pitchShiftSemitones === 'number' && !isNaN(pitchShiftSemitones)) ? Math.round(pitchShiftSemitones) : 0;
 
   try {
     const [metaA, metaB] = await Promise.all([
@@ -176,12 +199,33 @@ export async function mixAudioTracks({
   return new Promise((resolve, reject) => {
     let lastReportedPercent = -1;
 
-    // Chuẩn bị chuỗi filter cho Track A (Vocal)
-    const atempoChain = buildAtempoFilterChain(effectiveTempoRatio);
+    // Chuỗi căn chỉnh độ trễ / phách
     const offsetChain = buildOffsetFilterChain(effectiveOffsetMs);
 
-    const vocalFilters = ['aresample=44100'];
-    if (atempoChain) vocalFilters.push(atempoChain);
+    // Chuỗi xử lý cao độ và nhịp độ cho Track A (Vocal)
+    const vocalFilters = [];
+
+    if (effectivePitchShift !== 0) {
+      // 1. Tính toán hệ số dịch cao độ
+      const pitchFactor = calculatePitchFactor(effectivePitchShift);
+      const targetSampleRate = Math.round(44100 * pitchFactor);
+
+      // 2. Tỷ lệ bù trừ nhịp độ: asetrate làm thay đổi vận tốc phát theo pitchFactor,
+      //    để đạt đúng tempoRatio mong muốn, tỷ lệ atempo cần áp dụng là tempoRatio / pitchFactor
+      const combinedTempoRatio = effectiveTempoRatio / pitchFactor;
+      const combinedAtempoChain = buildAtempoFilterChain(combinedTempoRatio);
+
+      // 3. Ghép nối filterchain cho Vocal khi có Pitch Shift
+      vocalFilters.push(`asetrate=${targetSampleRate}`);
+      vocalFilters.push('aresample=44100');
+      if (combinedAtempoChain) vocalFilters.push(combinedAtempoChain);
+    } else {
+      // Nhánh xử lý thông thường khi không dịch cao độ (chỉ co dãn tempo nếu có)
+      const atempoChain = buildAtempoFilterChain(effectiveTempoRatio);
+      vocalFilters.push('aresample=44100');
+      if (atempoChain) vocalFilters.push(atempoChain);
+    }
+
     if (offsetChain) vocalFilters.push(offsetChain);
     vocalFilters.push('volume=1.0');
 
@@ -191,7 +235,7 @@ export async function mixAudioTracks({
       .input(trackAPath)
       .input(trackBPath)
       .complexFilter([
-        // 1. Resample về 44.1kHz, áp dụng atempo co dãn thời gian và Gain Staging
+        // 1. Resample về 44.1kHz, áp dụng pitch shift, atempo co dãn thời gian và Gain Staging
         vocalFilter,
         '[1:a]aresample=44100,volume=0.75[beat_norm]',
         // 2. Amix 2 luồng âm thanh theo độ dài lớn nhất
@@ -254,6 +298,7 @@ export async function mixAudioTracks({
             sizeBytes: fileStats.size,
             appliedTempoRatio: Number(effectiveTempoRatio.toFixed(3)),
             appliedVocalOffsetMs: effectiveOffsetMs,
+            appliedPitchShiftSemitones: effectivePitchShift,
             executionTimeMs
           });
         } catch (metaErr) {
@@ -265,6 +310,7 @@ export async function mixAudioTracks({
             executionTimeMs,
             appliedTempoRatio: Number(effectiveTempoRatio.toFixed(3)),
             appliedVocalOffsetMs: effectiveOffsetMs,
+            appliedPitchShiftSemitones: effectivePitchShift,
             sizeBytes: fs.statSync(outputPath).size
           });
         }
@@ -276,7 +322,7 @@ export async function mixAudioTracks({
 export default {
   mixAudioTracks,
   getAudioMetadata,
+  calculatePitchFactor,
   buildAtempoFilterChain,
   buildOffsetFilterChain
 };
-
