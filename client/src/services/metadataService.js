@@ -13,10 +13,82 @@ export const DEFAULT_PALETTE = {
 };
 
 /**
+ * Trích xuất nội dung lời bài hát nhúng trong metadata ID3 (USLT, SYLT, lyrics)
+ * @param {Object} tags 
+ * @returns {string|null}
+ */
+export function extractEmbeddedLyrics(tags) {
+  if (!tags || typeof tags !== 'object') return null;
+
+  // 1. Kiểm tra tags.lyrics (một số tagger gán trực tiếp hoặc bọc trong object)
+  if (tags.lyrics) {
+    if (typeof tags.lyrics === 'string' && tags.lyrics.trim()) {
+      return tags.lyrics.trim();
+    }
+    if (typeof tags.lyrics.lyrics === 'string' && tags.lyrics.lyrics.trim()) {
+      return tags.lyrics.lyrics.trim();
+    }
+    if (typeof tags.lyrics.data?.lyrics === 'string' && tags.lyrics.data.lyrics.trim()) {
+      return tags.lyrics.data.lyrics.trim();
+    }
+    if (typeof tags.lyrics.data === 'string' && tags.lyrics.data.trim()) {
+      return tags.lyrics.data.trim();
+    }
+  }
+
+  // 2. Kiểm tra thẻ ID3 USLT (Unsynchronised lyric/text transcription)
+  if (tags.USLT) {
+    if (typeof tags.USLT === 'string' && tags.USLT.trim()) {
+      return tags.USLT.trim();
+    }
+    if (typeof tags.USLT.lyrics === 'string' && tags.USLT.lyrics.trim()) {
+      return tags.USLT.lyrics.trim();
+    }
+    if (typeof tags.USLT.data?.lyrics === 'string' && tags.USLT.data.lyrics.trim()) {
+      return tags.USLT.data.lyrics.trim();
+    }
+    if (typeof tags.USLT.data === 'string' && tags.USLT.data.trim()) {
+      return tags.USLT.data.trim();
+    }
+  }
+
+  // 3. Kiểm tra thẻ ID3 SYLT (Synchronised lyric/text)
+  if (tags.SYLT) {
+    if (typeof tags.SYLT === 'string' && tags.SYLT.trim()) {
+      return tags.SYLT.trim();
+    }
+    if (typeof tags.SYLT.data === 'string' && tags.SYLT.data.trim()) {
+      return tags.SYLT.data.trim();
+    }
+    if (typeof tags.SYLT.lyrics === 'string' && tags.SYLT.lyrics.trim()) {
+      return tags.SYLT.lyrics.trim();
+    }
+  }
+
+  // 4. Quét tổng quát qua tất cả các thuộc tính xem có chứa lyrics hay không
+  for (const key of Object.keys(tags)) {
+    if (/lyrics|uslt|sylt/i.test(key)) {
+      const val = tags[key];
+      if (typeof val === 'string' && val.trim().length > 0) {
+        return val.trim();
+      }
+      if (val && typeof val === 'object') {
+        const text = val.lyrics || val.data?.lyrics || val.data;
+        if (typeof text === 'string' && text.trim().length > 0) {
+          return text.trim();
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Trích xuất Metadata ID3 từ tệp âm thanh (File / Blob) trực tiếp trên trình duyệt
- * Đọc tiêu đề, ca sĩ, album và ảnh bìa album (Cover Art)
+ * Đọc tiêu đề, ca sĩ, album, ảnh bìa album (Cover Art) và lời bài hát nhúng sẵn
  * @param {File|Blob} file 
- * @returns {Promise<{ title: string, artist: string, album: string, fileName: string, coverUrl: string|null }>}
+ * @returns {Promise<{ title: string, artist: string, album: string, fileName: string, coverUrl: string|null, lyrics: string|null }>}
  */
 export function parseAudioFileMetadata(file) {
   const fallbackTitle = file?.name ? file.name.replace(/\.[^/.]+$/, '') : 'Bản thu đĩa than';
@@ -25,7 +97,8 @@ export function parseAudioFileMetadata(file) {
     artist: 'Nghệ sĩ chưa rõ',
     album: 'AuraVinyl Session',
     fileName: file?.name || '',
-    coverUrl: null
+    coverUrl: null,
+    lyrics: null
   };
 
   if (!file) {
@@ -40,6 +113,7 @@ export function parseAudioFileMetadata(file) {
           const title = tags.title?.trim() || fallbackTitle;
           const artist = tags.artist?.trim() || 'Nghệ sĩ chưa rõ';
           const album = tags.album?.trim() || 'Đĩa Than Bản Gốc';
+          const embeddedLyrics = extractEmbeddedLyrics(tags);
 
           let coverUrl = null;
           if (tags.picture) {
@@ -58,7 +132,8 @@ export function parseAudioFileMetadata(file) {
             artist,
             album,
             fileName: file.name || '',
-            coverUrl
+            coverUrl,
+            lyrics: embeddedLyrics
           });
         },
         onError: (error) => {

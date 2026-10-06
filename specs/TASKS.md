@@ -18,4 +18,11 @@
 
 - [x] **Task 5: Đồng Bộ Lời Bài Hát Nghệ Thuật (Kinetic Synced Lyrics)**
   - Gọi API Lrclib tìm lời theo tên bài + nghệ sĩ; parse định dạng timestamp `[mm:ss.xx]`.
+  - Hỗ trợ nạp file `.lrc` thủ công (kéo thả đồng thời hoặc tải riêng) và trích xuất lời nhúng ID3 (`USLT`/`SYLT`) với chuỗi ưu tiên 4 cấp.
   - Dùng GSAP làm hiệu ứng cuộn mượt và phát sáng chữ ở dòng đang hát; nếu không có lời, hiển thị các hạt bụi ánh sáng thư giãn (_ambient dust particles_).
+
+- [x] **Task 6: Tích Hợp AI Whisper Bóc Lời & Canh Nhịp Trực Tiếp Trên Trình Duyệt**
+  - Cài đặt `@xenova/transformers`, cấu hình Web Worker chạy mô hình `Xenova/whisper-tiny`.
+  - Viết module xử lý âm thanh: Trích xuất PCM Float32Array và resample về 16,000 Hz chuẩn cho Whisper.
+  - Bổ sung nút "✨ AI Bóc Lời" và thanh trạng thái tiến trình (Loading Model -> Transcribing %) trên cột Kinetic Lyrics.
+  - Tự động chuyển đổi kết quả chunks sang danh sách câu hát đồng bộ mốc thời gian và hiển thị ngay trên mâm đĩa.

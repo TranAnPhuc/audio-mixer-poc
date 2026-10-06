@@ -60,6 +60,35 @@ export function parseLrc(lrcString) {
 }
 
 /**
+ * Đọc tệp .lrc cục bộ thông qua FileReader và phân tích thành mảng dòng lời bài hát
+ * @param {File|Blob} file 
+ * @returns {Promise<Array<{ id: number, time: number, text: string }>>}
+ */
+export function readLrcFile(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      resolve([]);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result;
+      if (typeof text === 'string') {
+        const lines = parseLrc(text);
+        resolve(lines);
+      } else {
+        resolve([]);
+      }
+    };
+    reader.onerror = (err) => {
+      console.warn('[lyricsService] Lỗi khi đọc file LRC:', err);
+      reject(err);
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+}
+
+/**
  * Tìm kiếm và tải lời bài hát đồng bộ từ Lrclib API
  * @param {Object} params
  * @param {string} params.title Tên bài hát

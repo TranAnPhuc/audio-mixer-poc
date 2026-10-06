@@ -13,7 +13,8 @@ import {
   Sparkles,
   Sliders,
   Radio,
-  FileAudio
+  FileAudio,
+  FileText
 } from 'lucide-react';
 import { playHapticClick, playHoverBlip } from '../utils/soundEffects';
 import Turntable3D from '../components/Turntable3D';
@@ -28,7 +29,8 @@ import {
   DEFAULT_PALETTE
 } from '../services/metadataService';
 import KineticLyrics from '../components/KineticLyrics';
-import { fetchSyncedLyrics } from '../services/lyricsService';
+import { fetchSyncedLyrics, parseLrc, readLrcFile } from '../services/lyricsService';
+import { transcribeAudioFile } from '../services/aiTranscriptionService';
 
 /**
  * AuraVinyl — 3D Interactive Vinyl & Kinetic Lyrics Player
@@ -48,6 +50,11 @@ export default function LandingPage() {
   const [lyricsLines, setLyricsLines] = useState([]);
   const [isLyricsLoading, setIsLyricsLoading] = useState(false);
   const [isInstrumental, setIsInstrumental] = useState(false);
+  const [lyricsSource, setLyricsSource] = useState(null); // 'file' | 'embedded' | 'lrclib' | 'ai-whisper' | null
+
+  // Trạng thái AI Whisper bóc lời trực tiếp trên trình duyệt
+  const [isAiTranscribing, setIsAiTranscribing] = useState(false);
+  const [aiProgress, setAiProgress] = useState({ status: '', message: '', progress: 0 });
 
   // Thông tin bài hát hiện tại
   const [trackInfo, setTrackInfo] = useState({
@@ -59,8 +66,10 @@ export default function LandingPage() {
   });
 
   const fileInputRef = useRef(null);
+  const lyricsFileInputRef = useRef(null);
   const audioRef = useRef(null);
   const needleDropTimerRef = useRef(null);
+  const currentAudioFileRef = useRef(null);
 
   // Khởi động phát bài hát đồng bộ với động học hạ cần kim
   const startPlayback = () => {
@@ -92,18 +101,37 @@ export default function LandingPage() {
     setIsPlaying(false);
   };
 
-  // Xử lý nạp file âm thanh & trích xuất Metadata ID3
-  const handleFileSelect = async (file) => {
-    if (!file || !file.type.includes('audio') && !file.name.match(/\.(mp3|wav|ogg|flac|m4a)$/i)) {
-      alert('Vui lòng chọn tệp âm thanh hợp lệ (.mp3, .wav, .ogg, .flac)!');
-      return;
-    }
-
+  // 1. Xử lý nạp file lời bài hát .lrc trực tiếp (Thủ công hoặc kéo thả)
+  const processLrcFile = async (lrcFile) => {
+    if (!lrcFile) return;
     playHapticClick();
-    const objectUrl = URL.createObjectURL(file);
+    setIsLyricsLoading(true);
 
-    // 1. Trích xuất metadata ID3 tags & ảnh bìa album trực tiếp trên trình duyệt
-    const meta = await parseAudioFileMetadata(file);
+    try {
+      const lines = await readLrcFile(lrcFile);
+      setIsLyricsLoading(false);
+      if (lines && lines.length > 0) {
+        setLyricsLines(lines);
+        setLyricsSource('file');
+        setIsInstrumental(false);
+      } else {
+        alert('Tệp .lrc không chứa định dạng mốc thời gian [mm:ss.xx] hợp lệ!');
+      }
+    } catch (err) {
+      console.warn('Lỗi đọc tệp .lrc:', err);
+      setIsLyricsLoading(false);
+      alert('Không thể đọc tệp .lrc. Vui lòng kiểm tra lại định dạng!');
+    }
+  };
+
+  // 2. Xử lý nạp tệp âm thanh và điều phối nguồn lời bài hát theo thứ tự ưu tiên
+  const processAudioWithOptionalLrc = async (audioFile, lrcFile = null) => {
+    playHapticClick();
+    currentAudioFileRef.current = audioFile;
+    const objectUrl = URL.createObjectURL(audioFile);
+
+    // Bước 1: Trích xuất metadata ID3 tags, ảnh bìa album và lời nhúng (Embedded Lyrics)
+    const meta = await parseAudioFileMetadata(audioFile);
 
     setTrackInfo({
       title: meta.title,
@@ -113,7 +141,7 @@ export default function LandingPage() {
       coverUrl: meta.coverUrl
     });
 
-    // 2. Trích xuất bảng màu chủ đạo (Color Palette) từ ảnh bìa để đổi màu nền Ambient Aurora
+    // Bước 2: Trích xuất bảng màu chủ đạo (Color Palette) từ ảnh bìa để đổi màu nền Ambient Aurora
     if (meta.coverUrl) {
       const palette = await extractPaletteFromImage(meta.coverUrl);
       setAmbientColors(palette);
@@ -121,10 +149,51 @@ export default function LandingPage() {
       setAmbientColors(DEFAULT_PALETTE);
     }
 
-    // 3. Tải lời bài hát đồng bộ từ Lrclib API (Kinetic Synced Lyrics)
+    // Bước 3: Nạp audio và tự động kích hoạt hạ cần kim, quay đĩa than
+    if (audioRef.current) {
+      audioRef.current.src = objectUrl;
+      audioRef.current.load();
+      audioRef.current.onloadedmetadata = () => {
+        setDuration(audioRef.current.duration || 0);
+      };
+      startPlayback();
+    }
+
+    // Bước 4: ĐIỀU PHỐI NGUỒN LỜI BÀI HÁT THEO THỨ TỰ ƯU TIÊN CHẶT CHẼ
+    // ƯU TIÊN 1: Tệp .lrc được người dùng chọn/kéo thả đồng thời cùng file nhạc
+    if (lrcFile) {
+      setIsLyricsLoading(true);
+      try {
+        const fileLines = await readLrcFile(lrcFile);
+        if (fileLines && fileLines.length > 0) {
+          setLyricsLines(fileLines);
+          setLyricsSource('file');
+          setIsInstrumental(false);
+          setIsLyricsLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.warn('Không thể đọc file .lrc đi kèm, chuyển sang kiểm tra lời nhúng:', err);
+      }
+    }
+
+    // ƯU TIÊN 2: Lời bài hát nhúng sẵn trong metadata file nhạc (Embedded USLT / SYLT)
+    if (meta.lyrics) {
+      const embeddedLines = parseLrc(meta.lyrics);
+      if (embeddedLines && embeddedLines.length > 0) {
+        setLyricsLines(embeddedLines);
+        setLyricsSource('embedded');
+        setIsInstrumental(false);
+        setIsLyricsLoading(false);
+        return;
+      }
+    }
+
+    // ƯU TIÊN 3: Tìm kiếm tự động qua Lrclib API (Fallback)
     setIsLyricsLoading(true);
     setLyricsLines([]);
     setIsInstrumental(false);
+    setLyricsSource(null);
 
     fetchSyncedLyrics({
       title: meta.title,
@@ -136,34 +205,53 @@ export default function LandingPage() {
         setIsLyricsLoading(false);
         if (lyricsData && lyricsData.lines && lyricsData.lines.length > 0) {
           setLyricsLines(lyricsData.lines);
+          setLyricsSource('lrclib');
           setIsInstrumental(false);
         } else {
+          // ƯU TIÊN 4: Không tìm thấy lời -> Hiển thị Ambient Relaxation Dust
           setLyricsLines([]);
+          setLyricsSource(null);
           setIsInstrumental(Boolean(lyricsData?.instrumental));
         }
       })
       .catch((err) => {
-        console.warn('Lỗi tải lời bài hát:', err);
+        console.warn('Lỗi tải lời bài hát từ Lrclib:', err);
         setIsLyricsLoading(false);
         setLyricsLines([]);
+        setLyricsSource(null);
       });
+  };
 
-    // 4. Nạp audio và tự động kích hoạt hạ cần kim, phát đĩa than
-    if (audioRef.current) {
-      audioRef.current.src = objectUrl;
-      audioRef.current.load();
-      audioRef.current.onloadedmetadata = () => {
-        setDuration(audioRef.current.duration || 0);
-      };
-      startPlayback();
+  // 3. Xử lý tập hợp tệp được người dùng kéo thả hoặc chọn qua file dialog
+  const handleIncomingFiles = async (filesList) => {
+    if (!filesList || filesList.length === 0) return;
+    const files = Array.from(filesList);
+
+    const audioFile = files.find((f) =>
+      f.type.includes('audio') || f.name.match(/\.(mp3|wav|ogg|flac|m4a)$/i)
+    );
+    const lrcFile = files.find((f) => f.name.match(/\.lrc$/i));
+
+    // Trường hợp 1: Chỉ nạp file .lrc (bổ sung lời cho bài hát hiện tại hoặc mới)
+    if (lrcFile && !audioFile) {
+      await processLrcFile(lrcFile);
+      return;
     }
+
+    // Trường hợp 2: Có file audio (kèm theo file .lrc hoặc chỉ file audio)
+    if (audioFile) {
+      await processAudioWithOptionalLrc(audioFile, lrcFile);
+      return;
+    }
+
+    alert('Vui lòng chọn tệp âm thanh (.mp3, .wav, .ogg, .flac) hoặc tệp lời bài hát (.lrc)!');
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelect(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleIncomingFiles(e.dataTransfer.files);
     }
   };
 
@@ -174,6 +262,44 @@ export default function LandingPage() {
 
   const handleDragLeave = () => {
     setIsDragging(false);
+  };
+
+  // 4. Kích hoạt AI Whisper bóc lời và canh nhịp trực tiếp trên trình duyệt
+  const handleAiTranscribe = async () => {
+    const file = currentAudioFileRef.current;
+    if (!file) {
+      alert('Vui lòng chọn hoặc kéo thả một bài hát vào mâm đĩa than trước khi bóc lời AI!');
+      fileInputRef.current?.click();
+      return;
+    }
+
+    playHapticClick();
+    setIsAiTranscribing(true);
+    setAiProgress({
+      status: 'starting',
+      message: 'Đang khởi động AI Whisper...',
+      progress: 5
+    });
+
+    try {
+      const result = await transcribeAudioFile(file, (progressInfo) => {
+        setAiProgress(progressInfo);
+      });
+
+      setIsAiTranscribing(false);
+
+      if (result && result.lines && result.lines.length > 0) {
+        setLyricsLines(result.lines);
+        setLyricsSource('ai-whisper');
+        setIsInstrumental(false);
+      } else {
+        alert('AI Whisper đã lắng nghe nhưng không nhận diện được câu hát rõ ràng trong bài này.');
+      }
+    } catch (err) {
+      console.error('Lỗi khi bóc lời AI Whisper:', err);
+      setIsAiTranscribing(false);
+      alert(`Không thể bóc lời bằng AI: ${err.message || 'Lỗi không xác định'}`);
+    }
   };
 
   // Toggle Play / Pause
@@ -257,12 +383,32 @@ export default function LandingPage() {
         className="hidden"
       />
 
-      {/* Input tệp ẩn */}
+      {/* Input tệp âm thanh & tệp lời .lrc ẩn (hỗ trợ nạp đơn hoặc chọn đồng thời cả 2 tệp) */}
       <input
         ref={fileInputRef}
         type="file"
-        accept="audio/*"
-        onChange={(e) => e.target.files && handleFileSelect(e.target.files[0])}
+        accept="audio/*,.lrc"
+        multiple
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            handleIncomingFiles(e.target.files);
+            e.target.value = '';
+          }
+        }}
+        className="hidden"
+      />
+
+      {/* Input riêng cho tệp lời .lrc */}
+      <input
+        ref={lyricsFileInputRef}
+        type="file"
+        accept=".lrc"
+        onChange={(e) => {
+          if (e.target.files && e.target.files[0]) {
+            processLrcFile(e.target.files[0]);
+            e.target.value = '';
+          }
+        }}
         className="hidden"
       />
 
@@ -320,7 +466,7 @@ export default function LandingPage() {
             className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium bg-white/[0.05] hover:bg-white/[0.09] text-slate-200 border border-white/[0.08] hover:border-amber-400/30 transition-all cursor-pointer"
           >
             <Upload className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">Chọn File Nhạc</span>
+            <span className="hidden sm:inline">Chọn Nhạc & Lời (.lrc)</span>
           </button>
         </div>
       </header>
@@ -354,16 +500,21 @@ export default function LandingPage() {
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-amber-400/40 text-xs text-slate-300 hover:text-white transition-all cursor-pointer font-medium"
             >
               <Upload className="w-4 h-4 text-amber-400" />
-              <span>Thả tệp MP3/WAV hoặc nhấp để tải đĩa</span>
+              <span>Thả tệp MP3 / WAV / LRC hoặc nhấp để tải</span>
             </button>
             <p className="text-[11px] font-mono text-slate-500">
-              AUDIO METADATA & 3D TURNTABLE STAGE READY
+              AUDIO METADATA, EMBEDDED LYRICS & .LRC READY
             </p>
           </div>
         </section>
 
         {/* CỘT PHẢI: Thông Tin Bài Hát & Lời Bài Hát Kinetic */}
-        <section className="flex-1 w-full h-[540px] lg:h-[600px] rounded-3xl bg-white/[0.02] border border-white/[0.06] p-6 sm:p-8 flex flex-col justify-between overflow-hidden">
+        <section
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          className="flex-1 w-full h-[540px] lg:h-[600px] rounded-3xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.12] p-6 sm:p-8 flex flex-col justify-between overflow-hidden transition-all duration-300"
+        >
           {/* 1. Header Thông Tin Bài Hát */}
           <div className="space-y-2 border-b border-white/[0.06] pb-5 shrink-0">
             <div className="flex items-center justify-between">
@@ -392,15 +543,60 @@ export default function LandingPage() {
             isLoading={isLyricsLoading}
             ambientColors={ambientColors}
             isInstrumental={isInstrumental}
+            onUploadLyrics={() => lyricsFileInputRef.current?.click()}
+            onAiTranscribe={handleAiTranscribe}
+            isAiTranscribing={isAiTranscribing}
+            aiProgress={aiProgress}
           />
 
           {/* 3. Footer Thống Kê & Spec Kỹ Thuật */}
           <div className="pt-4 border-t border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-slate-500 shrink-0">
             <div className="flex items-center gap-2">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>KINETIC LYRICS // LRCLIB SYNC</span>
+              <span>
+                {lyricsSource === 'file'
+                  ? 'KINETIC LYRICS // FILE .LRC SYNC'
+                  : lyricsSource === 'embedded'
+                  ? 'KINETIC LYRICS // ID3 EMBEDDED SYNC'
+                  : lyricsSource === 'ai-whisper'
+                  ? 'KINETIC LYRICS // AI WHISPER SYNC'
+                  : lyricsSource === 'lrclib'
+                  ? 'KINETIC LYRICS // LRCLIB API SYNC'
+                  : lyricsLines.length > 0
+                  ? 'KINETIC LYRICS // SYNCED'
+                  : 'KINETIC LYRICS // NO SYNCED LYRICS'}
+              </span>
             </div>
-            <span>DSP 44.1 KHZ STEREO</span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  playHapticClick();
+                  handleAiTranscribe();
+                }}
+                disabled={isAiTranscribing}
+                className="text-slate-400 hover:text-amber-300 transition-colors cursor-pointer flex items-center gap-1 hover:underline disabled:opacity-50"
+                title="Bóc lời bài hát trực tiếp bằng AI Whisper"
+              >
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span>AI Bóc Lời</span>
+              </button>
+              <span className="text-slate-600">•</span>
+              <button
+                type="button"
+                onClick={() => {
+                  playHapticClick();
+                  lyricsFileInputRef.current?.click();
+                }}
+                className="text-slate-400 hover:text-amber-300 transition-colors cursor-pointer flex items-center gap-1 hover:underline"
+                title="Tải tệp lời .lrc thủ công"
+              >
+                <FileText className="w-3 h-3 text-amber-400" />
+                <span>Nạp .LRC</span>
+              </button>
+              <span className="text-slate-600">•</span>
+              <span>DSP 44.1 KHZ</span>
+            </div>
           </div>
         </section>
 

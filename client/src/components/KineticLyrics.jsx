@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import gsap from 'gsap';
-import { Sparkles, Music, Loader2 } from 'lucide-react';
+import { Sparkles, Music, Loader2, FileText } from 'lucide-react';
 import { playHapticClick } from '../utils/soundEffects';
 
 /**
@@ -14,7 +14,11 @@ export default function KineticLyrics({
   onSeek = () => {},
   isLoading = false,
   ambientColors = null,
-  isInstrumental = false
+  isInstrumental = false,
+  onUploadLyrics = null,
+  onAiTranscribe = null,
+  isAiTranscribing = false,
+  aiProgress = { status: '', message: '', progress: 0 }
 }) {
   const containerRef = useRef(null);
   const lineRefs = useRef({});
@@ -57,7 +61,52 @@ export default function KineticLyrics({
     onSeek(time);
   };
 
-  // 1. Trạng thái đang tải lời từ Lrclib
+  // 1. Trạng thái AI Whisper đang phân tích & bóc lời
+  if (isAiTranscribing) {
+    return (
+      <div className="flex-1 w-full flex flex-col items-center justify-center text-center p-6 space-y-5 select-none relative overflow-hidden">
+        {/* Vầng sáng AI */}
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+          <div className="w-48 h-48 rounded-full bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-amber-500/10 blur-2xl animate-pulse" />
+        </div>
+
+        <div className="relative">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500/20 to-rose-500/20 border border-amber-400/30 flex items-center justify-center text-amber-300 shadow-xl shadow-amber-500/10 animate-bounce duration-1000">
+            <Sparkles className="w-7 h-7 text-amber-400 animate-spin duration-3000" />
+          </div>
+          <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 ring-4 ring-[#090a0f] animate-ping" />
+        </div>
+
+        <div className="space-y-1.5 z-10 max-w-sm">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] font-mono uppercase tracking-widest text-amber-300">
+            AI WHISPER ENGINE
+          </div>
+          <h3 className="text-sm sm:text-base font-bold text-white">
+            {aiProgress?.message || 'AI đang lắng nghe & bóc lời...'}
+          </h3>
+          <p className="text-[11px] text-slate-400 font-sans">
+            Mô hình OpenAI Whisper Tiny chạy trực tiếp trên trình duyệt Web Worker
+          </p>
+        </div>
+
+        {/* Thanh tiến trình % mượt mà */}
+        <div className="w-56 sm:w-64 space-y-1.5 z-10">
+          <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden p-0.5 border border-white/10">
+            <div
+              className="h-full bg-gradient-to-r from-amber-400 via-rose-400 to-amber-300 rounded-full transition-all duration-300 shadow-sm shadow-amber-400/50"
+              style={{ width: `${Math.max(8, Math.min(100, aiProgress?.progress || 0))}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[10px] font-mono text-slate-500">
+            <span>OFF-THREAD WORKER</span>
+            <span>{aiProgress?.progress || 0}%</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Trạng thái đang tải lời từ Lrclib
   if (isLoading) {
     return (
       <div className="flex-1 w-full flex flex-col items-center justify-center text-center p-6 space-y-3 select-none">
@@ -72,7 +121,7 @@ export default function KineticLyrics({
     );
   }
 
-  // 2. Trạng thái bản nhạc không lời hoặc không tìm thấy lời (Fallback Ambient Relaxation)
+  // 3. Trạng thái bản nhạc không lời hoặc không tìm thấy lời (Fallback Ambient Relaxation & AI Prompt)
   if (!lines || lines.length === 0 || isInstrumental) {
     return (
       <div className="flex-1 w-full flex flex-col items-center justify-center text-center p-6 space-y-4 select-none relative overflow-hidden">
@@ -94,8 +143,44 @@ export default function KineticLyrics({
               : 'Giai Điệu Thuần Khiết Của Đĩa Than'}
           </h3>
           <p className="text-xs text-slate-400 leading-relaxed font-sans">
-            Tận hưởng âm thanh ấm áp, mộc mạc của mâm đĩa than AuraVinyl với ánh sáng không gian thư thái.
+            Tận hưởng âm thanh ấm áp của mâm đĩa than AuraVinyl hoặc dùng AI Whisper để nghe và bóc lời tự động.
           </p>
+        </div>
+
+        {/* Cụm Action Nút Bóc Lời AI & Nạp Tệp .LRC */}
+        <div className="z-10 flex flex-col items-center gap-2.5 pt-1 w-full max-w-xs">
+          {onAiTranscribe && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                playHapticClick();
+                onAiTranscribe();
+              }}
+              className="w-full group inline-flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-2xl text-xs font-semibold bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-amber-500/20 hover:from-amber-500/30 hover:to-rose-500/30 text-amber-200 border border-amber-400/40 hover:border-amber-400/70 shadow-lg shadow-amber-500/10 cursor-pointer transition-all active:scale-95"
+            >
+              <Sparkles className="w-4 h-4 text-amber-400 group-hover:rotate-12 transition-transform" />
+              <div className="text-left">
+                <div className="font-bold">✨ AI Tự Động Bóc Lời</div>
+                <div className="text-[10px] text-amber-300/70 font-normal">Tự động nghe & canh mốc thời gian bằng Whisper AI</div>
+              </div>
+            </button>
+          )}
+
+          {onUploadLyrics && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                playHapticClick();
+                onUploadLyrics();
+              }}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.08] hover:border-white/20 transition-all cursor-pointer shadow-sm active:scale-95"
+            >
+              <FileText className="w-3.5 h-3.5 text-slate-400" />
+              <span>Tải file lời (.lrc)</span>
+            </button>
+          )}
         </div>
 
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.02] border border-white/[0.06] text-[10px] font-mono text-slate-500">
