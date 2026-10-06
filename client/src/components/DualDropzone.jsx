@@ -85,20 +85,20 @@ function SingleDropzone({
   const isIndigo = themeColor === 'indigo';
   const borderColor = isIndigo
     ? isDragOver
-      ? 'border-indigo-400 bg-indigo-950/40'
-      : 'border-indigo-500/30 hover:border-indigo-500/60 bg-indigo-950/10'
+      ? 'border-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/40'
+      : 'border-indigo-500/30 hover:border-indigo-500/60 bg-indigo-50/40 dark:bg-indigo-950/10'
     : isDragOver
-    ? 'border-emerald-400 bg-emerald-950/40'
-    : 'border-emerald-500/30 hover:border-emerald-500/60 bg-emerald-950/10';
+    ? 'border-emerald-400 bg-emerald-50/80 dark:bg-emerald-950/40'
+    : 'border-emerald-500/30 hover:border-emerald-500/60 bg-emerald-50/40 dark:bg-emerald-950/10';
 
-  const iconColor = isIndigo ? 'text-indigo-400 bg-indigo-500/10' : 'text-emerald-400 bg-emerald-500/10';
-  const badgeColor = isIndigo ? 'text-indigo-400 border-indigo-500/30' : 'text-emerald-400 border-emerald-500/30';
+  const iconColor = isIndigo ? 'text-indigo-500 dark:text-indigo-400 bg-indigo-500/10' : 'text-emerald-500 dark:text-emerald-400 bg-emerald-500/10';
+  const badgeColor = isIndigo ? 'text-indigo-500 dark:text-indigo-400 border-indigo-500/30' : 'text-emerald-500 dark:text-emerald-400 border-emerald-500/30';
 
   return (
     <div className="flex flex-col gap-2 flex-1 min-w-[280px]">
       <div className="flex items-center justify-between px-1">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-          <Icon className={`w-3.5 h-3.5 ${isIndigo ? 'text-indigo-400' : 'text-emerald-400'}`} />
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+          <Icon className={`w-3.5 h-3.5 ${isIndigo ? 'text-indigo-500 dark:text-indigo-400' : 'text-emerald-500 dark:text-emerald-400'}`} />
           {title}
         </span>
         <span className={`text-[10px] px-2 py-0.5 rounded-full border ${badgeColor} font-mono`}>
@@ -130,11 +130,11 @@ function SingleDropzone({
               <FileAudio className="w-7 h-7" />
             </div>
 
-            <p className="text-sm font-semibold text-slate-100 max-w-[220px] truncate" title={file.name}>
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 max-w-[220px] truncate" title={file.name}>
               {file.name}
             </p>
 
-            <span className="text-xs text-slate-400 mt-0.5 font-mono">
+            <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
               {formatFileSize(file.size)}
             </span>
 
@@ -146,7 +146,7 @@ function SingleDropzone({
                   onFileRemove();
                   if (inputRef.current) inputRef.current.value = '';
                 }}
-                className="mt-3 inline-flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 px-2.5 py-1 rounded-lg transition-colors border border-rose-500/20"
+                className="mt-3 inline-flex items-center gap-1 text-xs text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 hover:bg-rose-500/10 px-2.5 py-1 rounded-lg transition-colors border border-rose-500/20"
               >
                 <X className="w-3.5 h-3.5" />
                 <span>Gỡ bỏ tệp</span>
@@ -158,10 +158,10 @@ function SingleDropzone({
             <div className={`p-3 rounded-2xl ${iconColor} mb-3 shadow-inner`}>
               <UploadCloud className="w-7 h-7" />
             </div>
-            <p className="text-sm font-medium text-slate-200">
-              Kéo & thả file vào đây, hoặc <span className={isIndigo ? 'text-indigo-400 underline underline-offset-2' : 'text-emerald-400 underline underline-offset-2'}>chọn tệp</span>
+            <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+              Kéo & thả file vào đây, hoặc <span className={isIndigo ? 'text-indigo-600 dark:text-indigo-400 underline underline-offset-2' : 'text-emerald-600 dark:text-emerald-400 underline underline-offset-2'}>chọn tệp</span>
             </p>
-            <p className="text-xs text-slate-400 mt-1">Định dạng MP3 hoặc WAV (Tối đa 25MB)</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Định dạng MP3 hoặc WAV (Tối đa 25MB)</p>
           </div>
         )}
       </div>
@@ -273,11 +273,11 @@ export default function DualDropzone({ onJobCreated }) {
       )}
 
       {/* Khối Căn Chỉnh Độ Trễ Vocal (Offset Alignment Slider) */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 shadow-md space-y-3">
+      <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 shadow-md space-y-3 transition-colors">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+            <SlidersHorizontal className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-800 dark:text-slate-300">
               Căn Chỉnh Độ Trễ Vocal (Offset Alignment)
             </span>
           </div>
@@ -286,7 +286,7 @@ export default function DualDropzone({ onJobCreated }) {
               type="button"
               onClick={() => setVocalOffsetMs(0)}
               disabled={isUploading}
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-indigo-300 bg-slate-800/80 hover:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700/60 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 bg-white dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700/60 transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />
               <span>Đặt lại 0s</span>
@@ -295,22 +295,22 @@ export default function DualDropzone({ onJobCreated }) {
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-600 dark:text-slate-400">
             Dịch chuyển thời điểm bắt đầu giọng hát sớm (-) hoặc trễ (+) so với phách beat:
           </p>
-          <div className="font-mono text-xs font-semibold px-2.5 py-1 rounded-lg border inline-flex items-center justify-center self-start sm:self-auto">
+          <div className="font-mono text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 inline-flex items-center justify-center self-start sm:self-auto">
             {vocalOffsetMs > 0 && (
-              <span className="text-amber-400 border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded">
+              <span className="text-amber-500 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded">
                 +{ (vocalOffsetMs / 1000).toFixed(2) }s (Vocal vào trễ)
               </span>
             )}
             {vocalOffsetMs < 0 && (
-              <span className="text-sky-400 border-sky-500/30 bg-sky-500/10 px-2 py-0.5 rounded">
+              <span className="text-sky-500 dark:text-sky-400 border-sky-500/30 bg-sky-500/10 px-2 py-0.5 rounded">
                 { (vocalOffsetMs / 1000).toFixed(2) }s (Vocal vào sớm)
               </span>
             )}
             {vocalOffsetMs === 0 && (
-              <span className="text-slate-300 border-slate-700 bg-slate-800/50 px-2 py-0.5 rounded">
+              <span className="text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 bg-slate-200/50 dark:bg-slate-800/50 px-2 py-0.5 rounded">
                 0.00s (Mặc định - Chuẩn beat)
               </span>
             )}
@@ -326,7 +326,7 @@ export default function DualDropzone({ onJobCreated }) {
             value={vocalOffsetMs}
             onChange={(e) => setVocalOffsetMs(parseInt(e.target.value, 10))}
             disabled={isUploading}
-            className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <div className="flex justify-between text-[10px] font-mono text-slate-500 px-1 select-none">
             <span
