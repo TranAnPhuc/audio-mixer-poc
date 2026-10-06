@@ -1,1303 +1,528 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  AudioWaveform,
-  Zap,
-  SlidersHorizontal,
-  ArrowRight,
-  Github,
-  Gauge,
-  Layers,
-  ShieldCheck,
   Disc3,
-  Cpu,
-  Activity,
-  Maximize2,
-  Headphones,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
   Volume2,
   VolumeX,
+  Upload,
+  Music,
+  Maximize2,
   Sparkles,
-  ChevronDown,
+  Sliders,
   Radio,
-  Crosshair,
-  Compass,
-  Terminal
+  FileAudio
 } from 'lucide-react';
-import ThreeAudioVisualizer from '../components/ThreeAudioVisualizer';
-import ThemeToggle from '../components/ThemeToggle';
-import { useTheme } from '../context/ThemeContext';
+import { playHapticClick, playHoverBlip } from '../utils/soundEffects';
+import Turntable3D from '../components/Turntable3D';
 import {
-  AstronautChaos,
-  AstronautStemExtractor,
-  AstronautCalibrator,
-  AstronautWarpPilot
-} from '../components/AstronautCharacters';
+  connectAudioElement,
+  playNeedleDropEffect,
+  setVinylMuted
+} from '../utils/vinylAudioEngine';
 import {
-  playHapticClick,
-  playHoverBlip,
-  playStageSweep,
-  playWarpLaunch,
-  toggleSoundMute,
-  getIsSoundMuted,
-  subscribeSoundMute
-} from '../utils/soundEffects';
-
-// Đăng ký Plugin GSAP ScrollTrigger
-gsap.registerPlugin(ScrollTrigger);
+  parseAudioFileMetadata,
+  extractPaletteFromImage,
+  DEFAULT_PALETTE
+} from '../services/metadataService';
+import KineticLyrics from '../components/KineticLyrics';
+import { fetchSyncedLyrics } from '../services/lyricsService';
 
 /**
- * Custom Audio Reticle Cursor V2 (Tâm Ngắm Không Gian Vũ Trụ Riotters Drone)
- */
-function AudioReticleCursor() {
-  const cursorRef = useRef(null);
-  const dotRef = useRef(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const [isClicking, setIsClicking] = useState(false);
-
-  useEffect(() => {
-    // Chỉ kích hoạt trên thiết bị có chuột (pointer: fine)
-    if (window.matchMedia('(pointer: coarse)').matches) return;
-
-    const cursor = cursorRef.current;
-    const dot = dotRef.current;
-    if (!cursor || !dot) return;
-
-    const xTo = gsap.quickTo(cursor, 'x', { duration: 0.18, ease: 'power3' });
-    const yTo = gsap.quickTo(cursor, 'y', { duration: 0.18, ease: 'power3' });
-    const dotXTo = gsap.quickTo(dot, 'x', { duration: 0.05, ease: 'power2' });
-    const dotYTo = gsap.quickTo(dot, 'y', { duration: 0.05, ease: 'power2' });
-
-    const handlePointerMove = (e) => {
-      if (!isVisible) setIsVisible(true);
-      xTo(e.clientX);
-      yTo(e.clientY);
-      dotXTo(e.clientX);
-      dotYTo(e.clientY);
-    };
-
-    const handlePointerDown = () => setIsClicking(true);
-    const handlePointerUp = () => setIsClicking(false);
-    const handlePointerLeave = () => setIsVisible(false);
-
-    // Bắt sự kiện hover trên các phần tử tương tác
-    const handleMouseOver = (e) => {
-      const target = e.target;
-      if (
-        target.closest('a') ||
-        target.closest('button') ||
-        target.closest('[data-cursor-interactive]')
-      ) {
-        setIsHovered(true);
-      } else {
-        setIsHovered(false);
-      }
-    };
-
-    window.addEventListener('pointermove', handlePointerMove, { passive: true });
-    window.addEventListener('pointerdown', handlePointerDown);
-    window.addEventListener('pointerup', handlePointerUp);
-    document.addEventListener('mouseleave', handlePointerLeave);
-    document.addEventListener('mouseover', handleMouseOver);
-
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerdown', handlePointerDown);
-      window.removeEventListener('pointerup', handlePointerUp);
-      document.removeEventListener('mouseleave', handlePointerLeave);
-      document.removeEventListener('mouseover', handleMouseOver);
-    };
-  }, [isVisible]);
-
-  return (
-    <>
-      {/* Vòng ngắm ngoài (Outer Reticle Ring với xoay chậm liên tục) */}
-      <div
-        ref={cursorRef}
-        className={`fixed top-0 left-0 -ml-6 -mt-6 pointer-events-none z-[100] transition-opacity duration-300 ${
-          isVisible ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{ willChange: 'transform' }}
-      >
-        <div
-          className={`relative w-12 h-12 rounded-full border transition-all duration-200 flex items-center justify-center animate-[spin_20s_linear_infinite] ${
-            isHovered
-              ? 'scale-150 border-cyan-400 bg-cyan-500/15 shadow-xl shadow-cyan-500/30'
-              : 'scale-100 border-indigo-500/60 dark:border-indigo-400/60'
-          } ${isClicking ? 'scale-90 border-pink-500 bg-pink-500/25' : ''}`}
-        >
-          {/* Vạch chia độ góc tâm ngắm 4 phương */}
-          <span className="absolute -top-1.5 w-2 h-0.5 bg-indigo-400 dark:bg-indigo-300" />
-          <span className="absolute -bottom-1.5 w-2 h-0.5 bg-indigo-400 dark:bg-indigo-300" />
-          <span className="absolute -left-1.5 w-0.5 h-2 bg-indigo-400 dark:bg-indigo-300" />
-          <span className="absolute -right-1.5 w-0.5 h-2 bg-indigo-400 dark:bg-indigo-300" />
-
-          {/* Vòng tròn nội tiếp ngắm mục tiêu */}
-          <div
-            className={`w-6 h-6 rounded-full border border-dashed border-indigo-400/40 transition-transform ${
-              isHovered ? 'scale-125 border-cyan-300 animate-[spin_6s_linear_infinite_reverse]' : 'scale-100'
-            }`}
-          />
-        </div>
-      </div>
-
-      {/* Điểm laser trung tâm (Laser Center Dot) */}
-      <div
-        ref={dotRef}
-        className={`fixed top-0 left-0 -ml-1.5 -mt-1.5 pointer-events-none z-[100] transition-opacity duration-300 ${
-          isVisible ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{ willChange: 'transform' }}
-      >
-        <div
-          className={`w-3 h-3 rounded-full transition-transform duration-150 ${
-            isHovered
-              ? 'scale-125 bg-emerald-400 dot-glow-emerald ring-2 ring-emerald-300/50'
-              : 'scale-100 bg-indigo-500 dark:bg-indigo-400 dot-glow-cyan'
-          }`}
-        />
-      </div>
-    </>
-  );
-}
-
-/**
- * Trang Landing Page Điện Ảnh (Cinematic High-Tech Experience)
- * Lấy cảm hứng từ drone.riotters.com, kết hợp Three.js, GSAP ScrollTrigger và HUD Telemetry
+ * AuraVinyl — 3D Interactive Vinyl & Kinetic Lyrics Player
+ * Giao diện Dark Minimalist chuẩn phong cách nghệ thuật đĩa than hoài niệm
  */
 export default function LandingPage() {
-  const { isDark } = useTheme();
+  // Trạng thái phát nhạc
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(0.8);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [ambientColors, setAmbientColors] = useState(DEFAULT_PALETTE);
 
-  // Ref và State theo dõi tiến trình Scroll toàn trang (0.0 đến 1.0) cho Three.js & HUD
-  const scrollProgressRef = useRef(0);
-  const [scrollProgress, setScrollProgress] = useState(0);
+  // Trạng thái lời bài hát đồng bộ (Kinetic Synced Lyrics)
+  const [lyricsLines, setLyricsLines] = useState([]);
+  const [isLyricsLoading, setIsLyricsLoading] = useState(false);
+  const [isInstrumental, setIsInstrumental] = useState(false);
 
-  // Điều hướng và Trạng thái Âm thanh / Warp Transition
-  const navigate = useNavigate();
-  const [isSoundMuted, setIsSoundMuted] = useState(getIsSoundMuted());
-  const [isWarping, setIsWarping] = useState(false);
-  const lastStageRef = useRef(1);
-
-  // Refs cho các phần tử DOM GSAP
-  const heroRef = useRef(null);
-  const headlineLine1Ref = useRef(null);
-  const headlineLine2Ref = useRef(null);
-  const heroBadgeRef = useRef(null);
-  const heroDescRef = useRef(null);
-  const heroCtaRef = useRef(null);
-  const heroMetricsRef = useRef(null);
-
-  // Section Pinned Ref & Cards
-  const pinnedSectionRef = useRef(null);
-  const pinnedCard1Ref = useRef(null);
-  const pinnedCard2Ref = useRef(null);
-  const pinnedCard3Ref = useRef(null);
-  const pinnedPhaseIndicatorRef = useRef(null);
-  const pinnedProgressBarRef = useRef(null);
-
-  // Section Workflow Spine Line Ref
-  const workflowSectionRef = useRef(null);
-  const workflowSpineRef = useRef(null);
-
-  // State hiển thị tọa độ HUD giả lập thời gian thực & Tọa độ Parallax chuẩn hóa (-1 đến +1)
-  const [hudCoord, setHudCoord] = useState({ x: '130.00', y: '44.10' });
-  const [mouseNorm, setMouseNorm] = useState({ x: 0, y: 0 });
-  const [activePhase, setActivePhase] = useState(1);
-
-  // Dữ liệu viễn tưởng Jitter nhảy động (Matrix Code, Frequency, Packets)
-  const [telemetryJitter, setTelemetryJitter] = useState({
-    hexCode: '0x4F9B',
-    freqHz: 44100,
-    packets: 1024,
-    matrixHash: 'A7:9C:F1'
+  // Thông tin bài hát hiện tại
+  const [trackInfo, setTrackInfo] = useState({
+    title: 'Chưa có bản thu',
+    artist: 'Kéo thả file MP3 để phát đĩa than',
+    album: 'AuraVinyl Session',
+    fileName: '',
+    coverUrl: null
   });
 
-  // Tính toán định danh Phân đoạn và Thông số Flight Telemetry động
-  const stageNumber =
-    scrollProgress <= 0.25
-      ? 1
-      : scrollProgress <= 0.60
-      ? 2
-      : scrollProgress <= 0.85
-      ? 3
-      : 4;
+  const fileInputRef = useRef(null);
+  const audioRef = useRef(null);
+  const needleDropTimerRef = useRef(null);
 
-  const currentStage =
-    stageNumber === 1
-      ? 'STAGE 01: THE SOUND CHAOS'
-      : stageNumber === 2
-      ? 'STAGE 02: AI STEM EXTRACTION ENGINE'
-      : stageNumber === 3
-      ? 'STAGE 03: HARMONIC PRECISION SYNC'
-      : 'STAGE 04: HYPERDRIVE STUDIO LAUNCHPAD';
+  // Khởi động phát bài hát đồng bộ với động học hạ cần kim
+  const startPlayback = () => {
+    if (!audioRef.current || !audioRef.current.src) return;
 
-  const currentFov =
-    scrollProgress > 0.85
-      ? Math.round(58 + ((scrollProgress - 0.85) / 0.15) * 52)
-      : Math.round(45 + Math.min(scrollProgress / 0.85, 1) * 13);
+    // 1. Kết nối thẻ audio với Web Audio AnalyserNode
+    connectAudioElement(audioRef.current);
+    setIsPlaying(true);
 
-  const currentFlightStatus =
-    scrollProgress > 0.85
-      ? 'WARP_TUNNEL_ACTIVE'
-      : scrollProgress > 0.60
-      ? 'ORBIT_SWEEP'
-      : scrollProgress > 0.25
-      ? 'STEM_ANALYSIS'
-      : 'STATIONARY_SCAN';
+    // 2. Kích hoạt tiếng nổ lách tách và tiếng chạm kim lúc cần hạ (sau 800ms)
+    clearTimeout(needleDropTimerRef.current);
+    needleDropTimerRef.current = setTimeout(() => {
+      playNeedleDropEffect({ duration: 1.8 });
+    }, 800);
 
-  // Lắng nghe cập nhật trạng thái âm thanh toàn cục
-  useEffect(() => {
-    const unsubscribe = subscribeSoundMute((muted) => {
-      setIsSoundMuted(muted);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Spatial Audio Sweep khi chuyển qua stage mới
-  useEffect(() => {
-    if (lastStageRef.current !== stageNumber) {
-      playStageSweep(stageNumber);
-      lastStageRef.current = stageNumber;
-    }
-  }, [stageNumber]);
-
-  // Bộ kích hoạt cánh cổng Warp Launchpad vào Studio
-  const handleLaunchStudio = (e) => {
-    if (e) e.preventDefault();
-    if (isWarping) return;
-    playWarpLaunch();
-    setIsWarping(true);
+    // 3. Bắt đầu phát bài hát chính lúc kim đã tiếp xúc với rãnh đĩa (sau 1.2s)
     setTimeout(() => {
-      navigate('/studio');
-    }, 650);
+      if (audioRef.current) {
+        audioRef.current.play().catch(console.error);
+      }
+    }, 1200);
   };
 
-  useEffect(() => {
-    // Cập nhật tọa độ chuột giả lập trên HUD & Parallax chuẩn hóa
-    const handleMouseMove = (e) => {
-      const normX = ((e.clientX / window.innerWidth) * 100).toFixed(2);
-      const normY = ((e.clientY / window.innerHeight) * 100).toFixed(2);
-      setHudCoord({ x: normX, y: normY });
-      setMouseNorm({
-        x: (e.clientX / window.innerWidth) * 2 - 1,
-        y: (e.clientY / window.innerHeight) * 2 - 1
-      });
-    };
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+  const stopPlayback = () => {
+    clearTimeout(needleDropTimerRef.current);
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    setIsPlaying(false);
+  };
 
-    // Hiệu ứng Jitter giả lập nhịp đập xử lý số tín hiệu DSP (150ms)
-    const hexChars = '0123456789ABCDEF';
-    const jitterInterval = setInterval(() => {
-      const randHex = '0x' + Array.from({ length: 4 }, () => hexChars[Math.floor(Math.random() * 16)]).join('');
-      const randHash = Array.from({ length: 3 }, () => hexChars[Math.floor(Math.random() * 16)] + hexChars[Math.floor(Math.random() * 16)]).join(':');
-      const randFreq = 44100 + Math.floor(Math.random() * 24 - 12);
-      const randPackets = 1020 + Math.floor(Math.random() * 8);
-      setTelemetryJitter({
-        hexCode: randHex,
-        freqHz: randFreq,
-        packets: randPackets,
-        matrixHash: randHash
-      });
-    }, 150);
+  // Xử lý nạp file âm thanh & trích xuất Metadata ID3
+  const handleFileSelect = async (file) => {
+    if (!file || !file.type.includes('audio') && !file.name.match(/\.(mp3|wav|ogg|flac|m4a)$/i)) {
+      alert('Vui lòng chọn tệp âm thanh hợp lệ (.mp3, .wav, .ogg, .flac)!');
+      return;
+    }
 
-    // 1. Đồng bộ GSAP ScrollTrigger Toàn Trang với Three.js
-    const pageScrollTrigger = ScrollTrigger.create({
-      trigger: document.body,
-      start: 'top top',
-      end: 'bottom bottom',
-      scrub: 0.3,
-      onUpdate: (self) => {
-        scrollProgressRef.current = self.progress;
-        setScrollProgress(self.progress);
-      }
+    playHapticClick();
+    const objectUrl = URL.createObjectURL(file);
+
+    // 1. Trích xuất metadata ID3 tags & ảnh bìa album trực tiếp trên trình duyệt
+    const meta = await parseAudioFileMetadata(file);
+
+    setTrackInfo({
+      title: meta.title,
+      artist: meta.artist,
+      album: meta.album,
+      fileName: meta.fileName,
+      coverUrl: meta.coverUrl
     });
 
-    // 2. Cinematic Entrance cho Hero Section
-    const entranceTl = gsap.timeline({ defaults: { ease: 'power4.out' } });
-
-    entranceTl
-      .fromTo(
-        heroBadgeRef.current,
-        { opacity: 0, y: -20, scale: 0.95 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.8, delay: 0.1 }
-      )
-      .fromTo(
-        [headlineLine1Ref.current, headlineLine2Ref.current],
-        { opacity: 0, y: 50 },
-        { opacity: 1, y: 0, duration: 1.1, stagger: 0.2 },
-        '-=0.4'
-      )
-      .fromTo(
-        heroDescRef.current,
-        { opacity: 0, y: 30 },
-        { opacity: 1, y: 0, duration: 0.8 },
-        '-=0.6'
-      )
-      .fromTo(
-        heroCtaRef.current,
-        { opacity: 0, scale: 0.95, y: 20 },
-        { opacity: 1, scale: 1, y: 0, duration: 0.7 },
-        '-=0.5'
-      )
-      .fromTo(
-        heroMetricsRef.current,
-        { opacity: 0, y: 25 },
-        { opacity: 1, y: 0, duration: 0.8 },
-        '-=0.4'
-      );
-
-    // 3. Section Pinned: "Phẫu Thuật Lõi Hòa Âm" (Pinned Tech Breakdown)
-    if (pinnedSectionRef.current) {
-      const pinTrigger = ScrollTrigger.create({
-        trigger: pinnedSectionRef.current,
-        start: 'top top',
-        end: '+=2400',
-        pin: true,
-        scrub: 0.8,
-        onUpdate: (self) => {
-          const p = self.progress;
-          if (p < 0.33) {
-            setActivePhase(1);
-          } else if (p < 0.66) {
-            setActivePhase(2);
-          } else {
-            setActivePhase(3);
-          }
-
-          if (pinnedProgressBarRef.current) {
-            pinnedProgressBarRef.current.style.width = `${p * 100}%`;
-          }
-        }
-      });
-
-      // Timeline chuyển đổi 3 thẻ kính HUD
-      const pinnedTl = gsap.timeline({
-        scrollTrigger: {
-          trigger: pinnedSectionRef.current,
-          start: 'top top',
-          end: '+=2400',
-          scrub: 0.8
-        }
-      });
-
-      // Card 1 xuất hiện rồi rút lui
-      pinnedTl
-        .fromTo(
-          pinnedCard1Ref.current,
-          { opacity: 0, x: -100, scale: 0.9 },
-          { opacity: 1, x: 0, scale: 1, duration: 1 }
-        )
-        .to(pinnedCard1Ref.current, { opacity: 0, x: -60, scale: 0.95, duration: 0.8 }, '+=0.8')
-
-        // Card 2 xuất hiện từ bên phải rồi rút lui
-        .fromTo(
-          pinnedCard2Ref.current,
-          { opacity: 0, x: 100, scale: 0.9 },
-          { opacity: 1, x: 0, scale: 1, duration: 1 },
-          '-=0.2'
-        )
-        .to(pinnedCard2Ref.current, { opacity: 0, x: 60, scale: 0.95, duration: 0.8 }, '+=0.8')
-
-        // Card 3 xuất hiện từ dưới lên với độ phát sáng cao
-        .fromTo(
-          pinnedCard3Ref.current,
-          { opacity: 0, y: 80, scale: 0.9 },
-          { opacity: 1, y: 0, scale: 1, duration: 1 },
-          '-=0.2'
-        )
-        .to(pinnedCard3Ref.current, { opacity: 0.3, y: -20, duration: 0.6 }, '+=0.8');
+    // 2. Trích xuất bảng màu chủ đạo (Color Palette) từ ảnh bìa để đổi màu nền Ambient Aurora
+    if (meta.coverUrl) {
+      const palette = await extractPaletteFromImage(meta.coverUrl);
+      setAmbientColors(palette);
+    } else {
+      setAmbientColors(DEFAULT_PALETTE);
     }
 
-    // 4. Section Workflow: Vạch xương sống tiến trình (Spine Scroll Line)
-    if (workflowSectionRef.current && workflowSpineRef.current) {
-      gsap.fromTo(
-        workflowSpineRef.current,
-        { scaleY: 0 },
-        {
-          scaleY: 1,
-          ease: 'none',
-          scrollTrigger: {
-            trigger: workflowSectionRef.current,
-            start: 'top 70%',
-            end: 'bottom 85%',
-            scrub: true
-          }
+    // 3. Tải lời bài hát đồng bộ từ Lrclib API (Kinetic Synced Lyrics)
+    setIsLyricsLoading(true);
+    setLyricsLines([]);
+    setIsInstrumental(false);
+
+    fetchSyncedLyrics({
+      title: meta.title,
+      artist: meta.artist,
+      album: meta.album,
+      duration: 0
+    })
+      .then((lyricsData) => {
+        setIsLyricsLoading(false);
+        if (lyricsData && lyricsData.lines && lyricsData.lines.length > 0) {
+          setLyricsLines(lyricsData.lines);
+          setIsInstrumental(false);
+        } else {
+          setLyricsLines([]);
+          setIsInstrumental(Boolean(lyricsData?.instrumental));
         }
-      );
+      })
+      .catch((err) => {
+        console.warn('Lỗi tải lời bài hát:', err);
+        setIsLyricsLoading(false);
+        setLyricsLines([]);
+      });
+
+    // 4. Nạp audio và tự động kích hoạt hạ cần kim, phát đĩa than
+    if (audioRef.current) {
+      audioRef.current.src = objectUrl;
+      audioRef.current.load();
+      audioRef.current.onloadedmetadata = () => {
+        setDuration(audioRef.current.duration || 0);
+      };
+      startPlayback();
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  // Toggle Play / Pause
+  const togglePlay = () => {
+    playHapticClick();
+    if (!audioRef.current || !audioRef.current.src) {
+      fileInputRef.current?.click();
+      return;
     }
 
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      clearInterval(jitterInterval);
-      pageScrollTrigger.kill();
-      ScrollTrigger.getAll().forEach((t) => t.kill());
-    };
-  }, []);
+    if (isPlaying) {
+      stopPlayback();
+    } else {
+      startPlayback();
+    }
+  };
 
-  const scrollToPinnedSection = () => {
-    pinnedSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // Cập nhật thời gian phát
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  // Tua nhạc (Timeline Scrubber hoặc Click-to-Seek từ câu hát KineticLyrics)
+  const handleSeek = (timeOrEvent) => {
+    let seekTime = 0;
+    if (typeof timeOrEvent === 'number') {
+      seekTime = timeOrEvent;
+    } else if (timeOrEvent && timeOrEvent.target) {
+      seekTime = parseFloat(timeOrEvent.target.value);
+    }
+    setCurrentTime(seekTime);
+    if (audioRef.current) {
+      audioRef.current.currentTime = seekTime;
+    }
+  };
+
+  // Điều chỉnh âm lượng
+  const handleVolumeChange = (e) => {
+    const val = parseFloat(e.target.value);
+    setVolume(val);
+    if (audioRef.current) {
+      audioRef.current.volume = val;
+    }
+    if (val === 0) {
+      setIsMuted(true);
+      setVinylMuted(true);
+    } else {
+      setIsMuted(false);
+      setVinylMuted(false);
+    }
+  };
+
+  // Toggle Mute
+  const toggleMute = () => {
+    playHapticClick();
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    setVinylMuted(nextMuted);
+    if (audioRef.current) {
+      audioRef.current.volume = nextMuted ? 0 : (volume > 0 ? volume : 0.8);
+    }
+  };
+
+  // Format thời gian mm:ss
+  const formatTime = (secs) => {
+    if (isNaN(secs) || secs < 0) return '00:00';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300 overflow-x-hidden selection:bg-indigo-500 selection:text-white font-sans">
-      {/* 0. Custom Reticle Cursor V2 */}
-      <AudioReticleCursor />
+    <div className="relative w-full min-h-screen bg-[#090a0f] text-slate-100 flex flex-col justify-between selection:bg-amber-500/30 selection:text-amber-200 overflow-x-hidden font-sans">
+      {/* Thẻ audio ẩn phục vụ phát âm thanh */}
+      <audio
+        ref={audioRef}
+        onTimeUpdate={handleTimeUpdate}
+        onEnded={stopPlayback}
+        className="hidden"
+      />
 
-      {/* 1. SÂN KHẤU 3D THREE.JS TOÀN MÀN HÌNH (Persistent Cinematic WebGL Stage V2) */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <ThreeAudioVisualizer
-          scrollProgress={scrollProgress}
-          scrollProgressRef={scrollProgressRef}
+      {/* Input tệp ẩn */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="audio/*"
+        onChange={(e) => e.target.files && handleFileSelect(e.target.files[0])}
+        className="hidden"
+      />
+
+      {/* Ánh sáng Aurora nền biến đổi màu theo ảnh bìa album (Dynamic Ambient Aurora) */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden transition-all duration-1000">
+        <div
+          className={`absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] rounded-full blur-[140px] opacity-25 transition-all duration-1000 ${
+            isPlaying ? 'scale-110' : 'scale-95'
+          }`}
+          style={{ backgroundColor: ambientColors.primaryColor }}
+        />
+        <div
+          className={`absolute bottom-1/3 right-1/4 w-[550px] h-[550px] rounded-full blur-[150px] opacity-20 transition-all duration-1000 ${
+            isPlaying ? 'scale-105' : 'scale-90'
+          }`}
+          style={{ backgroundColor: ambientColors.secondaryColor }}
         />
       </div>
 
-      {/* Nền Gradient mờ dịu & Lưới Ma Trận HUD */}
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-indigo-200/30 via-transparent to-transparent dark:from-indigo-950/40 dark:via-transparent dark:to-transparent z-0 pointer-events-none" />
-      <div className="fixed inset-0 hud-matrix-grid z-0 pointer-events-none opacity-40 dark:opacity-60" />
-
-      {/* 2. KHUNG VIỀN HUD TELEMETRY LỚP PHỦ TOÀN CẢNH (Riotters Drone HUD Overlay V2 - 4-CORNER TELEMETRY) */}
-      <div className="fixed inset-0 z-40 pointer-events-none select-none p-3 sm:p-5 flex flex-col justify-between">
-        {/* TẦNG TRÊN: HUD TELEMETRY MATRIX (TRÁI) & 360° AUDIO RADAR SONAR (PHẢI) */}
-        <div className="flex justify-between items-start pt-16 sm:pt-14 gap-4">
-          {/* GÓC TRÊN TRÁI: HUD TELEMETRY MATRIX */}
-          <div className="flex flex-col gap-1.5 p-3 rounded-2xl bg-white/85 dark:bg-slate-950/85 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md shadow-2xl max-w-xs text-left">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800/80 pb-1.5 text-[10px]">
-              <div className="flex items-center gap-1.5 text-indigo-500 dark:text-indigo-400 font-bold tracking-wider font-mono">
-                <Activity className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
-                <span>SYS.TELEMETRY // V2.0</span>
-              </div>
-              <span className="font-mono text-[9px] text-emerald-500 dark:text-emerald-400 font-semibold px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
-                LIVE_DSP
-              </span>
-            </div>
-
-            {/* Mouse POS & Clock */}
-            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-700 dark:text-slate-300">
-              <div>
-                <span className="text-slate-400 dark:text-slate-500 block text-[9px]">CURSOR COORD:</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-bold">X:{hudCoord.x} Y:{hudCoord.y}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 dark:text-slate-500 block text-[9px]">CLOCK RATE:</span>
-                <span className="text-cyan-600 dark:text-cyan-400 font-bold">{telemetryJitter.freqHz} HZ</span>
-              </div>
-            </div>
-
-            {/* Stage-Driven Telemetry Matrix */}
-            <div className="p-2 rounded-xl bg-slate-100/80 dark:bg-slate-900/90 border border-indigo-500/20 text-[10px] font-mono space-y-0.5">
-              {scrollProgress <= 0.25 && (
-                <>
-                  <div className="flex justify-between text-rose-500 dark:text-rose-400 font-semibold">
-                    <span>ALIGNMENT:</span>
-                    <span>ERROR (DRIFT +14ms)</span>
-                  </div>
-                  <div className="flex justify-between text-amber-500 dark:text-amber-400">
-                    <span>BPM STATUS:</span>
-                    <span>UNSYNCED</span>
-                  </div>
-                  <div className="flex justify-between text-purple-600 dark:text-purple-300">
-                    <span>KEY HARMONY:</span>
-                    <span>CLASHING</span>
-                  </div>
-                  <div className="flex justify-between text-slate-500 dark:text-slate-400">
-                    <span>NOISE FLOOR:</span>
-                    <span>HIGH (-12.4dB)</span>
-                  </div>
-                </>
-              )}
-              {scrollProgress > 0.25 && scrollProgress <= 0.60 && (
-                <>
-                  <div className="flex justify-between text-purple-600 dark:text-purple-400 font-semibold">
-                    <span>AI_EXTRACTION:</span>
-                    <span>ACTIVE (DEMUCS)</span>
-                  </div>
-                  <div className="flex justify-between text-cyan-600 dark:text-cyan-300">
-                    <span>STEMS ISOLATED:</span>
-                    <span>VOCALS + BEAT</span>
-                  </div>
-                  <div className="flex justify-between text-amber-500 dark:text-amber-300">
-                    <span>DEMUCS LOAD:</span>
-                    <span>88.4% // 4-STEM</span>
-                  </div>
-                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
-                    <span>SPECTRAL FLUX:</span>
-                    <span>RECONSTRUCTED</span>
-                  </div>
-                </>
-              )}
-              {scrollProgress > 0.60 && scrollProgress <= 0.85 && (
-                <>
-                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
-                    <span>ALIGNMENT:</span>
-                    <span>CALIBRATED (0 DRIFT)</span>
-                  </div>
-                  <div className="flex justify-between text-cyan-600 dark:text-cyan-300">
-                    <span>BPM SYNC:</span>
-                    <span>128 ⇄ 128 (MATCHED)</span>
-                  </div>
-                  <div className="flex justify-between text-purple-600 dark:text-purple-300">
-                    <span>KEY HARMONY:</span>
-                    <span>8B ⇄ 6A (HARMONIZED)</span>
-                  </div>
-                  <div className="flex justify-between text-indigo-600 dark:text-indigo-300">
-                    <span>PITCH SHIFT:</span>
-                    <span>±0 SEMITONES</span>
-                  </div>
-                </>
-              )}
-              {scrollProgress > 0.85 && (
-                <>
-                  <div className="flex justify-between text-cyan-600 dark:text-cyan-300 font-bold">
-                    <span>WARP_DRIVE:</span>
-                    <span>READY (VECTOR 44.1K)</span>
-                  </div>
-                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
-                    <span>CALIBRATION:</span>
-                    <span>100% COMPLETE</span>
-                  </div>
-                  <div className="flex justify-between text-purple-600 dark:text-purple-300">
-                    <span>PORTAL GATE:</span>
-                    <span>HYPERDRIVE ACTIVE</span>
-                  </div>
-                  <div className="flex justify-between text-amber-500 dark:text-amber-300">
-                    <span>STUDIO LAUNCH:</span>
-                    <span>PRIMED FOR MASHUP</span>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Jitter Micro-Metrics */}
-            <div className="flex items-center justify-between text-[9px] font-mono text-slate-400 dark:text-slate-500 pt-0.5">
-              <span>HEX: {telemetryJitter.hexCode}</span>
-              <span>HASH: {telemetryJitter.matrixHash}</span>
-              <span className="text-slate-600 dark:text-slate-400">BUF: {telemetryJitter.packets}</span>
-            </div>
+      {/* 1. TOP BAR: Header Tối Giản Sang Trọng */}
+      <header className="relative z-20 w-full h-16 border-b border-white/[0.06] bg-[#090a0f]/80 backdrop-blur-md px-4 sm:px-8 flex items-center justify-between">
+        {/* Logo AuraVinyl */}
+        <div className="flex items-center gap-3">
+          <div className="relative w-9 h-9 rounded-full bg-gradient-to-tr from-amber-500/20 to-rose-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/10">
+            <Disc3 className={`w-5 h-5 ${isPlaying ? 'animate-[spin_4s_linear_infinite]' : ''}`} />
           </div>
-
-          {/* GÓC TRÊN PHẢI: AUDIO RADAR & 360° SONAR DISPLAY */}
-          <div className="flex flex-col items-end gap-1.5 p-3 rounded-2xl bg-white/85 dark:bg-slate-950/85 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md shadow-2xl max-w-xs text-right">
-            {/* Header */}
-            <div className="w-full flex items-center justify-between border-b border-slate-200 dark:border-slate-800/80 pb-1.5 text-[10px]">
-              <span className="font-mono text-[9px] text-cyan-600 dark:text-cyan-400 font-semibold px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20">
-                SECTOR SCAN [COSMIC_STUDIO]
+          <div>
+            <h1 className="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
+              <span>AuraVinyl</span>
+              <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/[0.06] text-amber-300/80 border border-white/[0.08]">
+                3D PLAYER
               </span>
-              <div className="flex items-center gap-1.5 text-cyan-500 dark:text-cyan-400 font-bold tracking-wider font-mono">
-                <span>360° SONAR RADAR</span>
-                <Disc3 className="w-3.5 h-3.5 text-cyan-500 animate-spin" />
-              </div>
-            </div>
-
-            {/* Radar Screen SVG */}
-            <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center my-0.5">
-              <svg className="w-full h-full" viewBox="0 0 110 110">
-                {/* Vòng tròn nền */}
-                <circle cx="55" cy="55" r="50" fill="#030712" stroke="#1e293b" strokeWidth="1.5" />
-                {/* Vòng tròn đồng tâm */}
-                <circle cx="55" cy="55" r="38" fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="3 3" />
-                <circle cx="55" cy="55" r="24" fill="none" stroke="#334155" strokeWidth="1" />
-                <circle cx="55" cy="55" r="10" fill="none" stroke="#475569" strokeWidth="1" />
-
-                {/* Trục chữ thập */}
-                <line x1="5" y1="55" x2="105" y2="55" stroke="#1e293b" strokeWidth="1" />
-                <line x1="55" y1="5" x2="55" y2="105" stroke="#1e293b" strokeWidth="1" />
-
-                {/* Sonar Pulse Ping Ring */}
-                <circle
-                  cx="55"
-                  cy="55"
-                  r="32"
-                  fill="none"
-                  stroke="#06b6d4"
-                  strokeWidth="1.5"
-                  className="animate-radar-ping origin-center"
-                />
-
-                {/* Tia laser quét 360 độ liên tục */}
-                <line
-                  x1="55"
-                  y1="55"
-                  x2="55"
-                  y2="5"
-                  stroke="url(#radar-beam-grad)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  className="animate-radar-sweep origin-[55px_55px]"
-                />
-
-                {/* Điểm nhận diện Track A (Vocal - Indigo) */}
-                <circle cx="76" cy="36" r="3.5" fill="#6366f1" className="animate-pulse" />
-                <circle cx="76" cy="36" r="6" fill="none" stroke="#6366f1" strokeWidth="0.8" opacity="0.6" />
-
-                {/* Điểm nhận diện Track B (Beat - Emerald) */}
-                <circle cx="38" cy="74" r="3.5" fill="#10b981" className="animate-pulse" />
-                <circle cx="38" cy="74" r="6" fill="none" stroke="#10b981" strokeWidth="0.8" opacity="0.6" />
-
-                <defs>
-                  <linearGradient id="radar-beam-grad" x1="0%" y1="100%" x2="0%" y2="0%">
-                    <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.2" />
-                    <stop offset="100%" stopColor="#06b6d4" stopOpacity="1" />
-                  </linearGradient>
-                </defs>
-              </svg>
-            </div>
-
-            {/* Dải Equalizer Onsets nhảy sóng */}
-            <div className="w-full flex items-center justify-between text-[9px] font-mono text-slate-500 dark:text-slate-400">
-              <span>FREQ: 20Hz - 20kHz</span>
-              <div className="flex items-end gap-1 h-3.5">
-                <span className="w-1 bg-indigo-500 rounded-full h-2 animate-pulse" />
-                <span className="w-1 bg-cyan-400 rounded-full h-3.5 animate-pulse" />
-                <span className="w-1 bg-emerald-400 rounded-full h-2.5 animate-pulse" />
-                <span className="w-1 bg-purple-500 rounded-full h-1.5 animate-pulse" />
-                <span className="w-1 bg-pink-500 rounded-full h-3 animate-pulse" />
-              </div>
-            </div>
-
-            {/* Radar status */}
-            <div className="text-[9px] font-mono text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-800/80 pt-1 w-full flex justify-between">
-              <span>CALIBRATION: ONLINE</span>
-              <span className="text-emerald-500 dark:text-emerald-400 font-bold">LOCKED</span>
-            </div>
-          </div>
-        </div>
-
-        {/* CÁC DẤU CHỮ THẬP CĂN GÓC HUD CHUẨN XÁC */}
-        <div className="absolute top-8 left-8 text-slate-400 dark:text-slate-700 font-mono text-xs">+</div>
-        <div className="absolute top-8 right-8 text-slate-400 dark:text-slate-700 font-mono text-xs">+</div>
-        <div className="absolute bottom-8 left-8 text-slate-400 dark:text-slate-700 font-mono text-xs">+</div>
-        <div className="absolute bottom-8 right-8 text-slate-400 dark:text-slate-700 font-mono text-xs">+</div>
-
-        {/* TẦNG DƯỚI: STAGE ANNOTATION & MISSION PROGRESS (TRÁI) & PROGRESSION SCORER (PHẢI) */}
-        <div className="flex flex-col sm:flex-row justify-between items-end gap-4 pb-2">
-          {/* GÓC DƯỚI TRÁI: STAGE ANNOTATION & MISSION PROGRESS */}
-          <div className="flex flex-col gap-2 p-3 sm:p-3.5 rounded-2xl bg-white/85 dark:bg-slate-950/85 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md shadow-2xl max-w-sm text-left">
-            {/* Milestone Indicators */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              {[
-                { id: 1, label: '01', name: 'CHAOS' },
-                { id: 2, label: '02', name: 'STEMS' },
-                { id: 3, label: '03', name: 'SYNC' },
-                { id: 4, label: '04', name: 'WARP' }
-              ].map((m) => {
-                const active =
-                  (m.id === 1 && scrollProgress <= 0.25) ||
-                  (m.id === 2 && scrollProgress > 0.25 && scrollProgress <= 0.60) ||
-                  (m.id === 3 && scrollProgress > 0.60 && scrollProgress <= 0.85) ||
-                  (m.id === 4 && scrollProgress > 0.85);
-
-                return (
-                  <div
-                    key={m.id}
-                    className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-lg font-mono text-[9px] border transition-all duration-300 ${
-                      active
-                        ? 'bg-cyan-500/15 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border-cyan-500/50 dark:border-cyan-400 shadow-md shadow-cyan-500/20 font-bold'
-                        : 'bg-slate-100 dark:bg-slate-900/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-cyan-500 animate-ping' : 'bg-slate-400 dark:bg-slate-600'}`} />
-                    <span>{m.label} {m.name}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Song ngữ Anh - Việt */}
-            <div>
-              <span className="text-[9px] text-cyan-600 dark:text-cyan-400 uppercase font-mono font-bold tracking-wider block">
-                {currentStage}
-              </span>
-              <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100">
-                {scrollProgress <= 0.25
-                  ? 'Sự Hỗn Loạn Của Âm Thanh (The Sound Chaos)'
-                  : scrollProgress <= 0.60
-                  ? 'Cỗ Máy Bóc Tách Thân Âm AI (AI Demucs Extraction)'
-                  : scrollProgress <= 0.85
-                  ? 'Phép Màu Đồng Bộ Phách & Tông (Harmonic Calibration)'
-                  : 'Cổng Khởi Chạy Studio Vũ Trụ (Studio Warp Portal)'}
-              </h4>
-            </div>
-
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed font-sans hidden sm:block">
-              {scrollProgress <= 0.25
-                ? 'Hai bản thu âm với phách nhịp và cao độ phân tán. Hệ thống chuẩn bị nạp dữ liệu để phân tích đạo hàm phổ.'
-                : scrollProgress <= 0.60
-                ? 'Đội kỹ sư AI Demucs đang chia tách sóng âm thành 2 dải tần tinh khiết: Clean Vocals và Pure Instrumental.'
-                : scrollProgress <= 0.85
-                ? 'Thuật toán WSOLA và vòng tròn Camelot Wheel căn khớp tuyệt đối nhịp điệu và cao độ mà không biến dạng giọng ca.'
-                : 'Bản phối hoàn tất. Hệ thống kích hoạt cổng Warp siêu không gian mời bạn bước vào Studio.'}
+            </h1>
+            <p className="text-[10px] font-mono text-slate-500 tracking-wider">
+              KINETIC LYRICS & TURNTABLE
             </p>
           </div>
-
-          {/* GÓC DƯỚI PHẢI: PROGRESSION RULER & MASTERING SPEC */}
-          <div className="flex flex-col items-end gap-1.5 p-3 sm:p-3.5 rounded-2xl bg-white/85 dark:bg-slate-950/85 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md shadow-2xl max-w-xs text-right">
-            {/* Horizontal Scrubber Ruler */}
-            <div className="w-full space-y-1">
-              <div className="flex justify-between items-center text-[10px] font-mono">
-                <span className="text-slate-400 dark:text-slate-500">MISSION SCROLLER:</span>
-                <span className="text-purple-600 dark:text-purple-400 font-bold">{(scrollProgress * 100).toFixed(0)}% SCROLLED</span>
-              </div>
-              <div className="w-40 sm:w-48 h-1.5 bg-slate-200 dark:bg-slate-900 rounded-full overflow-hidden border border-slate-300/60 dark:border-slate-800">
-                <div
-                  className="h-full bg-gradient-to-r from-indigo-500 via-cyan-400 to-pink-500 rounded-full transition-all duration-75"
-                  style={{ width: `${Math.max(5, scrollProgress * 100)}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Timecode & Master Specs */}
-            <div className="text-[10px] font-mono text-slate-600 dark:text-slate-400 flex items-center gap-2">
-              <span>TIMECODE: 00:00:{Math.min(59, Math.round(scrollProgress * 59)).toString().padStart(2, '0')}</span>
-              <span className="text-slate-300 dark:text-slate-600">|</span>
-              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">320 KBPS CBR</span>
-            </div>
-
-            <div className="text-[9px] font-mono text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>SPEC: 44.1KHZ STEREO // TRUE_PEAK -0.45dBFS</span>
-            </div>
-          </div>
         </div>
-      </div>
 
-      {/* 3. THANH ĐIỀU HƯỚNG TRÊN CÙNG (Cinematic Top Bar) */}
-      <header className="fixed top-0 left-0 right-0 z-40 backdrop-blur-xl bg-white/70 dark:bg-slate-950/70 border-b border-slate-200/80 dark:border-slate-800/80 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          {/* Logo Brand */}
-          <Link
-            to="/"
-            onClick={playHapticClick}
+        {/* Trạng thái đĩa than ở giữa */}
+        <div className="hidden md:flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.03] border border-white/[0.06] text-[11px] font-mono text-slate-400">
+          <span className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
+          <span>{isPlaying ? 'TURNTABLE ROTATING // 33⅓ RPM' : 'TURNTABLE STANDBY // READY'}</span>
+        </div>
+
+        {/* Cụm Action Nút Tải Lên & Thông Tin */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              playHapticClick();
+              fileInputRef.current?.click();
+            }}
             onMouseEnter={playHoverBlip}
-            className="flex items-center gap-3 group"
-            data-cursor-interactive="true"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium bg-white/[0.05] hover:bg-white/[0.09] text-slate-200 border border-white/[0.08] hover:border-amber-400/30 transition-all cursor-pointer"
           >
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-500 to-emerald-400 text-white shadow-lg shadow-indigo-500/25 group-hover:scale-105 transition-transform">
-              <AudioWaveform className="w-5 h-5 font-black" />
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="font-extrabold text-sm sm:text-base tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-emerald-600 dark:from-indigo-300 dark:via-purple-200 dark:to-emerald-300 bg-clip-text text-transparent">
-                Audio Mashup Studio
-              </span>
-              <span className="text-[10px] text-slate-500 font-mono tracking-wider">
-                CORE AUDIO ENGINE v2.0
-              </span>
-            </div>
-          </Link>
-
-          {/* Controls & Nút Vào Studio */}
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>FFmpeg DSP Ready</span>
-            </div>
-
-            {/* Nút Bật / Tắt Hiệu Ứng Âm Thanh Web Audio */}
-            <button
-              type="button"
-              onClick={() => {
-                toggleSoundMute();
-                playHapticClick();
-              }}
-              onMouseEnter={playHoverBlip}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900/80 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 transition-colors flex items-center justify-center cursor-pointer"
-              title={isSoundMuted ? 'Bật âm thanh hiệu ứng (Muted)' : 'Tắt âm thanh hiệu ứng (Active)'}
-              data-cursor-interactive="true"
-            >
-              {isSoundMuted ? (
-                <VolumeX className="w-4 h-4 text-rose-500" />
-              ) : (
-                <Volume2 className="w-4 h-4 text-emerald-500 animate-pulse" />
-              )}
-            </button>
-
-            {/* Nút Chuyển Đổi Theme Sáng / Tối */}
-            <ThemeToggle />
-
-            {/* GitHub Link */}
-            <a
-              href="https://github.com/TranAnPhuc/audio-mixer-poc"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={playHapticClick}
-              onMouseEnter={playHoverBlip}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900/80 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 transition-colors"
-              title="Xem mã nguồn trên GitHub"
-              data-cursor-interactive="true"
-            >
-              <Github className="w-4 h-4" />
-            </a>
-
-            {/* CTA Button vào Studio */}
-            <button
-              type="button"
-              onClick={handleLaunchStudio}
-              onMouseEnter={playHoverBlip}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-[1.03] active:scale-[0.98] transition-all cursor-pointer"
-              data-cursor-interactive="true"
-            >
-              <Zap className="w-3.5 h-3.5 fill-current" />
-              <span>Vào Studio</span>
-            </button>
-          </div>
+            <Upload className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">Chọn File Nhạc</span>
+          </button>
         </div>
       </header>
 
-      {/* 4. HERO SECTION - GIAI ĐOẠN 1 (Stage 1: The Sound Chaos & High-Tech Entrance) */}
-      <section
-        id="stage-1-hero"
-        data-stage="1"
-        ref={heroRef}
-        className="relative z-10 w-full min-h-screen flex items-center justify-center pt-24 pb-16 px-4 sm:px-6 max-w-7xl mx-auto"
-      >
-        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          {/* CỘT TRÁI: Cinematic Typography & Call-to-action */}
-          <div className="lg:col-span-7 flex flex-col items-start text-left space-y-6">
-            {/* Tagline Badge */}
-            <div
-              ref={heroBadgeRef}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-600 dark:text-indigo-300 text-xs font-semibold shadow-inner font-mono"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span className="tracking-wider uppercase text-[11px]">
-                NEXT-GEN WEB AUDIO MASHUP STUDIO // TELEMETRY LINKED
-              </span>
-            </div>
+      {/* 2. MAIN PLAYER STAGE: Khung Layout 2 Cột (Mâm Đĩa Than 3D & Lời Bài Hát Kinetic) */}
+      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row items-center gap-8 lg:gap-12 min-h-0">
+        
+        {/* CỘT TRÁI: Khu Vực Mâm Đĩa Than 3D & Dropzone */}
+        <section
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          className={`flex-1 w-full h-[540px] lg:h-[600px] rounded-3xl bg-white/[0.02] border transition-all duration-300 flex flex-col items-center justify-center p-6 relative overflow-hidden group ${
+            isDragging
+              ? 'border-amber-400/60 bg-amber-500/[0.04] shadow-2xl shadow-amber-500/10'
+              : 'border-white/[0.06] hover:border-white/[0.12]'
+          }`}
+        >
+          {/* Mâm Đĩa Than 3D Tương Tác (Three.js WebGL Turntable) */}
+          <Turntable3D isPlaying={isPlaying} coverUrl={trackInfo?.coverUrl} ambientColors={ambientColors} />
 
-            {/* Headline Lớn với GSAP Stagger */}
-            <div className="space-y-1">
-              <h1
-                ref={headlineLine1Ref}
-                className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.08] text-slate-900 dark:text-slate-100"
-              >
-                Hòa Âm Kỹ Thuật Số.
-              </h1>
-              <h1
-                ref={headlineLine2Ref}
-                className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.08] bg-gradient-to-r from-indigo-600 via-purple-600 to-emerald-500 dark:from-indigo-400 dark:via-purple-300 dark:to-emerald-400 bg-clip-text text-transparent"
-              >
-                Đồng Bộ Phách Nhịp Tức Thì.
-              </h1>
-            </div>
-
-            {/* Mô tả giải pháp */}
-            <p
-              ref={heroDescRef}
-              className="text-slate-600 dark:text-slate-300 text-sm sm:text-base max-w-xl leading-relaxed"
-            >
-              Tự động phân tích nhịp độ Onset PCM, căn chỉnh phách bằng thao tác kéo thả trực tiếp trên
-              sóng âm đa tầng Mini-DAW và render bản phối chuẩn phòng thu 44.1kHz / 320kbps CBR ngay trên
-              trình duyệt với độ trễ bằng 0.
-            </p>
-
-            {/* Cụm Nút CTA */}
-            <div
-              ref={heroCtaRef}
-              className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto pt-2"
-            >
-              <button
-                type="button"
-                onClick={handleLaunchStudio}
-                onMouseEnter={playHoverBlip}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-sm font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-[1.03] active:scale-[0.98] transition-all cursor-pointer"
-                data-cursor-interactive="true"
-              >
-                <span>Khám Phá Studio Ngay</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  playHapticClick();
-                  scrollToPinnedSection();
-                }}
-                onMouseEnter={playHoverBlip}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl text-sm font-semibold bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer backdrop-blur-md shadow-sm"
-                data-cursor-interactive="true"
-              >
-                <SlidersHorizontal className="w-4 h-4 text-indigo-500" />
-                <span>Phẫu Thuật Lõi Hòa Âm</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-            </div>
-
-            {/* Micro-Metrics Bar */}
-            <div
-              ref={heroMetricsRef}
-              className="pt-6 border-t border-slate-200/80 dark:border-slate-800/80 grid grid-cols-3 gap-4 w-full max-w-lg font-mono text-left"
-            >
-              <div className="p-3 rounded-2xl bg-white/40 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 backdrop-blur-sm">
-                <span className="text-indigo-600 dark:text-indigo-400 font-bold text-base block">0 Latency</span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">Web Audio Sync</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-white/40 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 backdrop-blur-sm">
-                <span className="text-emerald-600 dark:text-emerald-400 font-bold text-base block">WSOLA DSP</span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">Pitch Preserved</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-white/40 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 backdrop-blur-sm">
-                <span className="text-purple-600 dark:text-purple-400 font-bold text-base block">320 kbps</span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">CBR Master Out</span>
-              </div>
-            </div>
-          </div>
-
-          {/* CỘT PHẢI: Không gian trống cho Quả Cầu 3D Three.js, Phi hành gia Drifting và Thẻ HUD nổi */}
-          <div className="lg:col-span-5 relative w-full h-[400px] lg:h-[520px] pointer-events-none flex items-center justify-center">
-            {/* Phi hành gia Giai đoạn 1: Lơ lửng cô đơn */}
-            <AstronautChaos
-              mouseNorm={mouseNorm}
-              className="hidden sm:block absolute -right-2 lg:right-4 top-6 z-10"
-            />
-
-            {/* Thẻ Telemetry HUD nổi bên góc */}
-            <div className="absolute top-4 left-2 sm:left-4 p-3 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/90 dark:border-indigo-500/30 backdrop-blur-xl shadow-xl flex items-center gap-2 text-xs font-mono text-indigo-600 dark:text-indigo-300 animate-pulse">
-              <Headphones className="w-4 h-4 text-indigo-500" />
-              <span>BPM Sync: 130 ⇄ 130</span>
-            </div>
-
-            <div className="absolute bottom-6 right-2 sm:right-4 p-3 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/90 dark:border-emerald-500/30 backdrop-blur-xl shadow-xl flex items-center gap-2 text-xs font-mono text-emerald-600 dark:text-emerald-300">
-              <Volume2 className="w-4 h-4 text-emerald-500" />
-              <span>Gain Staged: 1.0 : 0.75</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. SECTION PINNED - GIAI ĐOẠN 2 (Stage 2: AI Stem Extraction Engine & Deep DSP) */}
-      <section
-        id="stage-2-pinned"
-        data-stage="2"
-        ref={pinnedSectionRef}
-        className="relative z-10 w-full h-screen flex flex-col items-center justify-between py-12 px-4 sm:px-6 max-w-7xl mx-auto overflow-hidden"
-      >
-        {/* Header Thông Tin Telemetry của Phân Đoạn Pinned */}
-        <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800/80 pb-4">
-          <div className="flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
-            <span className="font-mono text-xs font-bold text-cyan-600 dark:text-cyan-400 tracking-wider">
-              [DEEP AUDIO TELEMETRY] // 02. PHẪU THUẬT LÕI HÒA ÂM
-            </span>
-          </div>
-
-          {/* Scrubber Phase Progress Bar */}
-          <div className="flex items-center gap-4">
-            <span className="font-mono text-xs font-bold text-slate-500">
-              PHASE: 0{activePhase} / 03
-            </span>
-            <div className="w-32 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-              <div
-                ref={pinnedProgressBarRef}
-                className="h-full bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 w-0 transition-all duration-75"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Khung Chứa Các Thẻ Kính HUD Bay Vào Tương Ứng Với Quả Cầu 3D Biến Dạng Ở Giữa */}
-        <div className="w-full flex-1 relative flex items-center justify-center my-6">
-          {/* Đội phi hành gia Giai đoạn 2: Cỗ máy bóc tách AI Demucs kéo cáp */}
-          <AstronautStemExtractor
-            mouseNorm={mouseNorm}
-            className="hidden lg:block absolute -top-8 left-12 xl:left-24 z-30"
-          />
-
-          {/* Card 1: Onset Analysis (Bên Trái) */}
-          <div
-            ref={pinnedCard1Ref}
-            className="absolute left-0 lg:left-8 max-w-md p-6 sm:p-8 rounded-3xl bg-white/85 dark:bg-slate-900/80 border border-indigo-500/40 backdrop-blur-2xl shadow-2xl space-y-4 text-left pointer-events-auto"
-          >
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2 text-indigo-500 font-mono text-xs font-bold">
-                <Activity className="w-4 h-4" />
-                <span>PHASE 01: ONSET SPECTRAL FLUX</span>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400">
-                44.1 KHZ
-              </span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">
-              Phân Tích Onset & Dò Phách Nhịp
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-              Phân tích đạo hàm phổ năng lượng (Spectral Flux) trên từng khung tín hiệu PCM tức thời. Nhận
-              diện chuẩn xác các điểm xung kích trống Kick/Snare và nhịp điệu gốc (BPM) mà không tạo độ trễ pha.
-            </p>
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-500">
-              <span>CONFIDENCE: 99.8%</span>
-              <span className="text-emerald-500 font-bold">ZERO PHASE DRIFT</span>
-            </div>
-          </div>
-
-          {/* Card 2: WSOLA Time-Stretching (Bên Phải) */}
-          <div
-            ref={pinnedCard2Ref}
-            className="absolute right-0 lg:right-8 max-w-md p-6 sm:p-8 rounded-3xl bg-white/85 dark:bg-slate-900/80 border border-purple-500/40 backdrop-blur-2xl shadow-2xl space-y-4 text-left pointer-events-auto"
-          >
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2 text-purple-500 font-mono text-xs font-bold">
-                <Cpu className="w-4 h-4" />
-                <span>PHASE 02: WSOLA ATEMPO DSP</span>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/10 text-purple-400">
-                PITCH LOCK
-              </span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">
-              Co Dãn Thời Gian WSOLA (Atempo)
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-              Thuật toán Waveform Similarity Overlap-Add tái tổng hợp dải tần âm thanh theo tỷ lệ thời
-              gian thực. Tự động đồng bộ tốc độ Vocal với Beat mà giữ nguyên vẹn 100% cao độ (Pitch) và Formant tự nhiên của giọng ca.
-            </p>
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-500">
-              <span>PITCH SHIFT: 0.00 SEMITONES</span>
-              <span className="text-purple-500 font-bold">HARMONIC PRESERVED</span>
-            </div>
-          </div>
-
-          {/* Card 3: True Peak Limiter (Chính Giữa - Phía Dưới) */}
-          <div
-            ref={pinnedCard3Ref}
-            className="absolute bottom-6 max-w-xl p-6 sm:p-8 rounded-3xl bg-white/85 dark:bg-slate-900/80 border border-emerald-500/40 backdrop-blur-2xl shadow-2xl space-y-4 text-left pointer-events-auto"
-          >
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2 text-emerald-500 font-mono text-xs font-bold">
-                <ShieldCheck className="w-4 h-4" />
-                <span>PHASE 03: TRUE PEAK LIMITING & MASTERING</span>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
-                -0.45 dBFS
-              </span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">
-              Cân Bằng Gain Staging & Chống Méo Tiếng
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-              Kiểm soát tự động tỷ lệ biên độ 1.0 (Beat) : 0.75 (Vocal) kết hợp bộ giới hạn đỉnh True Peak
-              -0.45 dBFS, triệt tiêu hiện tượng xé tiếng (Inter-sample clipping). Xuất bản MP3 320kbps CBR chuẩn phòng thu thương mại.
-            </p>
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-500">
-              <span>DYNAMIC HEADROOM: SAFE</span>
-              <span className="text-emerald-500 font-bold">320 KBPS CBR OUTPUT</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer của Section Pinned */}
-        <div className="w-full flex items-center justify-between text-[10px] font-mono text-slate-400 border-t border-slate-200/80 dark:border-slate-800/80 pt-3">
-          <span>INTERACTION: SCROLL TO SCRUB THROUGH DSP PHASES</span>
-          <span className="text-indigo-400">ENGINE: WEBAUDIO & FFMPEG</span>
-        </div>
-      </section>
-
-      {/* 6. SECTION WORKFLOW - GIAI ĐOẠN 3 (Stage 3: Harmonic Sync & Precision Calibration) */}
-      <section
-        id="stage-3-workflow"
-        data-stage="3"
-        ref={workflowSectionRef}
-        className="relative z-10 w-full max-w-5xl py-28 px-4 sm:px-6 mx-auto"
-      >
-        <div className="text-center mb-20 space-y-3">
-          <span className="text-xs font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 font-mono">
-            03 // INTUITIVE PIPELINE
-          </span>
-          <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-            Quy Trình Phối Âm 3 Bước Chuẩn Studio
-          </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
-            Giao diện trực quan kết hợp sức mạnh xử lý âm thanh số chuyên sâu.
-          </p>
-        </div>
-
-        {/* Cột mốc Timeline với Vạch Tiến Trình GSAP Scrub */}
-        <div className="relative flex flex-col items-center">
-          {/* Vạch xương sống phát sáng (Vertical Spine Line) */}
-          <div className="absolute top-8 bottom-8 w-1 bg-slate-200 dark:bg-slate-800 rounded-full">
-            <div
-              ref={workflowSpineRef}
-              className="w-full h-full bg-gradient-to-b from-indigo-500 via-purple-500 to-emerald-400 rounded-full origin-top"
-            />
-          </div>
-
-          {/* 3 Khối Bước */}
-          <div className="w-full space-y-16">
-            {/* Bước 1 */}
-            <div className="relative flex flex-col md:flex-row items-center justify-between gap-8 group">
-              <div className="md:w-5/12 text-center md:text-right space-y-2">
-                <span className="font-mono text-xs text-indigo-500 font-bold">BƯỚC 01 // NHẬP DỮ LIỆU</span>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                  Nạp 2 Bản Thu Âm (Acappella & Beat)
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Kéo thả file âm thanh vào 2 vùng Dual Dropzone. Hệ thống hỗ trợ MP3, WAV lên đến 25MB và tự động giải mã buffer.
-                </p>
-              </div>
-
-              {/* Nút mốc tròn giữa */}
-              <div className="relative z-10 w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 border-2 border-indigo-500 flex items-center justify-center text-indigo-500 shadow-xl shadow-indigo-500/20 group-hover:scale-110 transition-transform">
-                <Layers className="w-6 h-6" />
-              </div>
-
-              <div className="md:w-5/12 p-5 rounded-2xl bg-white/70 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-xl text-left font-mono text-xs text-slate-500 space-y-1 shadow-sm">
-                <div>FORMAT: MP3 / WAV STEREO</div>
-                <div>SAMPLING: 44,100 HZ</div>
-                <div className="text-emerald-500">STATUS: READY_FOR_ANALYSIS</div>
-              </div>
-            </div>
-
-            {/* Bước 2 */}
-            <div className="relative flex flex-col md:flex-row-reverse items-center justify-between gap-8 group">
-              {/* Phi hành gia Giai đoạn 3: Chuyên gia hòa âm & phách nhịp */}
-              <AstronautCalibrator
-                mouseNorm={mouseNorm}
-                className="hidden xl:block absolute -left-36 top-1/2 -translate-y-1/2 z-20"
-              />
-
-              <div className="md:w-5/12 text-center md:text-left space-y-2">
-                <span className="font-mono text-xs text-purple-500 font-bold">BƯỚC 02 // CĂN PHÁCH TRỰC QUAN</span>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                  Kéo Trượt Vocal Trên Mini-DAW
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Nhấp giữ chuột và kéo dải sóng Vocal (Direct Drag Offset) để khớp từng phách nhạc. Bật nghe thử song song không độ trễ trước khi render.
-                </p>
-              </div>
-
-              {/* Nút mốc tròn giữa */}
-              <div className="relative z-10 w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 border-2 border-purple-500 flex items-center justify-center text-purple-500 shadow-xl shadow-purple-500/20 group-hover:scale-110 transition-transform">
-                <SlidersHorizontal className="w-6 h-6" />
-              </div>
-
-              <div className="md:w-5/12 p-5 rounded-2xl bg-white/70 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-xl text-left font-mono text-xs text-slate-500 space-y-1 shadow-sm">
-                <div>OFFSET RANGE: -3000MS ⇄ +3000MS</div>
-                <div>PRECISION: 50MS SNAP</div>
-                <div className="text-purple-400">PLAYHEAD SYNC: 60 FPS WEBAUDIO</div>
-              </div>
-            </div>
-
-            {/* Bước 3 */}
-            <div className="relative flex flex-col md:flex-row items-center justify-between gap-8 group">
-              <div className="md:w-5/12 text-center md:text-right space-y-2">
-                <span className="font-mono text-xs text-emerald-500 font-bold">BƯỚC 03 // XUẤT BẢN MASTER</span>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                  Render Chuẩn Phòng Thu 320kbps
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Hàng đợi BullMQ phân phối tác vụ xuống FFmpeg Engine, cân bằng âm lượng tự động và xuất file master chuẩn hóa cho phát sóng thương mại.
-                </p>
-              </div>
-
-              {/* Nút mốc tròn giữa */}
-              <div className="relative z-10 w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 border-2 border-emerald-500 flex items-center justify-center text-emerald-500 shadow-xl shadow-emerald-500/20 group-hover:scale-110 transition-transform">
-                <Zap className="w-6 h-6" />
-              </div>
-
-              <div className="md:w-5/12 p-5 rounded-2xl bg-white/70 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-xl text-left font-mono text-xs text-slate-500 space-y-1 shadow-sm">
-                <div>CODEC: LIBMP3LAME 320 KBPS</div>
-                <div>RESPONSE: HTTP 206 PARTIAL CONTENT</div>
-                <div className="text-emerald-500 font-bold">STATUS: MASTER_DELIVERED</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. SECTION FINAL CTA - GIAI ĐOẠN 4 (Stage 4: Studio Warp Launchpad & Hyperdrive Flight) */}
-      <section
-        id="stage-4-launchpad"
-        data-stage="4"
-        className="relative z-10 w-full min-h-screen flex items-center justify-center py-20 px-4 sm:px-6 max-w-5xl mx-auto"
-      >
-        <div className="relative p-10 sm:p-16 rounded-3xl bg-white/80 dark:bg-slate-900/70 border border-indigo-500/40 backdrop-blur-2xl text-center space-y-8 shadow-2xl overflow-visible group">
-          {/* Đội hình phi công Giai đoạn 4: Bay lướt chỉ đường hai bên Portal */}
-          <AstronautWarpPilot
-            mouseNorm={mouseNorm}
-            isLeft={true}
-            className="hidden lg:block absolute -left-24 top-1/2 -translate-y-1/2 z-20"
-          />
-          <AstronautWarpPilot
-            mouseNorm={mouseNorm}
-            isLeft={false}
-            className="hidden lg:block absolute -right-24 top-1/2 -translate-y-1/2 z-20"
-          />
-
-          {/* Quầng sáng năng lượng hậu cảnh */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500/15 via-purple-500/10 to-transparent pointer-events-none rounded-3xl" />
-
-          {/* Vạch chia góc High-Tech (L-brackets) */}
-          <span className="absolute top-4 left-4 text-xs font-mono text-indigo-400">[ LAUNCHPAD // 01 ]</span>
-          <span className="absolute bottom-4 right-4 text-xs font-mono text-emerald-400">[ READY_STATE: 100% ]</span>
-
-          {/* Icon Đĩa Quay */}
-          <div className="inline-flex p-4 rounded-3xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-500 shadow-inner group-hover:rotate-180 transition-transform duration-700">
-            <Disc3 className="w-8 h-8 animate-spin" />
-          </div>
-
-          <div className="space-y-3">
-            <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-              Sẵn Sàng Khởi Tạo Bản Phối Đỉnh Cao?
-            </h2>
-            <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
-              Trải nghiệm bàn làm việc Mini-DAW trực tiếp trên trình duyệt web của bạn mà không cần cài đặt bất kỳ phần mềm âm thanh phức tạp nào.
-            </p>
-          </div>
-
-          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+          {/* Dropzone Hint & Nút Tải Tệp */}
+          <div className="mt-6 text-center space-y-2 z-10">
             <button
               type="button"
-              onClick={handleLaunchStudio}
+              onClick={() => {
+                playHapticClick();
+                fileInputRef.current?.click();
+              }}
               onMouseEnter={playHoverBlip}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-10 py-5 rounded-2xl text-base font-extrabold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-2xl shadow-indigo-500/40 hover:scale-[1.04] active:scale-[0.98] transition-all cursor-pointer font-mono"
-              data-cursor-interactive="true"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-amber-400/40 text-xs text-slate-300 hover:text-white transition-all cursor-pointer font-medium"
             >
-              <Zap className="w-5 h-5 fill-current" />
-              <span>KHỞI CHẠY STUDIO PHỐI NHẠC</span>
-              <ArrowRight className="w-5 h-5" />
+              <Upload className="w-4 h-4 text-amber-400" />
+              <span>Thả tệp MP3/WAV hoặc nhấp để tải đĩa</span>
+            </button>
+            <p className="text-[11px] font-mono text-slate-500">
+              AUDIO METADATA & 3D TURNTABLE STAGE READY
+            </p>
+          </div>
+        </section>
+
+        {/* CỘT PHẢI: Thông Tin Bài Hát & Lời Bài Hát Kinetic */}
+        <section className="flex-1 w-full h-[540px] lg:h-[600px] rounded-3xl bg-white/[0.02] border border-white/[0.06] p-6 sm:p-8 flex flex-col justify-between overflow-hidden">
+          {/* 1. Header Thông Tin Bài Hát */}
+          <div className="space-y-2 border-b border-white/[0.06] pb-5 shrink-0">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400/90 px-2 py-0.5 rounded bg-amber-400/10 border border-amber-400/20">
+                NOW PLAYING
+              </span>
+              <span className="text-[10px] font-mono text-slate-500">
+                {formatTime(currentTime)} / {formatTime(duration)}
+              </span>
+            </div>
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-white line-clamp-1">
+              {trackInfo.title}
+            </h2>
+            <p className="text-sm font-medium text-slate-400 flex items-center gap-2">
+              <span>{trackInfo.artist}</span>
+              <span className="text-slate-600">•</span>
+              <span className="text-xs text-slate-500 font-normal">{trackInfo.album}</span>
+            </p>
+          </div>
+
+          {/* 2. Khung Lời Bài Hát Động Học (Kinetic Lyrics Component) */}
+          <KineticLyrics
+            lines={lyricsLines}
+            currentTime={currentTime}
+            onSeek={handleSeek}
+            isLoading={isLyricsLoading}
+            ambientColors={ambientColors}
+            isInstrumental={isInstrumental}
+          />
+
+          {/* 3. Footer Thống Kê & Spec Kỹ Thuật */}
+          <div className="pt-4 border-t border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-slate-500 shrink-0">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>KINETIC LYRICS // LRCLIB SYNC</span>
+            </div>
+            <span>DSP 44.1 KHZ STEREO</span>
+          </div>
+        </section>
+
+      </main>
+
+      {/* 3. BOTTOM CONTROL BAR: Thanh Điều Khiển Phát Nhạc Tinh Tế */}
+      <footer className="relative z-20 w-full h-24 border-t border-white/[0.06] bg-[#090a0f]/95 backdrop-blur-2xl px-4 sm:px-8 flex items-center justify-between gap-4">
+        
+        {/* Khối Trái: Mini Track Info */}
+        <div className="flex items-center gap-3 w-1/4 min-w-[140px] max-w-[240px]">
+          <div className="relative w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
+            {trackInfo.coverUrl ? (
+              <img
+                src={trackInfo.coverUrl}
+                alt={trackInfo.title}
+                className={`w-full h-full object-cover rounded-xl ${isPlaying ? 'animate-[spin_10s_linear_infinite]' : ''}`}
+              />
+            ) : (
+              <Disc3 className={`w-6 h-6 text-amber-400/80 ${isPlaying ? 'animate-[spin_4s_linear_infinite]' : ''}`} />
+            )}
+          </div>
+          <div className="min-w-0">
+            <h4 className="text-xs sm:text-sm font-semibold text-white truncate">
+              {trackInfo.title}
+            </h4>
+            <p className="text-[11px] text-slate-400 truncate">
+              {trackInfo.artist}
+            </p>
+          </div>
+        </div>
+
+        {/* Khối Giữa: Nút Play/Pause & Scrubber Timeline */}
+        <div className="flex-1 max-w-xl flex flex-col items-center gap-1.5">
+          {/* Cụm Nút Playback */}
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                playHapticClick();
+                if (audioRef.current) audioRef.current.currentTime = Math.max(0, currentTime - 10);
+              }}
+              onMouseEnter={playHoverBlip}
+              className="text-slate-400 hover:text-white transition-colors p-1 cursor-pointer"
+              title="Lùi 10 giây"
+            >
+              <SkipBack className="w-4 h-4" />
+            </button>
+
+            {/* Nút Play / Pause Trung Tâm */}
+            <button
+              type="button"
+              onClick={togglePlay}
+              onMouseEnter={playHoverBlip}
+              className="w-11 h-11 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer font-bold"
+              title={isPlaying ? 'Tạm dừng' : 'Phát đĩa than'}
+            >
+              {isPlaying ? (
+                <Pause className="w-5 h-5 fill-current" />
+              ) : (
+                <Play className="w-5 h-5 fill-current ml-0.5" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                playHapticClick();
+                if (audioRef.current && duration) {
+                  audioRef.current.currentTime = Math.min(duration, currentTime + 10);
+                }
+              }}
+              onMouseEnter={playHoverBlip}
+              className="text-slate-400 hover:text-white transition-colors p-1 cursor-pointer"
+              title="Tiến 10 giây"
+            >
+              <SkipForward className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="pt-4 text-[11px] font-mono text-slate-400">
-            AUDIO_MASHUP_SYSTEM // FREE TO USE // LATENCY-FREE PREVIEW
+          {/* Thanh Tiến Trình (Timeline Scrubber) */}
+          <div className="w-full flex items-center gap-2.5 text-[10px] font-mono text-slate-400">
+            <span className="w-8 text-right">{formatTime(currentTime)}</span>
+            <input
+              type="range"
+              min="0"
+              max={duration || 100}
+              value={currentTime}
+              onChange={handleSeek}
+              className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-amber-400 focus:outline-none"
+            />
+            <span className="w-8">{formatTime(duration)}</span>
           </div>
         </div>
-      </section>
 
-      {/* 8. FOOTER TELEMETRY STRIP */}
-      <footer className="relative z-10 w-full py-8 border-t border-slate-200/80 dark:border-slate-900 bg-white/70 dark:bg-slate-950/80 backdrop-blur-xl text-center text-xs text-slate-500 font-mono">
-        <p>
-          © 2026 Audio Mashup Studio • Engineered with Node.js, Express, FFmpeg, React 18, Three.js & GSAP ScrollTrigger
-        </p>
+        {/* Khối Phải: Âm Lượng & Thao Tác Phụ */}
+        <div className="flex items-center justify-end gap-3 w-1/4 min-w-[120px]">
+          <button
+            type="button"
+            onClick={toggleMute}
+            onMouseEnter={playHoverBlip}
+            className="text-slate-400 hover:text-white transition-colors p-1 cursor-pointer"
+            title={isMuted ? 'Bật âm lượng' : 'Tắt tiếng'}
+          >
+            {isMuted ? (
+              <VolumeX className="w-4 h-4 text-rose-400" />
+            ) : (
+              <Volume2 className="w-4 h-4" />
+            )}
+          </button>
+          
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={isMuted ? 0 : volume}
+            onChange={handleVolumeChange}
+            className="w-16 sm:w-24 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-amber-400 focus:outline-none"
+          />
+        </div>
+
       </footer>
-
-      {/* 9. MÀN HÌNH CHUYỂN CẢNH HYPERDRIVE WARP TRANSITION */}
-      {isWarping && (
-        <div className="fixed inset-0 z-[200] pointer-events-auto flex items-center justify-center bg-black/90 backdrop-blur-3xl animate-in fade-in duration-300">
-          {/* Vòng xoáy ánh sáng gia tốc */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-indigo-500/40 to-slate-950 animate-pulse" />
-
-          {/* Các tia sao kéo dãn (Warp Star Streaks & Gyro Rings) */}
-          <div className="relative flex flex-col items-center justify-center text-center space-y-4">
-            <div className="relative w-32 h-32 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full border-4 border-cyan-400 border-t-transparent animate-spin" />
-              <div className="absolute inset-2 rounded-full border-4 border-indigo-500 border-b-transparent animate-[spin_0.8s_linear_infinite_reverse]" />
-              <div className="absolute inset-5 rounded-full bg-cyan-400/20 blur-xl animate-ping" />
-              <Zap className="w-12 h-12 text-cyan-300 animate-bounce" />
-            </div>
-
-            <div className="space-y-1 font-mono">
-              <div className="text-xl sm:text-2xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-pink-300 animate-pulse">
-                WARP JUMP INITIALIZED
-              </div>
-              <p className="text-xs text-cyan-400/80 tracking-wider">
-                ENTERING AUDIO MASHUP STUDIO...
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
