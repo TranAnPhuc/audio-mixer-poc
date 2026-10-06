@@ -70,6 +70,7 @@ export async function processMixJobInBackground(jobId) {
       trackBPath: job.trackBPath,
       outputPath,
       tempoRatio,
+      vocalOffsetMs: job.vocalOffsetMs ?? 0,
       onProgress: async (percent) => {
         const now = Date.now();
         // Throttle: Chỉ ghi DB nếu cách lần trước >= 500ms hoặc bước nhảy tiến độ >= 10%
@@ -135,6 +136,15 @@ export async function createMixJob(req, res, next) {
     const trackA = req.files.trackA[0];
     const trackB = req.files.trackB[0];
 
+    // Chuẩn hóa và kiểm định vocalOffsetMs từ req.body (phạm vi: -3000 đến +3000 ms, mặc định: 0)
+    let vocalOffsetMs = 0;
+    if (req.body?.vocalOffsetMs !== undefined && req.body?.vocalOffsetMs !== null && req.body?.vocalOffsetMs !== '') {
+      const parsedOffset = parseInt(req.body.vocalOffsetMs, 10);
+      if (!isNaN(parsedOffset)) {
+        vocalOffsetMs = Math.max(-3000, Math.min(3000, parsedOffset));
+      }
+    }
+
     // 1. Tạo bản ghi ban đầu với trạng thái PENDING
     const job = await prisma.mixJob.create({
       data: {
@@ -147,7 +157,8 @@ export async function createMixJob(req, res, next) {
         trackBOriginalName: trackB.originalname,
         trackBPath: trackB.path,
         trackBMimeType: trackB.mimetype,
-        trackBSize: trackB.size
+        trackBSize: trackB.size,
+        vocalOffsetMs
       }
     });
 
@@ -209,6 +220,7 @@ export async function getJobStatus(req, res, next) {
             trackBBpm: job.trackBBpm,
             appliedTempoRatio: job.appliedTempoRatio
           },
+          vocalOffsetMs: job.vocalOffsetMs ?? 0,
           result: {
             streamUrl: `/api/v1/mix/${job.id}/stream`,
             downloadUrl: `/api/v1/mix/${job.id}/download`,

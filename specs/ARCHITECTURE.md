@@ -7,45 +7,44 @@
 ### 1. Kiến Trúc Tổng Thể (System Topology)
 
 ```text
-+-------------------------------------------------------------------+
-|                      CLIENT (React 18 + Vite)                     |
-|  +-----------------------+  +------------------+  +-------------+ |
-|  |  DualDropzone (Files) |  |  MixingStatus    |  | Waveform    | |
-|  |  Client Validation    |  |  Polling Progress|  | Player (206)| |
-|  +-----------+-----------+  +--------^---------+  +------^------+ |
-+--------------|-----------------------|-------------------|--------+
-               | 1. POST multipart     | 3. GET :jobId     | 5. Stream
-               v                       | (Polling 1.5s)    |
-+--------------------------------------|-------------------|--------+
-               |                       |                   |
-+--------------v-------------------------------------------|--------+
-|                      SERVER (Node.js + Express ESM)               |
-|  +-----------------------+   +----------------------------------+ |
-|  | Multer Middleware     |   | Stream & Download Controller     | |
-|  | (DiskStorage UUID)    |   | (HTTP 206 Range Handler)         | |
-|  +-----------+-----------+   +-----------------^----------------+ |
-|              v                                 |                  |
-|  +-----------------------+                     |                  |
-|  | Mix Job Controller    |                     |                  |
-|  | (Immediate 202 Spawn) |                     |                  |
-|  +-----------+-----------+                     |                  |
-|              | 2. Async Background             |                  |
-|              v                                 |                  |
-|  +---------------------------------------+     |                  |
-|  | Worker Pipeline                       |     |                  |
-|  |  1. BpmDetectorService (PCM Stream)   |     |                  |
-|  |  2. Calculate Ratio r = BpmB / BpmA   |     |                  |
-|  |  3. AudioMixerService (FFmpeg Graph)  |     |                  |
-|  |     [atempo, volume, amix, alimiter]  |     |                  |
-|  +-----------+-----------------------+---+     |                  |
-|              |                       |         |                  |
-+--------------|-----------------------|---------|------------------+
-               | Persist State         +---------+ Storage Engine
-               v                                   (/uploads & /outputs)
-+----------------------------------------+
-|       PERSISTENCE LAYER (Prisma ORM)   |
-|       SQLite (Dev) / PostgreSQL (Prod) |
-+----------------------------------------+
++-----------------------------------------------------------------------------------+
+|                            CLIENT (React 18 + Vite)                               |
+|  +-----------------------+  +--------------------------+  +---------------------+ |
+|  |  DualDropzone (Files) |  |  MixingStatus            |  | WaveformPlayer      | |
+|  |  + Offset Slider      |  |  - Tempo Badges          |  | - Interactive Wave  | |
+|  |  Client Validation    |  |  - Polling Progress      |  | - HTTP 206 Seeking  | |
+|  +-----------+-----------+  +------------^-------------+  +----------^----------+ |
++--------------|---------------------------|---------------------------|------------+
+               | 1. POST multipart         | 3. GET :jobId             | 5. Stream
+               | (files + vocalOffsetMs)   | (Polling 1.5s)            |
++--------------v---------------------------|---------------------------|------------+
+|                            SERVER (Node.js + Express ESM)                         |
+|  +-----------------------+   +---------------------------------------+            |
+|  | Multer Middleware     |   | Stream & Download Controller          |            |
+|  | (DiskStorage UUID)    |   | (HTTP 206 Range Handler)              |            |
+|  +-----------+-----------+   +-------------------^-------------------+            |
+|              v                                   |                                |
+|  +-----------------------+                       |                                |
+|  | Mix Job Controller    |                       |                                |
+|  | (Immediate 202 Spawn) |                       |                                |
+|  +-----------+-----------+                       |                                |
+|              | 2. Async Background               |                                |
+|              v                                   |                                |
+|  +-----------------------------------------+     |                                |
+|  | Worker Pipeline                         |     |                                |
+|  |  1. BpmDetectorService (PCM Stream)     |     |                                |
+|  |  2. Calculate Ratio r = BpmB / BpmA     |     |                                |
+|  |  3. AudioMixerService (FFmpeg Graph)    |     |                                |
+|  |     [atempo, adelay/atrim, amix, limit] |     |                                |
+|  +-----------+-------------------------+---+     |                                |
+|              |                         |         |                                |
++--------------|-------------------------|---------|--------------------------------+
+               | Persist State           +---------+ Storage Engine
+               v                                     (/uploads & /outputs)
++------------------------------------------+
+|       PERSISTENCE LAYER (Prisma ORM)     |
+|       SQLite (Dev) / PostgreSQL (Prod)   |
++------------------------------------------+
 ```
 
 ---
@@ -86,7 +85,8 @@ audio-mashup/
 │   ├── tests/
 │   │   ├── fixtures/
 │   │   │   ├── vocal_test.mp3
-│   │   │   └── beat_test.mp3
+│   │   │   ├── beat_test.mp3
+│   │   │   └── rhythm_120bpm.mp3
 │   │   ├── test_db.js
 │   │   ├── test_ffmpeg.js
 │   │   ├── test_mixer.js
@@ -94,6 +94,10 @@ audio-mashup/
 │   │   ├── test_api_mix.js
 │   │   ├── test_api_stream.js
 │   │   ├── test_bpm.js
+│   │   ├── test_mixer_tempo.js
+│   │   ├── test_api_bpm_mix.js
+│   │   ├── test_mixer_offset.js
+│   │   ├── test_api_offset.js
 │   │   └── test_e2e_full_cycle.js
 │   ├── package.json
 │   ├── .env
@@ -101,8 +105,8 @@ audio-mashup/
 ├── client/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── DualDropzone.jsx      # Multi-file drag & drop with validation
-│   │   │   ├── MixingStatus.jsx      # Polling progress card & status badges
+│   │   │   ├── DualDropzone.jsx      # Multi-file drag & drop, validation, offset slider
+│   │   │   ├── MixingStatus.jsx      # Polling progress card & tempo badges
 │   │   │   └── WaveformPlayer.jsx    # Interactive WaveSurfer.js player
 │   │   ├── hooks/
 │   │   │   └── useJobPolling.js      # Polling lifecycle hook with memory cleanup
@@ -166,8 +170,9 @@ model MixJob {
   trackBSize         Int
   trackBBpm          Float?    // Nhịp độ nhận diện của Track B
 
-  // Thông số biến đổi nhịp điệu (Tempo Matching)
+  // Thông số biến đổi nhịp điệu (Tempo Matching) & Căn chỉnh phách (Offset)
   appliedTempoRatio  Float?    // Tỷ lệ co/dãn r = trackBBpm / trackABpm
+  vocalOffsetMs      Int       @default(0) // Độ trễ vocal tính bằng mili-giây (-3000 đến +3000)
 
   // Thông tin kết quả đầu ra
   outputFileName     String?
@@ -192,12 +197,32 @@ model MixJob {
 
 Lõi xử lý nằm trong `AudioMixerService.js` tương tác với binary `ffmpeg`:
 
-#### Biểu thức Complex FilterGraph mở rộng (Hỗ trợ Tempo Matching):
+#### Biểu thức Complex FilterGraph mở rộng (Hỗ trợ Tempo Matching & Offset Alignment):
+
+**Trường hợp 1: `vocalOffsetMs > 0` (Vocal vào trễ):**
 
 ```text
-[0:a]aresample=44100,atempo={tempoRatio},volume=1.0[vocal_stretched];
+[0:a]aresample=44100,{atempoChain}adelay={vocalOffsetMs}|{vocalOffsetMs},volume=1.0[vocal_norm];
 [1:a]aresample=44100,volume=0.75[beat_norm];
-[vocal_stretched][beat_norm]amix=inputs=2:duration=longest:dropout_transition=2:weights=1.0 0.75[raw_mixed];
+[vocal_norm][beat_norm]amix=inputs=2:duration=longest:dropout_transition=2:weights=1.0 0.75[raw_mixed];
+[raw_mixed]alimiter=limit=0.95:level=true[final_output]
+```
+
+**Trường hợp 2: `vocalOffsetMs < 0` (Vocal vào sớm):**
+
+```text
+[0:a]aresample=44100,{atempoChain}atrim=start={absOffsetSec},asetpts=PTS-STARTPTS,volume=1.0[vocal_norm];
+[1:a]aresample=44100,volume=0.75[beat_norm];
+[vocal_norm][beat_norm]amix=inputs=2:duration=longest:dropout_transition=2:weights=1.0 0.75[raw_mixed];
+[raw_mixed]alimiter=limit=0.95:level=true[final_output]
+```
+
+**Trường hợp 3: `vocalOffsetMs === 0` (Không điều chỉnh offset):**
+
+```text
+[0:a]aresample=44100,{atempoChain}volume=1.0[vocal_norm];
+[1:a]aresample=44100,volume=0.75[beat_norm];
+[vocal_norm][beat_norm]amix=inputs=2:duration=longest:dropout_transition=2:weights=1.0 0.75[raw_mixed];
 [raw_mixed]alimiter=limit=0.95:level=true[final_output]
 ```
 
@@ -206,13 +231,16 @@ Lõi xử lý nằm trong `AudioMixerService.js` tương tác với binary `ffmp
 1. `aresample=44100`: Đồng bộ tần số lấy mẫu của cả 2 file về 44.1 kHz, loại trừ hiện tượng lệch pha và biến dạng âm thanh do mismatch sample rate.
 2. `atempo={tempoRatio}`:
    - Co dãn thời gian giọng hát theo nhịp của beat mà không làm thay đổi cao độ (pitch-neutral time-stretching).
-   - _Lưu ý ràng buộc kỹ thuật:_ Bộ lọc `atempo` của FFmpeg chỉ chấp nhận giá trị trong khoảng $[0.5, 2.0]$. Nếu $tempoRatio > 2.0$ hoặc $< 0.5$, chuỗi bộ lọc phải được tách thành nhiều tầng liên tiếp (ví dụ tỷ lệ $2.5$ sẽ được viết thành `atempo=2.0,atempo=1.25`).
-3. `volume=1.0` vs `volume=0.75`: Cân bằng biên độ (Gain Staging), nhường $2.5\text{dB}$ headroom cho giọng hát.
-4. `amix=inputs=2:duration=longest:dropout_transition=2:weights=1.0 0.75`:
+   - _Ràng buộc kỹ thuật:_ Bộ lọc `atempo` của FFmpeg chỉ chấp nhận giá trị trong đoạn $[0.5, 2.0]$. Nếu $tempoRatio > 2.0$ hoặc $< 0.5$, chuỗi bộ lọc phải được phân rã thành nhiều tầng liên tiếp (ví dụ tỷ lệ $2.5 \rightarrow$ `atempo=2.0,atempo=1.25`).
+3. `adelay={ms}|{ms}` vs `atrim=start={sec},asetpts=PTS-STARTPTS`:
+   - `adelay` thêm khoảng lặng (silence padding) vào đầu luồng âm thanh trên cả 2 kênh trái và phải.
+   - `atrim` cắt bỏ đoạn đầu và bắt buộc phải dùng `asetpts=PTS-STARTPTS` để đặt lại mốc thời gian trình bày (Presentation Timestamp) về 0, tránh việc FFmpeg bù đắp khoảng lặng thừa vào đầu luồng.
+4. `volume=1.0` vs `volume=0.75`: Cân bằng biên độ (Gain Staging), nhường $2.5\text{dB}$ headroom cho giọng hát.
+5. `amix=inputs=2:duration=longest:dropout_transition=2:weights=1.0 0.75`:
    - `duration=longest`: Giữ độ dài theo tệp dài hơn.
    - `dropout_transition=2`: Tự động fade trong 2 giây khi một luồng kết thúc trước luồng kia.
-5. `alimiter=limit=0.95:level=true`: Giới hạn mức biên độ trần ở $-0.45\text{dBFS}$ ($0.95$), triệt tiêu hoàn toàn hiện tượng vỡ tiếng số (Digital Clipping) khi 2 sóng âm cộng hưởng biên độ đỉnh.
-6. **Thông số Codec đầu ra:** `-c:a libmp3lame -b:a 320k -ar 44100`.
+6. `alimiter=limit=0.95:level=true`: Giới hạn mức biên độ trần ở $-0.45\text{dBFS}$ ($0.95$), triệt tiêu hoàn toàn hiện tượng vỡ tiếng số (Digital Clipping) khi 2 sóng âm cộng hưởng biên độ đỉnh.
+7. **Thông số Codec đầu ra:** `-c:a libmp3lame -b:a 320k -ar 44100`.
 
 ---
 
@@ -222,7 +250,10 @@ Lõi xử lý nằm trong `AudioMixerService.js` tương tác với binary `ffmp
 
 - **Endpoint:** `POST /api/v1/mix`
 - **Content-Type:** `multipart/form-data`
-- **Fields:** `trackA` (Audio Binary), `trackB` (Audio Binary)
+- **Fields:**
+  - `trackA` (Audio Binary, bắt buộc)
+  - `trackB` (Audio Binary, bắt buộc)
+  - `vocalOffsetMs` (Integer, tùy chọn, mặc định: 0, phạm vi: -3000 đến 3000)
 - **Response 202 Accepted:**
 
 ```json
@@ -250,10 +281,11 @@ Lõi xử lý nằm trong `AudioMixerService.js` tương tác với binary `ffmp
     "status": "SUCCESS",
     "progress": 100,
     "tempo": {
-      "trackABpm": 120.0,
-      "trackBBpm": 128.0,
-      "appliedTempoRatio": 1.067
+      "trackABpm": 134.6,
+      "trackBBpm": 170.9,
+      "appliedTempoRatio": 1.27
     },
+    "vocalOffsetMs": 500,
     "result": {
       "streamUrl": "/api/v1/mix/550e8400-e29b-41d4-a716-446655440000/stream",
       "downloadUrl": "/api/v1/mix/550e8400-e29b-41d4-a716-446655440000/download",

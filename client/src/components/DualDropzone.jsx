@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Mic, Disc3, UploadCloud, FileAudio, X, AlertCircle, Sparkles, Loader2 } from 'lucide-react';
+import { Mic, Disc3, UploadCloud, FileAudio, X, AlertCircle, Sparkles, Loader2, SlidersHorizontal, RotateCcw } from 'lucide-react';
 import { uploadTracksForMixing } from '../services/api';
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
@@ -181,6 +181,7 @@ function SingleDropzone({
 export default function DualDropzone({ onJobCreated }) {
   const [trackA, setTrackA] = useState({ file: null, error: null });
   const [trackB, setTrackB] = useState({ file: null, error: null });
+  const [vocalOffsetMs, setVocalOffsetMs] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [globalError, setGlobalError] = useState(null);
@@ -208,6 +209,7 @@ export default function DualDropzone({ onJobCreated }) {
       const response = await uploadTracksForMixing({
         trackAFile: trackA.file,
         trackBFile: trackB.file,
+        vocalOffsetMs,
         onUploadProgress: (progress) => {
           setUploadProgress(progress);
         }
@@ -256,6 +258,85 @@ export default function DualDropzone({ onJobCreated }) {
           onFileRemove={() => setTrackB({ file: null, error: null })}
           disabled={isUploading}
         />
+      </div>
+
+      {/* Khối Căn Chỉnh Độ Trễ Vocal (Offset Alignment Slider) */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 shadow-md space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              Căn Chỉnh Độ Trễ Vocal (Offset Alignment)
+            </span>
+          </div>
+          {vocalOffsetMs !== 0 && (
+            <button
+              type="button"
+              onClick={() => setVocalOffsetMs(0)}
+              disabled={isUploading}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-indigo-300 bg-slate-800/80 hover:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700/60 transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Đặt lại 0s</span>
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <p className="text-xs text-slate-400">
+            Dịch chuyển thời điểm bắt đầu giọng hát sớm (-) hoặc trễ (+) so với phách beat:
+          </p>
+          <div className="font-mono text-xs font-semibold px-2.5 py-1 rounded-lg border inline-flex items-center justify-center self-start sm:self-auto">
+            {vocalOffsetMs > 0 && (
+              <span className="text-amber-400 border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded">
+                +{ (vocalOffsetMs / 1000).toFixed(2) }s (Vocal vào trễ)
+              </span>
+            )}
+            {vocalOffsetMs < 0 && (
+              <span className="text-sky-400 border-sky-500/30 bg-sky-500/10 px-2 py-0.5 rounded">
+                { (vocalOffsetMs / 1000).toFixed(2) }s (Vocal vào sớm)
+              </span>
+            )}
+            {vocalOffsetMs === 0 && (
+              <span className="text-slate-300 border-slate-700 bg-slate-800/50 px-2 py-0.5 rounded">
+                0.00s (Mặc định - Chuẩn beat)
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-1.5 pt-1">
+          <input
+            type="range"
+            min="-3000"
+            max="3000"
+            step="50"
+            value={vocalOffsetMs}
+            onChange={(e) => setVocalOffsetMs(parseInt(e.target.value, 10))}
+            disabled={isUploading}
+            className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+          <div className="flex justify-between text-[10px] font-mono text-slate-500 px-1 select-none">
+            <span
+              className="hover:text-sky-400 cursor-pointer transition-colors"
+              onClick={() => !isUploading && setVocalOffsetMs(-3000)}
+            >
+              -3.0s (Sớm)
+            </span>
+            <span
+              className="hover:text-slate-300 cursor-pointer transition-colors"
+              onClick={() => !isUploading && setVocalOffsetMs(0)}
+            >
+              0.0s (Chuẩn)
+            </span>
+            <span
+              className="hover:text-amber-400 cursor-pointer transition-colors"
+              onClick={() => !isUploading && setVocalOffsetMs(3000)}
+            >
+              +3.0s (Trễ)
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Thông báo lỗi tổng quát */}

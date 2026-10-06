@@ -110,6 +110,25 @@
   - **Tiêu chuẩn nghiệm thu (DoD):** Gửi request tạo mix job; endpoint `GET /:jobId` khi `SUCCESS` trả về đầy đủ block dữ liệu `tempo: { trackABpm, trackBBpm, appliedTempoRatio }`.
 
 - [x] **Task 6.4: Hiển thị thông số BPM trên Giao diện Web**
-  - **Mô tả:** Cập nhật UI `MixingStatus.jsx` và `WaveformPlayer.jsx` để hiển thị các Badge thông số: BPM của bài Vocal, BPM của bài Beat, và tỷ lệ phần trăm tốc độ đã tự động cân chỉnh (ví dụ: `+6.7% Tempo Adjusted`).
-  - **File tác động:** `client/src/components/MixingStatus.jsx`, `client/src/components/WaveformPlayer.jsx`.
+  - **Mô tả:** Cập nhật UI `MixingStatus.jsx` và `WaveformPlayer.jsx` để hiển thị các Badge thông số: BPM của bài Vocal, BPM của bài Beat, và tỷ lệ phần trăm tốc độ đã tự động cân chỉnh (ví dụ: `+27.0% Tempo Adjusted`).
+  - **File tác động:** `client/src/components/MixingStatus.jsx`, `client/src/components/WaveformPlayer.jsx`, `client/src/hooks/useJobPolling.js`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Sau khi bài phối âm hoàn tất, người dùng nhìn thấy rõ ràng các chỉ số nhịp độ trực quan ngay trên card kết quả.
+
+---
+
+## Giai đoạn 7: Căn Chỉnh Vị Trí Phách & Độ Trễ (Vocal Offset Alignment)
+
+- [x] **Task 7.1: Mở rộng AudioMixerService với cơ chế Offset Delay & Script kiểm định**
+  - **Mô tả:** Nâng cấp `AudioMixerService.js` hỗ trợ tham số `vocalOffsetMs`, xử lý 2 nhánh filter `adelay` (dương) và `atrim` (âm). Viết script kiểm tra độ lệch thời gian thực tế của luồng Vocal.
+  - **File tác động:** `server/src/services/AudioMixerService.js`, `server/tests/test_mixer_offset.js`.
+  - **Tiêu chuẩn nghiệm thu (DoD):** Render thử với offset +1000ms và -1000ms; `ffprobe` và phân tích audio buffer xác nhận đoạn vocal bị dịch chuyển đúng $1.0\text{s}$ trên trục thời gian.
+
+- [x] **Task 7.2: Cập nhật Prisma Schema, Upload Controller & Background Worker**
+  - **Mô tả:** Chạy migration bổ sung trường `vocalOffsetMs` vào bảng `MixJob`; cập nhật `mixController.js` nhận trường `vocalOffsetMs` từ `req.body`, truyền vào worker và lưu vào database.
+  - **File tác động:** `server/prisma/schema.prisma`, `server/src/controllers/mixController.js`, `server/tests/test_api_offset.js`.
+  - **Tiêu chuẩn nghiệm thu (DoD):** Gửi `POST /api/v1/mix` kèm `vocalOffsetMs: 500`, bản ghi SQLite lưu đúng `vocalOffsetMs = 500`.
+
+- [x] **Task 7.3: Tích hợp Thanh trượt Căn nhịp (Vocal Offset Slider) trên Giao diện React**
+  - **Mô tả:** Bổ sung thanh trượt tùy chỉnh `vocalOffsetMs` ($-3000\text{ms} \rightarrow +3000\text{ms}$) vào component `DualDropzone.jsx`, hiển thị mốc thời gian dạng `+0.50s` / `-0.50s`, kèm nút "Reset về 0s". Đóng gói gửi kèm FormData qua `api.js`.
+  - **File tác động:** `client/src/components/DualDropzone.jsx`, `client/src/services/api.js`, `client/src/components/MixingStatus.jsx`.
+  - **Tiêu chuẩn nghiệm thu (DoD):** Thao tác trượt thanh offset trên web, submit job và nhận bản mix được căn chỉnh đúng mốc thời gian đã chọn.

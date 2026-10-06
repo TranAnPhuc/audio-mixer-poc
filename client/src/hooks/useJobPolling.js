@@ -16,6 +16,7 @@ export function useJobPolling(jobId, options = {}) {
   const [status, setStatus] = useState('IDLE');
   const [progress, setProgress] = useState(0);
   const [tempo, setTempo] = useState(null);
+  const [vocalOffsetMs, setVocalOffsetMs] = useState(0);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [isPolling, setIsPolling] = useState(false);
@@ -30,6 +31,7 @@ export function useJobPolling(jobId, options = {}) {
     setStatus('IDLE');
     setProgress(0);
     setTempo(null);
+    setVocalOffsetMs(0);
     setResult(null);
     setError(null);
     setIsPolling(false);
@@ -57,10 +59,14 @@ export function useJobPolling(jobId, options = {}) {
         if (!isMounted) return;
 
         if (response.success && response.data) {
-          const { status: jobStatus, progress: jobProgress, tempo: jobTempo, result: jobResult, errorMessage, error: jobError } = response.data;
+          const { status: jobStatus, progress: jobProgress, tempo: jobTempo, vocalOffsetMs: jobOffset, result: jobResult, errorMessage, error: jobError } = response.data;
 
           setStatus(jobStatus);
           setProgress(typeof jobProgress === 'number' ? jobProgress : 0);
+
+          if (typeof jobOffset === 'number') {
+            setVocalOffsetMs(jobOffset);
+          }
 
           if (jobTempo) {
             setTempo(jobTempo);
@@ -71,6 +77,7 @@ export function useJobPolling(jobId, options = {}) {
             setIsPolling(false);
             setProgress(100);
             if (jobTempo) setTempo(jobTempo);
+            if (typeof jobOffset === 'number') setVocalOffsetMs(jobOffset);
             setResult(jobResult);
             onSuccessRef.current?.(jobResult);
           } else if (jobStatus === 'FAILED') {
@@ -107,6 +114,7 @@ export function useJobPolling(jobId, options = {}) {
     status,
     progress,
     tempo,
+    vocalOffsetMs,
     result,
     error,
     isPolling,

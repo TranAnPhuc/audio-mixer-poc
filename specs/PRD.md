@@ -7,29 +7,30 @@
 ### 1. Tổng Quan & Mục Tiêu Sản Phẩm
 
 - **Tên dự án:** Web Audio Mashup Studio.
-- **Mục tiêu:** Cung cấp dịch vụ web cho phép người dùng tải lên 2 tệp âm thanh độc lập (Track A: Vocal/Chính, Track B: Beat/Nền), hệ thống tự động nhận diện nhịp độ (BPM), chuẩn hóa, co/dãn thời gian (time-stretching) để đồng bộ nhịp điệu, phối ghép (mix), cân bằng âm lượng và trả về một bản nhạc duy nhất có thể nghe trực tuyến và tải về.
-- **Giá trị cốt lõi:** Tự động hóa quy trình beat-matching và mixing phức tạp thành một pipeline tự động, giúp tạo ra các bản mashup hài hòa về nhịp điệu mà không cần can thiệp thủ công bằng phần mềm DAW chuyên dụng.
+- **Mục tiêu:** Cung cấp dịch vụ web cho phép người dùng tải lên 2 tệp âm thanh độc lập (Track A: Vocal/Chính, Track B: Beat/Nền), hệ thống tự động nhận diện nhịp độ (BPM), chuẩn hóa, co/dãn thời gian (time-stretching) để đồng bộ nhịp điệu, căn chỉnh độ trễ/phách (offset alignment), phối ghép (mix), cân bằng âm lượng và trả về một bản nhạc duy nhất có thể nghe trực tuyến và tải về.
+- **Giá trị cốt lõi:** Tự động hóa toàn bộ quy trình beat-matching, offset-alignment và mixing phức tạp thành một pipeline tự động, giúp tạo ra các bản mashup hài hòa về nhịp điệu mà không cần can thiệp thủ công bằng phần mềm DAW chuyên dụng.
 
 ---
 
 ### 2. Đối Tượng Người Dùng & Ca Sử Dụng (Use Cases)
 
-- **Người sáng tạo nội dung / DJ nghiệp dư:** Muốn ghép nhanh một đoạn Acappella vào một Beat có sẵn mà không phải tự gõ nhịp (tap tempo) hay chỉnh time-stretch thủ công.
+- **Người sáng tạo nội dung / DJ nghiệp dư:** Muốn ghép nhanh một đoạn Acappella vào một Beat có sẵn mà không phải tự gõ nhịp (tap tempo), chỉnh time-stretch thủ công, hay căn phách bằng tay.
 - **Người nghe phổ thông:** Muốn tạo các bản phối nhạc cá nhân hóa nhanh chóng từ hai ca khúc yêu thích.
 
 ---
 
 ### 3. Phạm Vi Triển Khai (Scope Matrix)
 
-| Hạng mục              | Trong phạm vi (In-Scope - MVP & Phase 2)                                   | Ngoài phạm vi (Out-of-Scope - Phase 3+)                                  |
-| :-------------------- | :------------------------------------------------------------------------- | :----------------------------------------------------------------------- |
-| **Định dạng vào**     | MP3, WAV (MIME: `audio/mpeg`, `audio/wav`)                                 | FLAC, AAC, OGG, M4A                                                      |
-| **Kích thước tệp**    | Tối đa 25MB / tệp, thời lượng $\le$ 5 phút/tệp                             | Tệp dung lượng lớn, video MP4                                            |
-| **Xử lý âm thanh**    | Chuẩn hóa sample rate, gain staging, amix, limiter chống vỡ tiếng          | Stem separation bằng AI (Demucs/Spleeter), Pitch shifting (Harmonic Key) |
-| **Đồng bộ nhịp điệu** | Tự động phát hiện BPM (Onset detection), time-stretch bằng filter `atempo` | Nhận diện vòng hòa âm Camelot, dò phách mạnh (Downbeat grid align)       |
-| **Xử lý tác vụ**      | Xử lý bất đồng bộ (Non-blocking Child Process) với trạng thái lưu DB       | Message Queue phân tán (RabbitMQ, Redis BullMQ)                          |
-| **Lưu trữ**           | Hệ thống tệp cục bộ (Local File System) có phân cấp thư mục                | Cloud Storage (AWS S3, Cloudflare R2)                                    |
-| **Bảo mật / Auth**    | Không yêu cầu đăng nhập (Public access theo Session/Job ID)                | JWT Authentication, quản lý thư viện cá nhân                             |
+| Hạng mục              | Trong phạm vi (In-Scope - MVP & Phase 2)                                                                               | Ngoài phạm vi (Out-of-Scope - Phase 3+)                                  |
+| :-------------------- | :--------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------- |
+| **Định dạng vào**     | MP3, WAV (MIME: `audio/mpeg`, `audio/wav`)                                                                             | FLAC, AAC, OGG, M4A                                                      |
+| **Kích thước tệp**    | Tối đa 25MB / tệp, thời lượng $\le 5\text{ phút}$ / tệp                                                                | Tệp dung lượng lớn, video MP4                                            |
+| **Xử lý âm thanh**    | Chuẩn hóa sample rate, gain staging, amix, limiter chống vỡ tiếng                                                      | Stem separation bằng AI (Demucs/Spleeter), Pitch shifting (Harmonic Key) |
+| **Đồng bộ nhịp điệu** | Tự động phát hiện BPM (Onset detection), time-stretch bằng filter `atempo`                                             | Nhận diện vòng hòa âm Camelot, tự động bắt phách mạnh (Auto Downbeat)    |
+| **Căn chỉnh độ trễ**  | Tinh chỉnh độ trễ thủ công (`vocalOffsetMs` từ $-3000\text{ ms}$ đến $+3000\text{ ms}$) qua filter `adelay` và `atrim` | Tự động dò phase alignment bằng AI                                       |
+| **Xử lý tác vụ**      | Xử lý bất đồng bộ (Non-blocking Child Process) với trạng thái lưu DB                                                   | Message Queue phân tán (RabbitMQ, Redis BullMQ)                          |
+| **Lưu trữ**           | Hệ thống tệp cục bộ (Local File System) có phân cấp thư mục                                                            | Cloud Storage (AWS S3, Cloudflare R2)                                    |
+| **Bảo mật / Auth**    | Không yêu cầu đăng nhập (Public access theo Session/Job ID)                                                            | JWT Authentication, quản lý thư viện cá nhân                             |
 
 ---
 
@@ -75,10 +76,20 @@
   - Nếu tỷ lệ $r$ vượt ngoài khoảng $[0.5, 2.0]$, tự động nối tầng chuỗi filter `atempo` để bảo toàn tính toàn vẹn của âm thanh.
 - **Lưu trữ & Phản hồi:** Lưu các trường `trackABpm`, `trackBBpm`, và `appliedTempoRatio` vào cơ sở dữ liệu và trả về cho Client.
 
-#### FR-05: Trực quan hóa và Phát lại (Playback & Visualization)
+#### FR-05: Tinh Chỉnh Vị Trí Phách & Độ Trễ (Vocal Offset Alignment)
+
+- **Căn chỉnh độ trễ âm học (Audio Delay Adjustment):**
+  - Cho phép người dùng thiết lập mốc thời gian bắt đầu của Track A (Vocal) so với Track B (Beat) qua tham số `vocalOffsetMs` (mili-giây).
+  - Khoảng giá trị hỗ trợ: $-3000\text{ ms}$ (Vocal vào sớm hơn) đến $+3000\text{ ms}$ (Vocal vào trễ hơn), bước nhảy $50\text{ ms}$, mặc định là $0\text{ ms}$.
+- **Xử lý tín hiệu FFmpeg:**
+  - Nếu `vocalOffsetMs > 0`: Áp dụng bộ lọc `adelay={offset}|{offset}` để lùi thời điểm bắt đầu của giọng hát.
+  - Nếu `vocalOffsetMs < 0`: Áp dụng bộ lọc cắt đầu `atrim=start={abs(offsetSec)},asetpts=PTS-STARTPTS` để giọng hát vào sớm hơn.
+  - Nếu `vocalOffsetMs === 0`: Bỏ qua bộ lọc căn chỉnh để tối ưu thời gian render.
+
+#### FR-06: Trực quan hóa và Phát lại (Playback & Visualization)
 
 - Khi trạng thái là `SUCCESS`, giao diện hiển thị:
-  - Thông số BPM của cả 2 bài hát và tỷ lệ co dãn nhịp điệu đã áp dụng.
+  - Thông số BPM của cả 2 bài hát, tỷ lệ co dãn nhịp điệu đã áp dụng, và độ trễ phách đã chọn.
   - Dạng sóng âm thanh tương tác (Waveform) dựng bằng Wavesurfer.js.
   - Hỗ trợ tua nhạc tức thì (Audio Seeking) thông qua chuẩn **HTTP 206 Partial Content**.
   - Các nút điều khiển: Play/Pause, thời gian hiện tại / tổng thời gian, nút phát lại từ đầu.

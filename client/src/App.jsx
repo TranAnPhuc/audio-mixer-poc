@@ -8,7 +8,7 @@ export default function App() {
   const [currentJobId, setCurrentJobId] = useState(null);
 
   // Kích hoạt polling tự động khi currentJobId có giá trị
-  const { status, progress, tempo, result, error, reset } = useJobPolling(currentJobId, {
+  const { status, progress, tempo, vocalOffsetMs, result, error, reset } = useJobPolling(currentJobId, {
     intervalMs: 1500,
     onSuccess: (res) => {
       console.log('[App] Tác vụ phối âm hoàn tất:', res);
@@ -55,6 +55,7 @@ export default function App() {
               status={status}
               progress={progress}
               tempo={tempo}
+              vocalOffsetMs={vocalOffsetMs}
               jobId={currentJobId}
               result={result}
               error={error}

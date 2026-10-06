@@ -91,12 +91,35 @@ export function buildAtempoFilterChain(ratio) {
 }
 
 /**
+ * Tạo chuỗi bộ lọc căn chỉnh độ trễ / phách cho Track A (Vocal)
+ * - Nếu vocalOffsetMs > 0: áp dụng adelay để lùi thời điểm bắt đầu của vocal (vocal vào trễ hơn)
+ * - Nếu vocalOffsetMs < 0: áp dụng atrim và asetpts để cắt bớt đoạn đầu (vocal vào sớm hơn)
+ * - Nếu vocalOffsetMs === 0 hoặc không hợp lệ: trả về chuỗi rỗng
+ * @param {number} [offsetMs=0] Độ lệch thời gian tính bằng mili-giây
+ * @returns {string} Chuỗi filter FFmpeg (ví dụ "adelay=1000|1000" hoặc "atrim=start=1.0000,asetpts=PTS-STARTPTS")
+ */
+export function buildOffsetFilterChain(offsetMs = 0) {
+  if (!offsetMs || typeof offsetMs !== 'number' || isNaN(offsetMs) || !isFinite(offsetMs) || offsetMs === 0) {
+    return '';
+  }
+
+  const roundedOffset = Math.round(offsetMs);
+  if (roundedOffset > 0) {
+    return `adelay=${roundedOffset}|${roundedOffset}`;
+  }
+
+  const trimSec = (Math.abs(roundedOffset) / 1000).toFixed(4);
+  return `atrim=start=${trimSec},asetpts=PTS-STARTPTS`;
+}
+
+/**
  * Dịch vụ phối trộn âm thanh chuyên nghiệp sử dụng FFmpeg FilterGraph
  * @param {object} params
  * @param {string} params.trackAPath Đường dẫn file Vocal (Track A)
  * @param {string} params.trackBPath Đường dẫn file Beat (Track B)
  * @param {string} params.outputPath Đường dẫn xuất file MP3 thành phẩm
  * @param {number} [params.tempoRatio=1.0] Tỷ lệ co/dãn thời gian áp dụng lên Track A (Vocal)
+ * @param {number} [params.vocalOffsetMs=0] Độ lệch thời gian của Vocal (ms)
  * @param {function} [params.onProgress] Callback nhận tiến độ xử lý (0 -> 100%)
  * @returns {Promise<{
  *   outputPath: string,
@@ -104,7 +127,8 @@ export function buildAtempoFilterChain(ratio) {
  *   outputDuration: number,
  *   executionTimeMs: number,
  *   sizeBytes: number,
- *   appliedTempoRatio: number
+ *   appliedTempoRatio: number,
+ *   appliedVocalOffsetMs: number
  * }>}
  */
 export async function mixAudioTracks({
@@ -112,6 +136,7 @@ export async function mixAudioTracks({
   trackBPath,
   outputPath,
   tempoRatio = 1.0,
+  vocalOffsetMs = 0,
   onProgress
 }) {
   if (!fs.existsSync(trackAPath)) {
@@ -130,6 +155,7 @@ export async function mixAudioTracks({
   // Đo thời lượng ban đầu của 2 tệp để tính toán tiến trình chính xác
   let expectedTotalDuration = 0;
   const effectiveTempoRatio = (typeof tempoRatio === 'number' && tempoRatio > 0) ? tempoRatio : 1.0;
+  const effectiveOffsetMs = (typeof vocalOffsetMs === 'number' && !isNaN(vocalOffsetMs)) ? Math.round(vocalOffsetMs) : 0;
 
   try {
     const [metaA, metaB] = await Promise.all([
@@ -138,7 +164,7 @@ export async function mixAudioTracks({
     ]);
     const durationA = metaA.duration || 0;
     const durationB = metaB.duration || 0;
-    const adjustedDurationA = durationA / effectiveTempoRatio;
+    const adjustedDurationA = Math.max(0, (durationA / effectiveTempoRatio) + (effectiveOffsetMs / 1000));
     expectedTotalDuration = Math.max(adjustedDurationA, durationB) || 1;
   } catch (probeErr) {
     console.warn('[AudioMixerService] Cảnh báo: Không thể probe độ dài tệp đầu vào, sử dụng ước lượng mặc định:', probeErr.message);
@@ -152,9 +178,14 @@ export async function mixAudioTracks({
 
     // Chuẩn bị chuỗi filter cho Track A (Vocal)
     const atempoChain = buildAtempoFilterChain(effectiveTempoRatio);
-    const vocalFilter = atempoChain
-      ? `[0:a]aresample=44100,${atempoChain},volume=1.0[vocal_norm]`
-      : `[0:a]aresample=44100,volume=1.0[vocal_norm]`;
+    const offsetChain = buildOffsetFilterChain(effectiveOffsetMs);
+
+    const vocalFilters = ['aresample=44100'];
+    if (atempoChain) vocalFilters.push(atempoChain);
+    if (offsetChain) vocalFilters.push(offsetChain);
+    vocalFilters.push('volume=1.0');
+
+    const vocalFilter = `[0:a]${vocalFilters.join(',')}[vocal_norm]`;
 
     ffmpeg()
       .input(trackAPath)
@@ -222,6 +253,7 @@ export async function mixAudioTracks({
             bitrate: outputMeta.bitrate,
             sizeBytes: fileStats.size,
             appliedTempoRatio: Number(effectiveTempoRatio.toFixed(3)),
+            appliedVocalOffsetMs: effectiveOffsetMs,
             executionTimeMs
           });
         } catch (metaErr) {
@@ -232,6 +264,7 @@ export async function mixAudioTracks({
             outputDuration: expectedTotalDuration,
             executionTimeMs,
             appliedTempoRatio: Number(effectiveTempoRatio.toFixed(3)),
+            appliedVocalOffsetMs: effectiveOffsetMs,
             sizeBytes: fs.statSync(outputPath).size
           });
         }
@@ -243,6 +276,7 @@ export async function mixAudioTracks({
 export default {
   mixAudioTracks,
   getAudioMetadata,
-  buildAtempoFilterChain
+  buildAtempoFilterChain,
+  buildOffsetFilterChain
 };
 
