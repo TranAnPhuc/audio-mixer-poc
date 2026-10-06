@@ -10,6 +10,8 @@ import {
   Upload,
   Music,
   Maximize2,
+  Minimize2,
+  Download,
   Sparkles,
   Sliders,
   Radio,
@@ -29,7 +31,7 @@ import {
   DEFAULT_PALETTE
 } from '../services/metadataService';
 import KineticLyrics from '../components/KineticLyrics';
-import { fetchSyncedLyrics, parseLrc, readLrcFile } from '../services/lyricsService';
+import { fetchSyncedLyrics, parseLrc, readLrcFile, downloadLrcFile } from '../services/lyricsService';
 import { transcribeAudioFile } from '../services/aiTranscriptionService';
 
 /**
@@ -45,6 +47,7 @@ export default function LandingPage() {
   const [isMuted, setIsMuted] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [ambientColors, setAmbientColors] = useState(DEFAULT_PALETTE);
+  const [isZenMode, setIsZenMode] = useState(false);
 
   // Trạng thái lời bài hát đồng bộ (Kinetic Synced Lyrics)
   const [lyricsLines, setLyricsLines] = useState([]);
@@ -70,6 +73,23 @@ export default function LandingPage() {
   const audioRef = useRef(null);
   const needleDropTimerRef = useRef(null);
   const currentAudioFileRef = useRef(null);
+  const currentAudioUrlRef = useRef(null);
+  const currentCoverUrlRef = useRef(null);
+
+  // Thu hồi tài nguyên Blob URLs khi unmount trang để triệt tiêu memory leak
+  useEffect(() => {
+    return () => {
+      clearTimeout(needleDropTimerRef.current);
+      if (currentAudioUrlRef.current) {
+        URL.revokeObjectURL(currentAudioUrlRef.current);
+        currentAudioUrlRef.current = null;
+      }
+      if (currentCoverUrlRef.current && currentCoverUrlRef.current.startsWith('blob:')) {
+        URL.revokeObjectURL(currentCoverUrlRef.current);
+        currentCoverUrlRef.current = null;
+      }
+    };
+  }, []);
 
   // Khởi động phát bài hát đồng bộ với động học hạ cần kim
   const startPlayback = () => {
@@ -85,10 +105,27 @@ export default function LandingPage() {
       playNeedleDropEffect({ duration: 1.8 });
     }, 800);
 
-    // 3. Bắt đầu phát bài hát chính lúc kim đã tiếp xúc với rãnh đĩa (sau 1.2s)
+    // 3. Bắt đầu phát bài hát chính lúc kim đã tiếp xúc với rãnh đĩa (sau 1.2s) kèm Fade-in 50ms
     setTimeout(() => {
       if (audioRef.current) {
-        audioRef.current.play().catch(console.error);
+        const targetVol = isMuted ? 0 : volume;
+        audioRef.current.volume = 0;
+        audioRef.current.play().then(() => {
+          // Audio Gain Fade-in (50ms) loại bỏ tiếng giật cục
+          const startFade = performance.now();
+          const fadeDuration = 50;
+          const fadeInStep = () => {
+            const elapsed = performance.now() - startFade;
+            const progress = Math.min(1, elapsed / fadeDuration);
+            if (audioRef.current && !isMuted) {
+              audioRef.current.volume = progress * targetVol;
+            }
+            if (progress < 1) {
+              requestAnimationFrame(fadeInStep);
+            }
+          };
+          requestAnimationFrame(fadeInStep);
+        }).catch(console.error);
       }
     }, 1200);
   };
@@ -96,7 +133,26 @@ export default function LandingPage() {
   const stopPlayback = () => {
     clearTimeout(needleDropTimerRef.current);
     if (audioRef.current) {
-      audioRef.current.pause();
+      // Audio Gain Fade-out (50ms) êm ái trước khi pause
+      const currentVol = audioRef.current.volume;
+      const startFade = performance.now();
+      const fadeDuration = 50;
+      const fadeOutStep = () => {
+        const elapsed = performance.now() - startFade;
+        const progress = Math.min(1, elapsed / fadeDuration);
+        if (audioRef.current) {
+          audioRef.current.volume = Math.max(0, currentVol * (1 - progress));
+        }
+        if (progress < 1) {
+          requestAnimationFrame(fadeOutStep);
+        } else {
+          if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.volume = isMuted ? 0 : volume; // Phục hồi volume chuẩn
+          }
+        }
+      };
+      requestAnimationFrame(fadeOutStep);
     }
     setIsPlaying(false);
   };
@@ -128,10 +184,22 @@ export default function LandingPage() {
   const processAudioWithOptionalLrc = async (audioFile, lrcFile = null) => {
     playHapticClick();
     currentAudioFileRef.current = audioFile;
+
+    // Thu hồi Blob URL âm thanh trước đó (nếu có) để giải phóng RAM
+    if (currentAudioUrlRef.current) {
+      URL.revokeObjectURL(currentAudioUrlRef.current);
+    }
     const objectUrl = URL.createObjectURL(audioFile);
+    currentAudioUrlRef.current = objectUrl;
 
     // Bước 1: Trích xuất metadata ID3 tags, ảnh bìa album và lời nhúng (Embedded Lyrics)
     const meta = await parseAudioFileMetadata(audioFile);
+
+    // Thu hồi Blob URL ảnh bìa trước đó (nếu có)
+    if (currentCoverUrlRef.current && currentCoverUrlRef.current.startsWith('blob:')) {
+      URL.revokeObjectURL(currentCoverUrlRef.current);
+    }
+    currentCoverUrlRef.current = meta.coverUrl;
 
     setTrackInfo({
       title: meta.title,
@@ -373,6 +441,83 @@ export default function LandingPage() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  // Xuất file lời bài hát đồng bộ .lrc
+  const handleExportLyrics = () => {
+    if (!lyricsLines || lyricsLines.length === 0) return;
+    playHapticClick();
+    downloadLrcFile(lyricsLines, trackInfo?.title || 'lyrics', {
+      title: trackInfo?.title,
+      artist: trackInfo?.artist,
+      album: trackInfo?.album
+    });
+  };
+
+  // Hệ thống phím tắt toàn cục (Global Keyboard Shortcuts)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Bỏ qua nếu người dùng đang nhập văn bản trong input/textarea
+      if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName)) return;
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          playHapticClick();
+          if (isPlaying) {
+            stopPlayback();
+          } else {
+            startPlayback();
+          }
+          break;
+
+        case 'ArrowLeft':
+          e.preventDefault();
+          playHapticClick();
+          if (audioRef.current) {
+            const targetTime = Math.max(0, audioRef.current.currentTime - 5);
+            audioRef.current.currentTime = targetTime;
+            setCurrentTime(targetTime);
+          }
+          break;
+
+        case 'ArrowRight':
+          e.preventDefault();
+          playHapticClick();
+          if (audioRef.current) {
+            const targetTime = Math.min(duration || 0, audioRef.current.currentTime + 5);
+            audioRef.current.currentTime = targetTime;
+            setCurrentTime(targetTime);
+          }
+          break;
+
+        case 'KeyM':
+          e.preventDefault();
+          playHapticClick();
+          toggleMute();
+          break;
+
+        case 'KeyF':
+          e.preventDefault();
+          playHapticClick();
+          setIsZenMode((prev) => !prev);
+          break;
+
+        case 'Escape':
+          if (isZenMode) {
+            e.preventDefault();
+            playHapticClick();
+            setIsZenMode(false);
+          }
+          break;
+
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPlaying, duration, isZenMode, isMuted, volume]);
+
   return (
     <div className="relative w-full min-h-screen bg-[#090a0f] text-slate-100 flex flex-col justify-between selection:bg-amber-500/30 selection:text-amber-200 overflow-x-hidden font-sans">
       {/* Thẻ audio ẩn phục vụ phát âm thanh */}
@@ -428,68 +573,70 @@ export default function LandingPage() {
         />
       </div>
 
-      {/* 1. TOP BAR: Header Tối Giản Sang Trọng */}
-      <header className="relative z-20 w-full h-16 border-b border-white/[0.06] bg-[#090a0f]/80 backdrop-blur-md px-4 sm:px-8 flex items-center justify-between">
-        {/* Logo AuraVinyl */}
-        <div className="flex items-center gap-3">
-          <div className="relative w-9 h-9 rounded-full bg-gradient-to-tr from-amber-500/20 to-rose-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/10">
-            <Disc3 className={`w-5 h-5 ${isPlaying ? 'animate-[spin_4s_linear_infinite]' : ''}`} />
+      {/* Zen Mode Floating Exit Hint & Button */}
+      {isZenMode && (
+        <div className="fixed top-5 right-5 z-50 flex items-center gap-3 animate-fade-in select-none">
+          <div className="px-3.5 py-1.5 rounded-full bg-white/[0.06] backdrop-blur-xl border border-white/[0.12] text-[11px] font-mono text-slate-300 flex items-center gap-2 shadow-2xl">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            <span>ZEN MODE // NHẤN ESC HOẶC F ĐỂ THOÁT</span>
           </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
-              <span>AuraVinyl</span>
-              <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/[0.06] text-amber-300/80 border border-white/[0.08]">
-                3D PLAYER
-              </span>
-            </h1>
-            <p className="text-[10px] font-mono text-slate-500 tracking-wider">
-              KINETIC LYRICS & TURNTABLE
-            </p>
-          </div>
-        </div>
-
-        {/* Trạng thái đĩa than ở giữa */}
-        <div className="hidden md:flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.03] border border-white/[0.06] text-[11px] font-mono text-slate-400">
-          <span className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
-          <span>{isPlaying ? 'TURNTABLE ROTATING // 33⅓ RPM' : 'TURNTABLE STANDBY // READY'}</span>
-        </div>
-
-        {/* Cụm Action Nút Tải Lên & Thông Tin */}
-        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => {
               playHapticClick();
-              fileInputRef.current?.click();
+              setIsZenMode(false);
             }}
-            onMouseEnter={playHoverBlip}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium bg-white/[0.05] hover:bg-white/[0.09] text-slate-200 border border-white/[0.08] hover:border-amber-400/30 transition-all cursor-pointer"
+            className="p-2 rounded-full bg-white/[0.08] hover:bg-white/[0.15] text-slate-300 hover:text-white border border-white/[0.12] backdrop-blur-xl transition-all cursor-pointer shadow-xl active:scale-95"
+            title="Thoát Zen Mode (Esc hoặc F)"
           >
-            <Upload className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">Chọn Nhạc & Lời (.lrc)</span>
+            <Minimize2 className="w-4 h-4 text-amber-400" />
           </button>
         </div>
-      </header>
+      )}
 
-      {/* 2. MAIN PLAYER STAGE: Khung Layout 2 Cột (Mâm Đĩa Than 3D & Lời Bài Hát Kinetic) */}
-      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row items-center gap-8 lg:gap-12 min-h-0">
-        
-        {/* CỘT TRÁI: Khu Vực Mâm Đĩa Than 3D & Dropzone */}
-        <section
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          className={`flex-1 w-full h-[540px] lg:h-[600px] rounded-3xl bg-white/[0.02] border transition-all duration-300 flex flex-col items-center justify-center p-6 relative overflow-hidden group ${
-            isDragging
-              ? 'border-amber-400/60 bg-amber-500/[0.04] shadow-2xl shadow-amber-500/10'
-              : 'border-white/[0.06] hover:border-white/[0.12]'
-          }`}
-        >
-          {/* Mâm Đĩa Than 3D Tương Tác (Three.js WebGL Turntable) */}
-          <Turntable3D isPlaying={isPlaying} coverUrl={trackInfo?.coverUrl} ambientColors={ambientColors} />
+      {/* 1. TOP BAR: Header Tối Giản Sang Trọng (Ẩn trong Zen Mode) */}
+      {!isZenMode && (
+        <header className="relative z-20 w-full h-16 border-b border-white/[0.06] bg-[#090a0f]/80 backdrop-blur-md px-4 sm:px-8 flex items-center justify-between">
+          {/* Logo AuraVinyl */}
+          <div className="flex items-center gap-3">
+            <div className="relative w-9 h-9 rounded-full bg-gradient-to-tr from-amber-500/20 to-rose-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/10">
+              <Disc3 className={`w-5 h-5 ${isPlaying ? 'animate-[spin_4s_linear_infinite]' : ''}`} />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
+                <span>AuraVinyl</span>
+                <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/[0.06] text-amber-300/80 border border-white/[0.08]">
+                  3D PLAYER
+                </span>
+              </h1>
+              <p className="text-[10px] font-mono text-slate-500 tracking-wider">
+                KINETIC LYRICS & TURNTABLE
+              </p>
+            </div>
+          </div>
 
-          {/* Dropzone Hint & Nút Tải Tệp */}
-          <div className="mt-6 text-center space-y-2 z-10">
+          {/* Trạng thái đĩa than ở giữa */}
+          <div className="hidden md:flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.03] border border-white/[0.06] text-[11px] font-mono text-slate-400">
+            <span className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
+            <span>{isPlaying ? 'TURNTABLE ROTATING // 33⅓ RPM' : 'TURNTABLE STANDBY // READY'}</span>
+          </div>
+
+          {/* Cụm Action Nút Tải Lên & Zen Mode */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                playHapticClick();
+                setIsZenMode(true);
+              }}
+              onMouseEnter={playHoverBlip}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white/[0.05] hover:bg-white/[0.09] text-slate-200 border border-white/[0.08] hover:border-amber-400/30 transition-all cursor-pointer"
+              title="Bật chế độ toàn màn hình Zen Mode (Phím F)"
+            >
+              <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Zen Mode (F)</span>
+            </button>
+
             <button
               type="button"
               onClick={() => {
@@ -497,15 +644,66 @@ export default function LandingPage() {
                 fileInputRef.current?.click();
               }}
               onMouseEnter={playHoverBlip}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-amber-400/40 text-xs text-slate-300 hover:text-white transition-all cursor-pointer font-medium"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium bg-white/[0.05] hover:bg-white/[0.09] text-slate-200 border border-white/[0.08] hover:border-amber-400/30 transition-all cursor-pointer"
             >
-              <Upload className="w-4 h-4 text-amber-400" />
-              <span>Thả tệp MP3 / WAV / LRC hoặc nhấp để tải</span>
+              <Upload className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Chọn Nhạc & Lời (.lrc)</span>
             </button>
-            <p className="text-[11px] font-mono text-slate-500">
-              AUDIO METADATA, EMBEDDED LYRICS & .LRC READY
-            </p>
           </div>
+        </header>
+      )}
+
+      {/* 2. MAIN PLAYER STAGE: Khung Layout 2 Cột (Mâm Đĩa Than 3D & Lời Bài Hát Kinetic) */}
+      <main className={`relative z-10 flex-1 w-full mx-auto flex flex-col lg:flex-row items-center gap-8 min-h-0 transition-all duration-700 ${
+        isZenMode
+          ? 'max-w-[96vw] h-screen p-4 sm:p-6 justify-center'
+          : 'max-w-7xl p-4 sm:p-6 lg:p-8'
+      }`}>
+        
+        {/* CỘT TRÁI: Khu Vực Mâm Đĩa Than 3D & Dropzone */}
+        <section
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          className={`flex-1 w-full rounded-3xl transition-all duration-700 flex flex-col items-center justify-center relative overflow-hidden group ${
+            isZenMode
+              ? 'h-[80vh] lg:h-[88vh] bg-transparent border-transparent'
+              : `h-[540px] lg:h-[600px] bg-white/[0.02] border ${
+                  isDragging
+                    ? 'border-amber-400/60 bg-amber-500/[0.04] shadow-2xl shadow-amber-500/10'
+                    : 'border-white/[0.06] hover:border-white/[0.12]'
+                } p-6`
+          }`}
+        >
+          {/* Mâm Đĩa Than 3D Tương Tác (Three.js WebGL Turntable) */}
+          <Turntable3D
+            isPlaying={isPlaying}
+            coverUrl={trackInfo?.coverUrl}
+            ambientColors={ambientColors}
+            currentTime={currentTime}
+            duration={duration}
+          />
+
+          {/* Dropzone Hint & Nút Tải Tệp (Ẩn trong Zen Mode để giữ sự tinh khiết tối đa) */}
+          {!isZenMode && (
+            <div className="mt-6 text-center space-y-2 z-10">
+              <button
+                type="button"
+                onClick={() => {
+                  playHapticClick();
+                  fileInputRef.current?.click();
+                }}
+                onMouseEnter={playHoverBlip}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-amber-400/40 text-xs text-slate-300 hover:text-white transition-all cursor-pointer font-medium"
+              >
+                <Upload className="w-4 h-4 text-amber-400" />
+                <span>Thả tệp MP3 / WAV / LRC hoặc nhấp để tải</span>
+              </button>
+              <p className="text-[11px] font-mono text-slate-500">
+                AUDIO METADATA, EMBEDDED LYRICS & .LRC READY
+              </p>
+            </div>
+          )}
         </section>
 
         {/* CỘT PHẢI: Thông Tin Bài Hát & Lời Bài Hát Kinetic */}
@@ -513,7 +711,11 @@ export default function LandingPage() {
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
-          className="flex-1 w-full h-[540px] lg:h-[600px] rounded-3xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.12] p-6 sm:p-8 flex flex-col justify-between overflow-hidden transition-all duration-300"
+          className={`flex-1 w-full rounded-3xl transition-all duration-700 flex flex-col justify-between overflow-hidden ${
+            isZenMode
+              ? 'h-[80vh] lg:h-[88vh] bg-transparent border-transparent p-4 sm:p-6'
+              : 'h-[540px] lg:h-[600px] bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.12] p-6 sm:p-8'
+          }`}
         >
           {/* 1. Header Thông Tin Bài Hát */}
           <div className="space-y-2 border-b border-white/[0.06] pb-5 shrink-0">
@@ -547,6 +749,10 @@ export default function LandingPage() {
             onAiTranscribe={handleAiTranscribe}
             isAiTranscribing={isAiTranscribing}
             aiProgress={aiProgress}
+            trackTitle={trackInfo?.title}
+            trackArtist={trackInfo?.artist}
+            trackAlbum={trackInfo?.album}
+            onExportLyrics={handleExportLyrics}
           />
 
           {/* 3. Footer Thống Kê & Spec Kỹ Thuật */}
@@ -568,6 +774,21 @@ export default function LandingPage() {
               </span>
             </div>
             <div className="flex items-center gap-3">
+              {/* Nút Xuất .LRC nếu có lời bài hát */}
+              {lyricsLines.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleExportLyrics}
+                    className="text-amber-300 hover:text-amber-200 transition-colors cursor-pointer flex items-center gap-1 hover:underline font-semibold"
+                    title="Xuất file lời bài hát đồng bộ (.lrc)"
+                  >
+                    <Download className="w-3.5 h-3.5 text-amber-400" />
+                    <span>📥 Xuất .LRC</span>
+                  </button>
+                  <span className="text-slate-600">•</span>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -602,8 +823,9 @@ export default function LandingPage() {
 
       </main>
 
-      {/* 3. BOTTOM CONTROL BAR: Thanh Điều Khiển Phát Nhạc Tinh Tế */}
-      <footer className="relative z-20 w-full h-24 border-t border-white/[0.06] bg-[#090a0f]/95 backdrop-blur-2xl px-4 sm:px-8 flex items-center justify-between gap-4">
+      {/* 3. BOTTOM CONTROL BAR: Thanh Điều Khiển Phát Nhạc Tinh Tế (Ẩn trong Zen Mode) */}
+      {!isZenMode && (
+        <footer className="relative z-20 w-full h-24 border-t border-white/[0.06] bg-[#090a0f]/95 backdrop-blur-2xl px-4 sm:px-8 flex items-center justify-between gap-4">
         
         {/* Khối Trái: Mini Track Info */}
         <div className="flex items-center gap-3 w-1/4 min-w-[140px] max-w-[240px]">
@@ -719,6 +941,7 @@ export default function LandingPage() {
         </div>
 
       </footer>
+      )}
     </div>
   );
 }

@@ -26,3 +26,15 @@
   - Viết module xử lý âm thanh: Trích xuất PCM Float32Array và resample về 16,000 Hz chuẩn cho Whisper.
   - Bổ sung nút "✨ AI Bóc Lời" và thanh trạng thái tiến trình (Loading Model -> Transcribing %) trên cột Kinetic Lyrics.
   - Tự động chuyển đổi kết quả chunks sang danh sách câu hát đồng bộ mốc thời gian và hiển thị ngay trên mâm đĩa.
+
+- [x] **Task 7: Tinh Chỉnh Động Học Cần Kim Theo Thời Gian Thực & Hạt Bụi 3D**
+  - Đồng bộ góc xoay ngang cần kim theo currentTime/duration (0.46 rad -> 0.73 rad) và tự động lerp khi tua hoặc phát nhạc.
+  - Dựng hệ thống 60 hạt bụi ánh sáng không gian lơ lửng chuyển động Brownian trong luồng sáng và phản xạ theo màu album.
+  - Tối ưu hóa phản xạ vi rãnh đĩa than (micro-grooves) sắc nét và cơ chế Audio Gain Fade-in/Fade-out 50ms khi Play/Pause.
+
+- [x] **Task 8: Nâng Cấp Kinetic Lyrics (Mask Fade, Xuất File .LRC) & Chế Độ Zen Mode Toàn Màn Hình**
+  - Áp dụng mặt nạ chuyển mờ Apple Music Sing `linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)` cho container cuộn câu hát.
+  - Tích hợp nút và cơ chế "📥 Xuất .LRC" tạo Blob UTF-8 tự động tải về file `{tên_bài_hát}.lrc` chuẩn mốc thời gian.
+  - Chế độ Zen Mode toàn màn hình (phím F hoặc nút Maximize) tối giản hóa giao diện, tôn vinh mâm đĩa than 3D và lời hát bay bổng.
+  - Hệ thống phím tắt toàn cục: Space (Play/Pause), ArrowLeft/Right (Tua +/-5s), M (Mute), F (Zen Mode), Esc (Thoát Zen).
+

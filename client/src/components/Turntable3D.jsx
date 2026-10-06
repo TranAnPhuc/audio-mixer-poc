@@ -106,10 +106,37 @@ function createDefaultLabelTexture() {
 }
 
 /**
+ * Procedural Texture Generator cho Hạt Bụi Ánh Sáng (Ambient Dust Speck Texture)
+ */
+function createDustTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 32;
+  canvas.height = 32;
+  const ctx = canvas.getContext('2d');
+
+  const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+  grad.addColorStop(0.35, 'rgba(253, 230, 138, 0.7)');
+  grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 32, 32);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  return texture;
+}
+
+/**
  * Component Turntable3D
  * Mâm đĩa than 3D cảm xúc với động học cần kim (Tonearm) và đĩa quay vật lý
  */
-export default function Turntable3D({ isPlaying = false, coverUrl = null, ambientColors = null }) {
+export default function Turntable3D({
+  isPlaying = false,
+  coverUrl = null,
+  ambientColors = null,
+  currentTime = 0,
+  duration = 0
+}) {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
   const rendererRef = useRef(null);
@@ -123,11 +150,35 @@ export default function Turntable3D({ isPlaying = false, coverUrl = null, ambien
   const turntableGroupRef = useRef(null);
   const strobeTowerRef = useRef(null);
   const platterSpotRef = useRef(null);
+  const currentCoverTextureRef = useRef(null);
+  const defaultLabelTextureRef = useRef(null);
+
+  // Tham chiếu hệ thống hạt bụi ánh sáng
+  const dustGeomRef = useRef(null);
+  const dustMatRef = useRef(null);
+  const dustTextureRef = useRef(null);
+
+  // Tham chiếu theo dõi tiến độ cần kim (Progress Tracking Tonearm)
+  const currentTimeRef = useRef(currentTime);
+  const durationRef = useRef(duration);
+  const targetGrooveYawRef = useRef(0.46);
+  const isTransitioningRef = useRef(false);
 
   // Tốc độ quay và quán tính (Angular Velocity)
   const spinSpeedRef = useRef(0);
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
+
+  // Cập nhật targetGrooveYaw khi currentTime hoặc duration thay đổi
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+    durationRef.current = duration;
+    const progress = (duration > 0 && currentTime > 0)
+      ? Math.min(1, Math.max(0, currentTime / duration))
+      : 0;
+    // Góc xoay ngang từ mép ngoài rãnh (0.46 rad) đến sát tem nhãn giữa (0.73 rad)
+    targetGrooveYawRef.current = 0.46 + progress * 0.27;
+  }, [currentTime, duration]);
 
   // Chuẩn hóa tọa độ chuột cho hiệu ứng Tilt Parallax
   const mouseNormRef = useRef({ x: 0, y: 0 });
@@ -166,14 +217,19 @@ export default function Turntable3D({ isPlaying = false, coverUrl = null, ambien
     scene.add(ambientLight);
 
     // Key Light: Ánh sáng chính ấm áp phản xạ lên rãnh đĩa than
-    const keyLight = new THREE.DirectionalLight(0xfff3e0, 2.4);
-    keyLight.position.set(5, 9, 5);
+    const keyLight = new THREE.DirectionalLight(0xfff3e0, 2.8);
+    keyLight.position.set(4.8, 9.2, 4.8);
     scene.add(keyLight);
 
     // Rim Light: Ánh sáng viền ánh xanh thép tôn lên các cạnh kim loại
-    const rimLight = new THREE.DirectionalLight(0x90b0e0, 1.4);
+    const rimLight = new THREE.DirectionalLight(0x90b0e0, 1.6);
     rimLight.position.set(-6, 6, -5);
     scene.add(rimLight);
+
+    // Grazing Highlight Light: Tôn lên các vân tròn vi rãnh phản quang sắc nét của đĩa than
+    const grooveHighlight = new THREE.DirectionalLight(0xffedd5, 1.5);
+    grooveHighlight.position.set(-1.2, 6.8, 3.2);
+    scene.add(grooveHighlight);
 
     // Point Light: Đèn rọi trực tiếp tâm mâm đĩa tạo quầng phản quang
     const platterSpot = new THREE.PointLight(0xf59e0b, 1.8, 10);
@@ -272,21 +328,22 @@ export default function Turntable3D({ isPlaying = false, coverUrl = null, ambien
     turntableGroup.add(recordGroup);
     recordGroupRef.current = recordGroup;
 
-    // Đĩa Vinyl vân rãnh siêu thực
+    // Đĩa Vinyl vân rãnh siêu thực với phản xạ kim loại cao cấp
     const grooveTexture = createGrooveTexture();
     const recordGeom = new THREE.CylinderGeometry(2.25, 2.25, 0.04, 64);
     const recordMat = new THREE.MeshStandardMaterial({
       color: 0x090a0d,
-      metalness: 0.85,
-      roughness: 0.22,
+      metalness: 0.9,
+      roughness: 0.16,
       bumpMap: grooveTexture,
-      bumpScale: 0.022
+      bumpScale: 0.034
     });
     const recordMesh = new THREE.Mesh(recordGeom, recordMat);
     recordGroup.add(recordMesh);
 
     // Tem nhãn giữa đĩa (Center Label)
     const defaultLabelTexture = createDefaultLabelTexture();
+    defaultLabelTextureRef.current = defaultLabelTexture;
     const labelGeom = new THREE.CircleGeometry(0.72, 64);
     const labelMat = new THREE.MeshStandardMaterial({
       map: defaultLabelTexture,
@@ -451,6 +508,45 @@ export default function Turntable3D({ isPlaying = false, coverUrl = null, ambien
     };
     window.addEventListener('resize', handleResize);
 
+    // 7.5. HỆ THỐNG HẠT BỤI ÁNH SÁNG KHÔNG GIAN (Ambient Dust Particles)
+    const dustCount = 60;
+    const dustPositions = new Float32Array(dustCount * 3);
+    const dustSpecksData = [];
+
+    for (let i = 0; i < dustCount; i++) {
+      dustPositions[i * 3 + 0] = (Math.random() - 0.5) * 6.2;
+      dustPositions[i * 3 + 1] = 0.3 + Math.random() * 3.8;
+      dustPositions[i * 3 + 2] = (Math.random() - 0.5) * 5.6;
+
+      dustSpecksData.push({
+        speedX: 0.8 + Math.random() * 1.6,
+        speedY: 0.6 + Math.random() * 1.2,
+        speedZ: 0.7 + Math.random() * 1.5,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+
+    const dustGeom = new THREE.BufferGeometry();
+    dustGeom.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+    dustGeomRef.current = dustGeom;
+
+    const dustTexture = createDustTexture();
+    dustTextureRef.current = dustTexture;
+
+    const dustMat = new THREE.PointsMaterial({
+      size: 0.14,
+      map: dustTexture,
+      transparent: true,
+      opacity: 0.68,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      color: ambientColors?.hexPrimary || 0xfde68a
+    });
+    dustMatRef.current = dustMat;
+
+    const dustPoints = new THREE.Points(dustGeom, dustMat);
+    scene.add(dustPoints);
+
     // 8. RENDER LOOP (60 FPS Physical Simulation)
     let lastTime = performance.now();
     const render = () => {
@@ -477,6 +573,43 @@ export default function Turntable3D({ isPlaying = false, coverUrl = null, ambien
 
         // Phản ứng thị giác màng đĩa: Nhún nhẹ theo nhịp bass trống kick
         recordGroupRef.current.position.y = 0.17 + bassEnergy * 0.015;
+      }
+
+      // Cần kim bám sát tiến độ bài hát thời gian thực (Progress Tracking Tonearm)
+      if (isPlayingRef.current && !isTransitioningRef.current && tonearmYawRef.current) {
+        // Lerp mượt mà tới vị trí rãnh theo tiến độ currentTime / duration (0.46 rad -> 0.73 rad)
+        tonearmYawRef.current.rotation.y = THREE.MathUtils.lerp(
+          tonearmYawRef.current.rotation.y,
+          targetGrooveYawRef.current,
+          delta * 2.5
+        );
+
+        // Rung động vi cơ học cực nhỏ theo rãnh nhựa quay và năng lượng âm bass
+        if (tonearmPitchRef.current) {
+          tonearmPitchRef.current.rotation.z = Math.sin(now * 0.02) * 0.0015 + bassEnergy * 0.002;
+        }
+      }
+
+      // Cập nhật chuyển động Brownian motion cho 60 hạt bụi ánh sáng không gian
+      if (dustGeomRef.current) {
+        const pos = dustGeomRef.current.attributes.position.array;
+        for (let i = 0; i < dustCount; i++) {
+          const idx = i * 3;
+          const data = dustSpecksData[i];
+
+          // Dao động sóng sin Brownian êm dịu
+          pos[idx + 0] += Math.sin(now * 0.001 * data.speedX + data.phase) * delta * 0.08;
+          pos[idx + 1] += (Math.cos(now * 0.0012 * data.speedY + data.phase) * 0.45 + 0.55) * delta * 0.06;
+          pos[idx + 2] += Math.cos(now * 0.0009 * data.speedZ + data.phase) * delta * 0.08;
+
+          // Wrap hạt bụi khi bay lên quá cao
+          if (pos[idx + 1] > 4.2) {
+            pos[idx + 1] = 0.35;
+            pos[idx + 0] = (Math.random() - 0.5) * 5.4;
+            pos[idx + 2] = (Math.random() - 0.5) * 4.8;
+          }
+        }
+        dustGeomRef.current.attributes.position.needsUpdate = true;
       }
 
       // Đèn Strobe Prism & Đèn Rọi Platter phát xung nhịp theo nhịp trống Kick
@@ -516,9 +649,16 @@ export default function Turntable3D({ isPlaying = false, coverUrl = null, ambien
       // Thu hồi textures, geometries, materials
       grooveTexture.dispose();
       defaultLabelTexture.dispose();
+      if (currentCoverTextureRef.current) {
+        currentCoverTextureRef.current.dispose();
+        currentCoverTextureRef.current = null;
+      }
+      if (dustTextureRef.current) dustTextureRef.current.dispose();
+      if (dustGeomRef.current) dustGeomRef.current.dispose();
+      if (dustMatRef.current) dustMatRef.current.dispose();
 
       scene.traverse((obj) => {
-        if (obj.isMesh) {
+        if (obj.isMesh || obj.isPoints) {
           if (obj.geometry) obj.geometry.dispose();
           if (obj.material) {
             if (Array.isArray(obj.material)) {
@@ -537,6 +677,11 @@ export default function Turntable3D({ isPlaying = false, coverUrl = null, ambien
       if (renderer.domElement && renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);
       }
+
+      // Thu hồi WebGL Context triệt để, ngăn ngừa "Too many active WebGL contexts"
+      if (typeof renderer.forceContextLoss === 'function') {
+        renderer.forceContextLoss();
+      }
       renderer.dispose();
     };
   }, []);
@@ -552,10 +697,18 @@ export default function Turntable3D({ isPlaying = false, coverUrl = null, ambien
     gsap.killTweensOf(tonearmPitch.rotation);
 
     if (isPlaying) {
+      isTransitioningRef.current = true;
+      const destYaw = targetGrooveYawRef.current; // Vị trí rãnh tương ứng với tiến độ bài hát
+
       // BƯỚC 1: Nhấc nhẹ cần kim lên khỏi bệ đỡ
-      // BƯỚC 2: Lia cần kim từ bệ nghỉ (yaw = 0) vào đúng mép ngoài rãnh đĩa (yaw = 0.47 rad ~ 27 độ)
-      // BƯỚC 3: Hạ nhẹ kim tiếp xúc với bề mặt đĩa than
-      const playTl = gsap.timeline();
+      // BƯỚC 2: Lia cần kim từ bệ nghỉ thẳng tới vị trí tiến độ bài hát
+      // BƯỚC 3: Hạ nhẹ kim tiếp xúc với bề mặt rãnh đĩa than
+      const playTl = gsap.timeline({
+        onComplete: () => {
+          isTransitioningRef.current = false;
+        }
+      });
+
       playTl
         .to(tonearmPitch.rotation, {
           x: -0.07, // Nhấc kim lên
@@ -565,7 +718,7 @@ export default function Turntable3D({ isPlaying = false, coverUrl = null, ambien
         .to(
           tonearmYaw.rotation,
           {
-            y: 0.46, // Xoay vào mép đĩa ngoài (Lead-in groove)
+            y: destYaw, // Lia cần kim tới điểm phát hiện tại
             duration: 0.85,
             ease: 'power2.inOut'
           },
@@ -577,10 +730,17 @@ export default function Turntable3D({ isPlaying = false, coverUrl = null, ambien
           ease: 'power2.inOut'
         });
     } else {
+      isTransitioningRef.current = true;
+
       // BƯỚC 1: Nâng kim lên khỏi mặt đĩa than
       // BƯỚC 2: Xoay cần kim trở lại bệ nghỉ
       // BƯỚC 3: Hạ nhẹ kim vào chạc giữ cần
-      const pauseTl = gsap.timeline();
+      const pauseTl = gsap.timeline({
+        onComplete: () => {
+          isTransitioningRef.current = false;
+        }
+      });
+
       pauseTl
         .to(tonearmPitch.rotation, {
           x: -0.07, // Nhấc kim lên
@@ -604,9 +764,22 @@ export default function Turntable3D({ isPlaying = false, coverUrl = null, ambien
     }
   }, [isPlaying]);
 
-  // 11. CẬP NHẬT TEM NHÃN KHI CÓ COVER ART
+  // 11. CẬP NHẬT TEM NHÃN KHI CÓ COVER ART (Kèm dọn dẹp Texture cũ tránh rò rỉ GPU)
   useEffect(() => {
-    if (!coverUrl || !labelMeshRef.current) return;
+    if (!labelMeshRef.current) return;
+
+    if (!coverUrl) {
+      // Khôi phục tem nhãn mặc định nếu coverUrl bị xóa hoặc không có
+      if (currentCoverTextureRef.current) {
+        currentCoverTextureRef.current.dispose();
+        currentCoverTextureRef.current = null;
+      }
+      if (defaultLabelTextureRef.current) {
+        labelMeshRef.current.material.map = defaultLabelTextureRef.current;
+        labelMeshRef.current.material.needsUpdate = true;
+      }
+      return;
+    }
 
     const loader = new THREE.TextureLoader();
     loader.load(
@@ -614,6 +787,13 @@ export default function Turntable3D({ isPlaying = false, coverUrl = null, ambien
       (texture) => {
         texture.generateMipmaps = true;
         texture.minFilter = THREE.LinearMipmapLinearFilter;
+
+        // Giải phóng texture cũ để tránh rò rỉ bộ nhớ GPU VRAM
+        if (currentCoverTextureRef.current) {
+          currentCoverTextureRef.current.dispose();
+        }
+        currentCoverTextureRef.current = texture;
+
         if (labelMeshRef.current) {
           labelMeshRef.current.material.map = texture;
           labelMeshRef.current.material.needsUpdate = true;
@@ -626,11 +806,16 @@ export default function Turntable3D({ isPlaying = false, coverUrl = null, ambien
     );
   }, [coverUrl]);
 
-  // 12. CẬP NHẬT ÁNH SÁNG MÂM ĐĨA THEO BẢNG MÀU CHỦ ĐẠO
+  // 12. CẬP NHẬT ÁNH SÁNG MÂM ĐĨA & HẠT BỤI THEO BẢNG MÀU CHỦ ĐẠO
   useEffect(() => {
-    if (!platterSpotRef.current || !ambientColors?.hexPrimary) return;
+    if (!ambientColors?.hexPrimary) return;
     try {
-      platterSpotRef.current.color.set(ambientColors.hexPrimary);
+      if (platterSpotRef.current) {
+        platterSpotRef.current.color.set(ambientColors.hexPrimary);
+      }
+      if (dustMatRef.current) {
+        dustMatRef.current.color.set(ambientColors.hexPrimary);
+      }
     } catch (e) {}
   }, [ambientColors]);
 

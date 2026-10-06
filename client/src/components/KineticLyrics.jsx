@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import gsap from 'gsap';
-import { Sparkles, Music, Loader2, FileText } from 'lucide-react';
+import { Sparkles, Music, Loader2, FileText, Download } from 'lucide-react';
 import { playHapticClick } from '../utils/soundEffects';
+import { downloadLrcFile } from '../services/lyricsService';
 
 /**
  * Component KineticLyrics
@@ -18,7 +19,11 @@ export default function KineticLyrics({
   onUploadLyrics = null,
   onAiTranscribe = null,
   isAiTranscribing = false,
-  aiProgress = { status: '', message: '', progress: 0 }
+  aiProgress = { status: '', message: '', progress: 0 },
+  trackTitle = '',
+  trackArtist = '',
+  trackAlbum = '',
+  onExportLyrics = null
 }) {
   const containerRef = useRef(null);
   const lineRefs = useRef({});
@@ -59,6 +64,21 @@ export default function KineticLyrics({
   const handleLineClick = (time) => {
     playHapticClick();
     onSeek(time);
+  };
+
+  // Xử lý xuất file lời .lrc đồng bộ
+  const handleExportClick = (e) => {
+    e.stopPropagation();
+    playHapticClick();
+    if (onExportLyrics) {
+      onExportLyrics();
+    } else {
+      downloadLrcFile(lines, trackTitle || 'lyrics', {
+        title: trackTitle,
+        artist: trackArtist,
+        album: trackAlbum
+      });
+    }
   };
 
   // 1. Trạng thái AI Whisper đang phân tích & bóc lời
@@ -194,18 +214,19 @@ export default function KineticLyrics({
   const primaryColor = ambientColors?.hexPrimary || '#fde68a';
   const glowColor = ambientColors?.glowColor || 'rgba(251, 191, 36, 0.35)';
 
-  // 3. Khung hiển thị lời bài hát động học đồng bộ
+  // 3. Khung hiển thị lời bài hát động học đồng bộ (Gradient Mask Fade)
   return (
-    <div
-      ref={containerRef}
-      className="flex-1 w-full overflow-y-auto px-4 py-8 space-y-6 select-none scroll-smooth relative"
-      style={{
-        maskImage: 'linear-gradient(to bottom, transparent, black 14%, black 86%, transparent)',
-        WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 14%, black 86%, transparent)',
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none'
-      }}
-    >
+    <div className="flex-1 w-full h-full relative flex flex-col overflow-hidden group">
+      <div
+        ref={containerRef}
+        className="flex-1 w-full overflow-y-auto px-4 py-8 space-y-6 select-none scroll-smooth relative"
+        style={{
+          maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+      >
       {/* Khoảng đệm đỉnh */}
       <div className="h-16 pointer-events-none" />
 
@@ -262,5 +283,6 @@ export default function KineticLyrics({
       {/* Khoảng đệm đáy */}
       <div className="h-24 pointer-events-none" />
     </div>
+  </div>
   );
 }

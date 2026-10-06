@@ -189,3 +189,61 @@ export async function fetchSyncedLyrics({ title, artist = '', album = '', durati
     lines: []
   };
 }
+
+/**
+ * Chuyển đổi mảng các dòng lời bài hát thành chuỗi văn bản LRC chuẩn [mm:ss.xx]
+ * @param {Array<{ time: number, text: string }>} lines
+ * @param {Object} [meta] Thông tin bổ sung
+ * @param {string} [meta.title] Tên bài hát
+ * @param {string} [meta.artist] Tên nghệ sĩ
+ * @param {string} [meta.album] Tên album
+ * @returns {string} Chuỗi định dạng LRC
+ */
+export function formatLinesToLrc(lines, { title = '', artist = '', album = '' } = {}) {
+  if (!lines || !Array.isArray(lines)) return '';
+
+  const headers = [];
+  if (title) headers.push(`[ti:${title}]`);
+  if (artist) headers.push(`[ar:${artist}]`);
+  if (album) headers.push(`[al:${album}]`);
+  headers.push('[by:AuraVinyl 3D Player]');
+
+  const formattedLines = lines.map((line) => {
+    const totalSecs = Math.max(0, line.time || 0);
+    const totalSecsInt = Math.floor(totalSecs);
+    const mins = Math.floor(totalSecsInt / 60);
+    const secs = totalSecsInt % 60;
+    const hundredths = Math.round(totalSecs * 100) % 100;
+
+    const mm = String(mins).padStart(2, '0');
+    const ss = String(secs).padStart(2, '0');
+    const xx = String(hundredths).padStart(2, '0');
+
+    return `[${mm}:${ss}.${xx}] ${line.text || ''}`;
+  });
+
+  return [...headers, ...formattedLines].join('\n');
+}
+
+/**
+ * Tạo Blob UTF-8 và kích hoạt tải về tệp .lrc trên trình duyệt
+ * @param {Array<{ time: number, text: string }>} lines 
+ * @param {string} filename Tên tệp lưu về (không cần đuôi .lrc)
+ * @param {Object} [meta] Thông tin tiêu đề, nghệ sĩ
+ */
+export function downloadLrcFile(lines, filename = 'lyrics', meta = {}) {
+  if (!lines || lines.length === 0) return;
+  const lrcContent = formatLinesToLrc(lines, meta);
+  const blob = new Blob([lrcContent], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const safeName = filename.replace(/[/\\?%*:|"<>]/g, '_').trim() || 'lyrics';
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${safeName}.lrc`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
