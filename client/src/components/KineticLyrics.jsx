@@ -283,6 +283,21 @@ export default function KineticLyrics({
       {/* Khoảng đệm đáy */}
       <div className="h-24 pointer-events-none" />
     </div>
+
+    {/* Nút Xuất .LRC thanh lịch góc dưới cột lời khi có dữ liệu lời */}
+    {lines && lines.length > 0 && (
+      <div className="absolute bottom-3 right-4 z-20 pointer-events-auto">
+        <button
+          type="button"
+          onClick={handleExportClick}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/85 backdrop-blur-md border border-white/10 hover:border-amber-400/50 text-[11px] font-mono text-amber-300 hover:text-amber-200 shadow-xl cursor-pointer transition-all active:scale-95 group/btn"
+          title={`Xuất file .lrc đồng bộ (${trackTitle || 'lyrics'})`}
+        >
+          <Download className="w-3.5 h-3.5 text-amber-400 group-hover/btn:-translate-y-0.5 transition-transform" />
+          <span>📥 Xuất .LRC</span>
+        </button>
+      </div>
+    )}
   </div>
   );
 }

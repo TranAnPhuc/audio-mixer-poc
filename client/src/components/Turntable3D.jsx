@@ -135,7 +135,8 @@ export default function Turntable3D({
   coverUrl = null,
   ambientColors = null,
   currentTime = 0,
-  duration = 0
+  duration = 0,
+  isZenMode = false
 }) {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
@@ -502,11 +503,17 @@ export default function Turntable3D({
       if (!container || !renderer) return;
       const newW = container.clientWidth;
       const newH = container.clientHeight;
+      if (newW === 0 || newH === 0) return;
       camera.aspect = newW / newH;
       camera.updateProjectionMatrix();
       renderer.setSize(newW, newH);
     };
     window.addEventListener('resize', handleResize);
+
+    const resizeObserver = new ResizeObserver(() => {
+      handleResize();
+    });
+    resizeObserver.observe(container);
 
     // 7.5. HỆ THỐNG HẠT BỤI ÁNH SÁNG KHÔNG GIAN (Ambient Dust Particles)
     const dustCount = 60;
@@ -645,6 +652,7 @@ export default function Turntable3D({
       container.removeEventListener('pointermove', handlePointerMove);
       container.removeEventListener('pointerleave', handlePointerLeave);
       window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
 
       // Thu hồi textures, geometries, materials
       grooveTexture.dispose();
@@ -822,7 +830,11 @@ export default function Turntable3D({
   return (
     <div
       ref={mountRef}
-      className="relative w-full h-[360px] sm:h-[420px] md:h-[460px] flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
+      className={`relative w-full flex items-center justify-center cursor-grab active:cursor-grabbing select-none transition-all duration-700 ${
+        isZenMode
+          ? 'h-[500px] sm:h-[580px] md:h-[660px] lg:h-[760px]'
+          : 'h-[360px] sm:h-[420px] md:h-[460px]'
+      }`}
     >
       {/* Vầng sáng Ambient Bloom phản xạ dưới chân mâm đĩa đổi màu theo album */}
       <div

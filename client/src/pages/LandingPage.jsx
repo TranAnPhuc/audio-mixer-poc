@@ -461,12 +461,7 @@ export default function LandingPage() {
       switch (e.code) {
         case 'Space':
           e.preventDefault();
-          playHapticClick();
-          if (isPlaying) {
-            stopPlayback();
-          } else {
-            startPlayback();
-          }
+          togglePlay();
           break;
 
         case 'ArrowLeft':
@@ -491,7 +486,6 @@ export default function LandingPage() {
 
         case 'KeyM':
           e.preventDefault();
-          playHapticClick();
           toggleMute();
           break;
 
@@ -560,14 +554,18 @@ export default function LandingPage() {
       {/* Ánh sáng Aurora nền biến đổi màu theo ảnh bìa album (Dynamic Ambient Aurora) */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden transition-all duration-1000">
         <div
-          className={`absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] rounded-full blur-[140px] opacity-25 transition-all duration-1000 ${
-            isPlaying ? 'scale-110' : 'scale-95'
+          className={`absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[150px] transition-all duration-1000 ${
+            isZenMode
+              ? 'w-[900px] h-[900px] opacity-35 scale-125'
+              : `w-[650px] h-[650px] opacity-25 ${isPlaying ? 'scale-110' : 'scale-95'}`
           }`}
           style={{ backgroundColor: ambientColors.primaryColor }}
         />
         <div
-          className={`absolute bottom-1/3 right-1/4 w-[550px] h-[550px] rounded-full blur-[150px] opacity-20 transition-all duration-1000 ${
-            isPlaying ? 'scale-105' : 'scale-90'
+          className={`absolute bottom-1/3 right-1/4 rounded-full blur-[160px] transition-all duration-1000 ${
+            isZenMode
+              ? 'w-[800px] h-[800px] opacity-30 scale-120'
+              : `w-[550px] h-[550px] opacity-20 ${isPlaying ? 'scale-105' : 'scale-90'}`
           }`}
           style={{ backgroundColor: ambientColors.secondaryColor }}
         />
@@ -578,7 +576,7 @@ export default function LandingPage() {
         <div className="fixed top-5 right-5 z-50 flex items-center gap-3 animate-fade-in select-none">
           <div className="px-3.5 py-1.5 rounded-full bg-white/[0.06] backdrop-blur-xl border border-white/[0.12] text-[11px] font-mono text-slate-300 flex items-center gap-2 shadow-2xl">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-            <span>ZEN MODE // NHẤN ESC HOẶC F ĐỂ THOÁT</span>
+            <span>Nhấn Esc hoặc F để thoát Zen Mode</span>
           </div>
           <button
             type="button"
@@ -682,6 +680,7 @@ export default function LandingPage() {
             ambientColors={ambientColors}
             currentTime={currentTime}
             duration={duration}
+            isZenMode={isZenMode}
           />
 
           {/* Dropzone Hint & Nút Tải Tệp (Ẩn trong Zen Mode để giữ sự tinh khiết tối đa) */}
