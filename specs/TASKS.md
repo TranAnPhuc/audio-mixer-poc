@@ -78,3 +78,15 @@
   - **Mô tả:** Xây dựng cơ chế phát đồng thời cả 2 track ngay trong trình duyệt trước khi render. Khi bấm "Nghe thử", cả 2 track phát đồng bộ với độ trễ đúng bằng `vocalOffsetMs` hiện tại, kèm vạch chỉ báo phát (Playhead) chạy xuyên suốt cả 2 track trên timeline.
   - **File tác động:** `client/src/components/DualWaveformTimeline.jsx`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Bấm "Nghe thử Preview", nghe thấy cả giọng hát và nhạc nền hòa quyện với đúng độ lệch phách đã căn chỉnh; bấm "Tạm dừng" dừng cả 2 track; kim phát chạy đồng bộ.
+
+## Giai đoạn 9: Trang Giới Thiệu & Hiệu Ứng Thị Giác 3D (Three.js Landing Page)
+
+- [x] **Task 9.1: Tích hợp Three.js & Xây dựng Background Particle Wave 3D**
+  - **Mô tả:** Cài đặt thư viện `three` vào `client/`. Tạo component `ThreeAudioVisualizer.jsx` dựng lưới hạt 3D uốn lượn với gradient màu Indigo-Emerald, phản hồi theo chuyển động chuột, có cơ chế dọn dẹp bộ nhớ WebGL an toàn khi unmount.
+  - **File tác động:** `client/package.json`, `client/src/components/ThreeAudioVisualizer.jsx`.
+  - **Tiêu chuẩn nghiệm thu (DoD):** Component render mượt mà 60 FPS trên Canvas WebGL; khi di chuột, sóng hạt nghiêng theo góc nhìn; không bị memory leak hay lỗi context loss.
+
+- [x] **Task 9.2: Xây dựng Giao Diện Landing Page & Điều Hướng Vào Studio**
+  - **Mô tả:** Tạo component `LandingPage.jsx` kết hợp Hero Banner, thanh Navbar, thẻ giới thiệu tính năng và nút bấm CTA chuyển mượt vào khu vực Studio (DualDropzone & Mini-DAW). Cập nhật `App.jsx` để liên kết luồng trải nghiệm.
+  - **File tác động:** `client/src/components/LandingPage.jsx`, `client/src/App.jsx`.
+  - **Tiêu chuẩn nghiệm thu (DoD):** Mở `http://localhost:5173`, người dùng được chào đón bằng Landing Page 3D đẹp mắt; bấm "Mở Studio Ngay" cuộn mượt xuống bàn làm việc Mini-DAW.

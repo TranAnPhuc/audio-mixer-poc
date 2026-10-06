@@ -107,6 +107,18 @@
   - Các nút điều khiển: Play/Pause, thời gian hiện tại / tổng thời gian, nút phát lại từ đầu.
   - Nút "Tải Xuống Bản Mix (.mp3)" kích hoạt download trực tiếp.
 
+#### FR-08: Trang Giới Thiệu & Hiệu Ứng Thị Giác 3D (Three.js Hero Landing Page)
+
+- **Không gian 3D tương tác (Interactive 3D Canvas):**
+  - Sử dụng thư viện `three` dựng một trường hạt sóng âm 3D (Particle Wave Grid) phủ nền Hero Section.
+  - Hỗ trợ chuyển động thị sai (Parallax Effect) mượt mà 60 FPS phản hồi theo tọa độ chuột của người dùng.
+- **Bố cục Landing Page (Modern Studio Layout):**
+  - Thanh điều hướng (Navbar) với logo âm thanh và trạng thái hệ thống.
+  - Hero Section với tiêu đề ấn tượng, nút kêu gọi hành động (CTA) chuyển cảnh mượt vào Studio.
+  - Khối giới thiệu 3 tính năng cốt lõi (BPM Matching, Direct Drag Timeline, High-fidelity Render).
+- **Tối ưu hóa hiệu năng (Performance Optimization):**
+  - Tự động tạm dừng vòng lặp render (`cancelAnimationFrame`) khi người dùng cuộn khỏi Hero Section hoặc khi tab trình duyệt bị ẩn để tiết kiệm GPU.
+
 ---
 
 ### 5. Yêu Cầu Phi Chức Năng (Non-Functional Requirements)
