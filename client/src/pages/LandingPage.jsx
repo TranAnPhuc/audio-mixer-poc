@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
@@ -17,18 +17,38 @@ import {
   Maximize2,
   Headphones,
   Volume2,
+  VolumeX,
   Sparkles,
-  ChevronDown
+  ChevronDown,
+  Radio,
+  Crosshair,
+  Compass,
+  Terminal
 } from 'lucide-react';
 import ThreeAudioVisualizer from '../components/ThreeAudioVisualizer';
 import ThemeToggle from '../components/ThemeToggle';
 import { useTheme } from '../context/ThemeContext';
+import {
+  AstronautChaos,
+  AstronautStemExtractor,
+  AstronautCalibrator,
+  AstronautWarpPilot
+} from '../components/AstronautCharacters';
+import {
+  playHapticClick,
+  playHoverBlip,
+  playStageSweep,
+  playWarpLaunch,
+  toggleSoundMute,
+  getIsSoundMuted,
+  subscribeSoundMute
+} from '../utils/soundEffects';
 
 // Đăng ký Plugin GSAP ScrollTrigger
 gsap.registerPlugin(ScrollTrigger);
 
 /**
- * Custom Audio Reticle Cursor (Tâm Ngắm Âm Thanh Điện Ảnh Riotters Drone)
+ * Custom Audio Reticle Cursor V2 (Tâm Ngắm Không Gian Vũ Trụ Riotters Drone)
  */
 function AudioReticleCursor() {
   const cursorRef = useRef(null);
@@ -93,40 +113,49 @@ function AudioReticleCursor() {
 
   return (
     <>
-      {/* Vòng ngắm ngoài (Outer Reticle Ring) */}
+      {/* Vòng ngắm ngoài (Outer Reticle Ring với xoay chậm liên tục) */}
       <div
         ref={cursorRef}
-        className={`fixed top-0 left-0 -ml-5 -mt-5 pointer-events-none z-[100] transition-opacity duration-300 ${
+        className={`fixed top-0 left-0 -ml-6 -mt-6 pointer-events-none z-[100] transition-opacity duration-300 ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
         style={{ willChange: 'transform' }}
       >
         <div
-          className={`relative w-10 h-10 rounded-full border transition-all duration-200 flex items-center justify-center ${
+          className={`relative w-12 h-12 rounded-full border transition-all duration-200 flex items-center justify-center animate-[spin_20s_linear_infinite] ${
             isHovered
-              ? 'scale-150 border-cyan-400 bg-cyan-500/10 rotate-45'
-              : 'scale-100 border-indigo-500/60 dark:border-indigo-400/60 rotate-0'
-          } ${isClicking ? 'scale-90 border-pink-500 bg-pink-500/20' : ''}`}
+              ? 'scale-150 border-cyan-400 bg-cyan-500/15 shadow-xl shadow-cyan-500/30'
+              : 'scale-100 border-indigo-500/60 dark:border-indigo-400/60'
+          } ${isClicking ? 'scale-90 border-pink-500 bg-pink-500/25' : ''}`}
         >
-          {/* Vạch chia độ góc tâm ngắm */}
-          <span className="absolute -top-1 w-1 h-0.5 bg-indigo-400 dark:bg-indigo-300" />
-          <span className="absolute -bottom-1 w-1 h-0.5 bg-indigo-400 dark:bg-indigo-300" />
-          <span className="absolute -left-1 w-0.5 h-1 bg-indigo-400 dark:bg-indigo-300" />
-          <span className="absolute -right-1 w-0.5 h-1 bg-indigo-400 dark:bg-indigo-300" />
+          {/* Vạch chia độ góc tâm ngắm 4 phương */}
+          <span className="absolute -top-1.5 w-2 h-0.5 bg-indigo-400 dark:bg-indigo-300" />
+          <span className="absolute -bottom-1.5 w-2 h-0.5 bg-indigo-400 dark:bg-indigo-300" />
+          <span className="absolute -left-1.5 w-0.5 h-2 bg-indigo-400 dark:bg-indigo-300" />
+          <span className="absolute -right-1.5 w-0.5 h-2 bg-indigo-400 dark:bg-indigo-300" />
+
+          {/* Vòng tròn nội tiếp ngắm mục tiêu */}
+          <div
+            className={`w-6 h-6 rounded-full border border-dashed border-indigo-400/40 transition-transform ${
+              isHovered ? 'scale-125 border-cyan-300 animate-[spin_6s_linear_infinite_reverse]' : 'scale-100'
+            }`}
+          />
         </div>
       </div>
 
-      {/* Điểm laser trung tâm (Laser Dot) */}
+      {/* Điểm laser trung tâm (Laser Center Dot) */}
       <div
         ref={dotRef}
-        className={`fixed top-0 left-0 -ml-1 -mt-1 pointer-events-none z-[100] transition-opacity duration-300 ${
+        className={`fixed top-0 left-0 -ml-1.5 -mt-1.5 pointer-events-none z-[100] transition-opacity duration-300 ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
         style={{ willChange: 'transform' }}
       >
         <div
-          className={`w-2 h-2 rounded-full transition-transform duration-150 ${
-            isHovered ? 'scale-150 bg-emerald-400' : 'scale-100 bg-indigo-500 dark:bg-indigo-400'
+          className={`w-3 h-3 rounded-full transition-transform duration-150 ${
+            isHovered
+              ? 'scale-125 bg-emerald-400 dot-glow-emerald ring-2 ring-emerald-300/50'
+              : 'scale-100 bg-indigo-500 dark:bg-indigo-400 dot-glow-cyan'
           }`}
         />
       </div>
@@ -141,8 +170,15 @@ function AudioReticleCursor() {
 export default function LandingPage() {
   const { isDark } = useTheme();
 
-  // Ref theo dõi tiến trình Scroll toàn trang (0.0 đến 1.0) cho Three.js
+  // Ref và State theo dõi tiến trình Scroll toàn trang (0.0 đến 1.0) cho Three.js & HUD
   const scrollProgressRef = useRef(0);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  // Điều hướng và Trạng thái Âm thanh / Warp Transition
+  const navigate = useNavigate();
+  const [isSoundMuted, setIsSoundMuted] = useState(getIsSoundMuted());
+  const [isWarping, setIsWarping] = useState(false);
+  const lastStageRef = useRef(1);
 
   // Refs cho các phần tử DOM GSAP
   const heroRef = useRef(null);
@@ -165,18 +201,106 @@ export default function LandingPage() {
   const workflowSectionRef = useRef(null);
   const workflowSpineRef = useRef(null);
 
-  // State hiển thị tọa độ HUD giả lập thời gian thực
+  // State hiển thị tọa độ HUD giả lập thời gian thực & Tọa độ Parallax chuẩn hóa (-1 đến +1)
   const [hudCoord, setHudCoord] = useState({ x: '130.00', y: '44.10' });
+  const [mouseNorm, setMouseNorm] = useState({ x: 0, y: 0 });
   const [activePhase, setActivePhase] = useState(1);
 
+  // Dữ liệu viễn tưởng Jitter nhảy động (Matrix Code, Frequency, Packets)
+  const [telemetryJitter, setTelemetryJitter] = useState({
+    hexCode: '0x4F9B',
+    freqHz: 44100,
+    packets: 1024,
+    matrixHash: 'A7:9C:F1'
+  });
+
+  // Tính toán định danh Phân đoạn và Thông số Flight Telemetry động
+  const stageNumber =
+    scrollProgress <= 0.25
+      ? 1
+      : scrollProgress <= 0.60
+      ? 2
+      : scrollProgress <= 0.85
+      ? 3
+      : 4;
+
+  const currentStage =
+    stageNumber === 1
+      ? 'STAGE 01: THE SOUND CHAOS'
+      : stageNumber === 2
+      ? 'STAGE 02: AI STEM EXTRACTION ENGINE'
+      : stageNumber === 3
+      ? 'STAGE 03: HARMONIC PRECISION SYNC'
+      : 'STAGE 04: HYPERDRIVE STUDIO LAUNCHPAD';
+
+  const currentFov =
+    scrollProgress > 0.85
+      ? Math.round(58 + ((scrollProgress - 0.85) / 0.15) * 52)
+      : Math.round(45 + Math.min(scrollProgress / 0.85, 1) * 13);
+
+  const currentFlightStatus =
+    scrollProgress > 0.85
+      ? 'WARP_TUNNEL_ACTIVE'
+      : scrollProgress > 0.60
+      ? 'ORBIT_SWEEP'
+      : scrollProgress > 0.25
+      ? 'STEM_ANALYSIS'
+      : 'STATIONARY_SCAN';
+
+  // Lắng nghe cập nhật trạng thái âm thanh toàn cục
   useEffect(() => {
-    // Cập nhật tọa độ chuột giả lập trên HUD
+    const unsubscribe = subscribeSoundMute((muted) => {
+      setIsSoundMuted(muted);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Spatial Audio Sweep khi chuyển qua stage mới
+  useEffect(() => {
+    if (lastStageRef.current !== stageNumber) {
+      playStageSweep(stageNumber);
+      lastStageRef.current = stageNumber;
+    }
+  }, [stageNumber]);
+
+  // Bộ kích hoạt cánh cổng Warp Launchpad vào Studio
+  const handleLaunchStudio = (e) => {
+    if (e) e.preventDefault();
+    if (isWarping) return;
+    playWarpLaunch();
+    setIsWarping(true);
+    setTimeout(() => {
+      navigate('/studio');
+    }, 650);
+  };
+
+  useEffect(() => {
+    // Cập nhật tọa độ chuột giả lập trên HUD & Parallax chuẩn hóa
     const handleMouseMove = (e) => {
       const normX = ((e.clientX / window.innerWidth) * 100).toFixed(2);
       const normY = ((e.clientY / window.innerHeight) * 100).toFixed(2);
       setHudCoord({ x: normX, y: normY });
+      setMouseNorm({
+        x: (e.clientX / window.innerWidth) * 2 - 1,
+        y: (e.clientY / window.innerHeight) * 2 - 1
+      });
     };
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
+
+    // Hiệu ứng Jitter giả lập nhịp đập xử lý số tín hiệu DSP (150ms)
+    const hexChars = '0123456789ABCDEF';
+    const jitterInterval = setInterval(() => {
+      const randHex = '0x' + Array.from({ length: 4 }, () => hexChars[Math.floor(Math.random() * 16)]).join('');
+      const randHash = Array.from({ length: 3 }, () => hexChars[Math.floor(Math.random() * 16)] + hexChars[Math.floor(Math.random() * 16)]).join(':');
+      const randFreq = 44100 + Math.floor(Math.random() * 24 - 12);
+      const randPackets = 1020 + Math.floor(Math.random() * 8);
+      setTelemetryJitter({
+        hexCode: randHex,
+        freqHz: randFreq,
+        packets: randPackets,
+        matrixHash: randHash
+      });
+    }, 150);
 
     // 1. Đồng bộ GSAP ScrollTrigger Toàn Trang với Three.js
     const pageScrollTrigger = ScrollTrigger.create({
@@ -186,6 +310,7 @@ export default function LandingPage() {
       scrub: 0.3,
       onUpdate: (self) => {
         scrollProgressRef.current = self.progress;
+        setScrollProgress(self.progress);
       }
     });
 
@@ -305,6 +430,7 @@ export default function LandingPage() {
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      clearInterval(jitterInterval);
       pageScrollTrigger.kill();
       ScrollTrigger.getAll().forEach((t) => t.kill());
     };
@@ -316,59 +442,323 @@ export default function LandingPage() {
 
   return (
     <div className="relative w-full min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300 overflow-x-hidden selection:bg-indigo-500 selection:text-white font-sans">
-      {/* 0. Custom Reticle Cursor */}
+      {/* 0. Custom Reticle Cursor V2 */}
       <AudioReticleCursor />
 
-      {/* 1. SÂN KHẤU 3D THREE.JS TOÀN MÀN HÌNH (Persistent Cinematic WebGL Stage) */}
+      {/* 1. SÂN KHẤU 3D THREE.JS TOÀN MÀN HÌNH (Persistent Cinematic WebGL Stage V2) */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <ThreeAudioVisualizer scrollProgressRef={scrollProgressRef} />
+        <ThreeAudioVisualizer
+          scrollProgress={scrollProgress}
+          scrollProgressRef={scrollProgressRef}
+        />
       </div>
 
-      {/* Nền Gradient mờ dịu */}
+      {/* Nền Gradient mờ dịu & Lưới Ma Trận HUD */}
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-indigo-200/30 via-transparent to-transparent dark:from-indigo-950/40 dark:via-transparent dark:to-transparent z-0 pointer-events-none" />
+      <div className="fixed inset-0 hud-matrix-grid z-0 pointer-events-none opacity-40 dark:opacity-60" />
 
-      {/* 2. KHUNG VIỀN HUD TELEMETRY LỚP PHỦ TOÀN CẢNH (Riotters Drone HUD Overlay) */}
-      <div className="fixed inset-0 z-20 pointer-events-none border border-slate-300/30 dark:border-slate-800/40 m-2 sm:m-4 rounded-3xl flex flex-col justify-between p-4 sm:p-6 text-[10px] font-mono text-slate-400 dark:text-slate-500 select-none">
-        {/* Góc trên: Vạch gióng và Tọa độ hệ thống */}
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-3">
-            <span className="text-indigo-500 font-bold tracking-widest">[SYS.AUDIO_DSP // 44.1KHZ]</span>
-            <span className="hidden md:inline text-slate-400 dark:text-slate-600">|</span>
-            <span className="hidden md:inline tracking-wider">LATENCY: 0.00MS // ZERO-DRIFT</span>
+      {/* 2. KHUNG VIỀN HUD TELEMETRY LỚP PHỦ TOÀN CẢNH (Riotters Drone HUD Overlay V2 - 4-CORNER TELEMETRY) */}
+      <div className="fixed inset-0 z-40 pointer-events-none select-none p-3 sm:p-5 flex flex-col justify-between">
+        {/* TẦNG TRÊN: HUD TELEMETRY MATRIX (TRÁI) & 360° AUDIO RADAR SONAR (PHẢI) */}
+        <div className="flex justify-between items-start pt-16 sm:pt-14 gap-4">
+          {/* GÓC TRÊN TRÁI: HUD TELEMETRY MATRIX */}
+          <div className="flex flex-col gap-1.5 p-3 rounded-2xl bg-white/85 dark:bg-slate-950/85 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md shadow-2xl max-w-xs text-left">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800/80 pb-1.5 text-[10px]">
+              <div className="flex items-center gap-1.5 text-indigo-500 dark:text-indigo-400 font-bold tracking-wider font-mono">
+                <Activity className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
+                <span>SYS.TELEMETRY // V2.0</span>
+              </div>
+              <span className="font-mono text-[9px] text-emerald-500 dark:text-emerald-400 font-semibold px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                LIVE_DSP
+              </span>
+            </div>
+
+            {/* Mouse POS & Clock */}
+            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-700 dark:text-slate-300">
+              <div>
+                <span className="text-slate-400 dark:text-slate-500 block text-[9px]">CURSOR COORD:</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">X:{hudCoord.x} Y:{hudCoord.y}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 dark:text-slate-500 block text-[9px]">CLOCK RATE:</span>
+                <span className="text-cyan-600 dark:text-cyan-400 font-bold">{telemetryJitter.freqHz} HZ</span>
+              </div>
+            </div>
+
+            {/* Stage-Driven Telemetry Matrix */}
+            <div className="p-2 rounded-xl bg-slate-100/80 dark:bg-slate-900/90 border border-indigo-500/20 text-[10px] font-mono space-y-0.5">
+              {scrollProgress <= 0.25 && (
+                <>
+                  <div className="flex justify-between text-rose-500 dark:text-rose-400 font-semibold">
+                    <span>ALIGNMENT:</span>
+                    <span>ERROR (DRIFT +14ms)</span>
+                  </div>
+                  <div className="flex justify-between text-amber-500 dark:text-amber-400">
+                    <span>BPM STATUS:</span>
+                    <span>UNSYNCED</span>
+                  </div>
+                  <div className="flex justify-between text-purple-600 dark:text-purple-300">
+                    <span>KEY HARMONY:</span>
+                    <span>CLASHING</span>
+                  </div>
+                  <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                    <span>NOISE FLOOR:</span>
+                    <span>HIGH (-12.4dB)</span>
+                  </div>
+                </>
+              )}
+              {scrollProgress > 0.25 && scrollProgress <= 0.60 && (
+                <>
+                  <div className="flex justify-between text-purple-600 dark:text-purple-400 font-semibold">
+                    <span>AI_EXTRACTION:</span>
+                    <span>ACTIVE (DEMUCS)</span>
+                  </div>
+                  <div className="flex justify-between text-cyan-600 dark:text-cyan-300">
+                    <span>STEMS ISOLATED:</span>
+                    <span>VOCALS + BEAT</span>
+                  </div>
+                  <div className="flex justify-between text-amber-500 dark:text-amber-300">
+                    <span>DEMUCS LOAD:</span>
+                    <span>88.4% // 4-STEM</span>
+                  </div>
+                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                    <span>SPECTRAL FLUX:</span>
+                    <span>RECONSTRUCTED</span>
+                  </div>
+                </>
+              )}
+              {scrollProgress > 0.60 && scrollProgress <= 0.85 && (
+                <>
+                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <span>ALIGNMENT:</span>
+                    <span>CALIBRATED (0 DRIFT)</span>
+                  </div>
+                  <div className="flex justify-between text-cyan-600 dark:text-cyan-300">
+                    <span>BPM SYNC:</span>
+                    <span>128 ⇄ 128 (MATCHED)</span>
+                  </div>
+                  <div className="flex justify-between text-purple-600 dark:text-purple-300">
+                    <span>KEY HARMONY:</span>
+                    <span>8B ⇄ 6A (HARMONIZED)</span>
+                  </div>
+                  <div className="flex justify-between text-indigo-600 dark:text-indigo-300">
+                    <span>PITCH SHIFT:</span>
+                    <span>±0 SEMITONES</span>
+                  </div>
+                </>
+              )}
+              {scrollProgress > 0.85 && (
+                <>
+                  <div className="flex justify-between text-cyan-600 dark:text-cyan-300 font-bold">
+                    <span>WARP_DRIVE:</span>
+                    <span>READY (VECTOR 44.1K)</span>
+                  </div>
+                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                    <span>CALIBRATION:</span>
+                    <span>100% COMPLETE</span>
+                  </div>
+                  <div className="flex justify-between text-purple-600 dark:text-purple-300">
+                    <span>PORTAL GATE:</span>
+                    <span>HYPERDRIVE ACTIVE</span>
+                  </div>
+                  <div className="flex justify-between text-amber-500 dark:text-amber-300">
+                    <span>STUDIO LAUNCH:</span>
+                    <span>PRIMED FOR MASHUP</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Jitter Micro-Metrics */}
+            <div className="flex items-center justify-between text-[9px] font-mono text-slate-400 dark:text-slate-500 pt-0.5">
+              <span>HEX: {telemetryJitter.hexCode}</span>
+              <span>HASH: {telemetryJitter.matrixHash}</span>
+              <span className="text-slate-600 dark:text-slate-400">BUF: {telemetryJitter.packets}</span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Live Visualizer Bars giả lập */}
-            <div className="flex items-end gap-0.5 h-3">
-              <span className="w-0.5 h-2 bg-indigo-500 animate-pulse" />
-              <span className="w-0.5 h-3 bg-emerald-400 animate-pulse" />
-              <span className="w-0.5 h-1.5 bg-purple-500 animate-pulse" />
-              <span className="w-0.5 h-2.5 bg-indigo-400 animate-pulse" />
+          {/* GÓC TRÊN PHẢI: AUDIO RADAR & 360° SONAR DISPLAY */}
+          <div className="flex flex-col items-end gap-1.5 p-3 rounded-2xl bg-white/85 dark:bg-slate-950/85 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md shadow-2xl max-w-xs text-right">
+            {/* Header */}
+            <div className="w-full flex items-center justify-between border-b border-slate-200 dark:border-slate-800/80 pb-1.5 text-[10px]">
+              <span className="font-mono text-[9px] text-cyan-600 dark:text-cyan-400 font-semibold px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20">
+                SECTOR SCAN [COSMIC_STUDIO]
+              </span>
+              <div className="flex items-center gap-1.5 text-cyan-500 dark:text-cyan-400 font-bold tracking-wider font-mono">
+                <span>360° SONAR RADAR</span>
+                <Disc3 className="w-3.5 h-3.5 text-cyan-500 animate-spin" />
+              </div>
             </div>
-            <span className="font-bold text-emerald-500 dark:text-emerald-400 tracking-widest">
-              POS: [X: {hudCoord.x} | Y: {hudCoord.y}]
-            </span>
+
+            {/* Radar Screen SVG */}
+            <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center my-0.5">
+              <svg className="w-full h-full" viewBox="0 0 110 110">
+                {/* Vòng tròn nền */}
+                <circle cx="55" cy="55" r="50" fill="#030712" stroke="#1e293b" strokeWidth="1.5" />
+                {/* Vòng tròn đồng tâm */}
+                <circle cx="55" cy="55" r="38" fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="3 3" />
+                <circle cx="55" cy="55" r="24" fill="none" stroke="#334155" strokeWidth="1" />
+                <circle cx="55" cy="55" r="10" fill="none" stroke="#475569" strokeWidth="1" />
+
+                {/* Trục chữ thập */}
+                <line x1="5" y1="55" x2="105" y2="55" stroke="#1e293b" strokeWidth="1" />
+                <line x1="55" y1="5" x2="55" y2="105" stroke="#1e293b" strokeWidth="1" />
+
+                {/* Sonar Pulse Ping Ring */}
+                <circle
+                  cx="55"
+                  cy="55"
+                  r="32"
+                  fill="none"
+                  stroke="#06b6d4"
+                  strokeWidth="1.5"
+                  className="animate-radar-ping origin-center"
+                />
+
+                {/* Tia laser quét 360 độ liên tục */}
+                <line
+                  x1="55"
+                  y1="55"
+                  x2="55"
+                  y2="5"
+                  stroke="url(#radar-beam-grad)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  className="animate-radar-sweep origin-[55px_55px]"
+                />
+
+                {/* Điểm nhận diện Track A (Vocal - Indigo) */}
+                <circle cx="76" cy="36" r="3.5" fill="#6366f1" className="animate-pulse" />
+                <circle cx="76" cy="36" r="6" fill="none" stroke="#6366f1" strokeWidth="0.8" opacity="0.6" />
+
+                {/* Điểm nhận diện Track B (Beat - Emerald) */}
+                <circle cx="38" cy="74" r="3.5" fill="#10b981" className="animate-pulse" />
+                <circle cx="38" cy="74" r="6" fill="none" stroke="#10b981" strokeWidth="0.8" opacity="0.6" />
+
+                <defs>
+                  <linearGradient id="radar-beam-grad" x1="0%" y1="100%" x2="0%" y2="0%">
+                    <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#06b6d4" stopOpacity="1" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+
+            {/* Dải Equalizer Onsets nhảy sóng */}
+            <div className="w-full flex items-center justify-between text-[9px] font-mono text-slate-500 dark:text-slate-400">
+              <span>FREQ: 20Hz - 20kHz</span>
+              <div className="flex items-end gap-1 h-3.5">
+                <span className="w-1 bg-indigo-500 rounded-full h-2 animate-pulse" />
+                <span className="w-1 bg-cyan-400 rounded-full h-3.5 animate-pulse" />
+                <span className="w-1 bg-emerald-400 rounded-full h-2.5 animate-pulse" />
+                <span className="w-1 bg-purple-500 rounded-full h-1.5 animate-pulse" />
+                <span className="w-1 bg-pink-500 rounded-full h-3 animate-pulse" />
+              </div>
+            </div>
+
+            {/* Radar status */}
+            <div className="text-[9px] font-mono text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-800/80 pt-1 w-full flex justify-between">
+              <span>CALIBRATION: ONLINE</span>
+              <span className="text-emerald-500 dark:text-emerald-400 font-bold">LOCKED</span>
+            </div>
           </div>
         </div>
 
-        {/* Các dấu chữ thập căn góc (Corner Crosshairs) */}
-        <div className="absolute top-8 left-8 text-slate-300 dark:text-slate-700">+</div>
-        <div className="absolute top-8 right-8 text-slate-300 dark:text-slate-700">+</div>
-        <div className="absolute bottom-8 left-8 text-slate-300 dark:text-slate-700">+</div>
-        <div className="absolute bottom-8 right-8 text-slate-300 dark:text-slate-700">+</div>
+        {/* CÁC DẤU CHỮ THẬP CĂN GÓC HUD CHUẨN XÁC */}
+        <div className="absolute top-8 left-8 text-slate-400 dark:text-slate-700 font-mono text-xs">+</div>
+        <div className="absolute top-8 right-8 text-slate-400 dark:text-slate-700 font-mono text-xs">+</div>
+        <div className="absolute bottom-8 left-8 text-slate-400 dark:text-slate-700 font-mono text-xs">+</div>
+        <div className="absolute bottom-8 right-8 text-slate-400 dark:text-slate-700 font-mono text-xs">+</div>
 
-        {/* Góc dưới: Thông số Buffer & Chuẩn Mastering */}
-        <div className="flex justify-between items-end">
-          <div className="flex items-center gap-3">
-            <span>BUFFER: 512_SAMPLES</span>
-            <span className="hidden sm:inline">•</span>
-            <span className="hidden sm:inline">ALGORITHM: WSOLA_ATEMPO</span>
+        {/* TẦNG DƯỚI: STAGE ANNOTATION & MISSION PROGRESS (TRÁI) & PROGRESSION SCORER (PHẢI) */}
+        <div className="flex flex-col sm:flex-row justify-between items-end gap-4 pb-2">
+          {/* GÓC DƯỚI TRÁI: STAGE ANNOTATION & MISSION PROGRESS */}
+          <div className="flex flex-col gap-2 p-3 sm:p-3.5 rounded-2xl bg-white/85 dark:bg-slate-950/85 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md shadow-2xl max-w-sm text-left">
+            {/* Milestone Indicators */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {[
+                { id: 1, label: '01', name: 'CHAOS' },
+                { id: 2, label: '02', name: 'STEMS' },
+                { id: 3, label: '03', name: 'SYNC' },
+                { id: 4, label: '04', name: 'WARP' }
+              ].map((m) => {
+                const active =
+                  (m.id === 1 && scrollProgress <= 0.25) ||
+                  (m.id === 2 && scrollProgress > 0.25 && scrollProgress <= 0.60) ||
+                  (m.id === 3 && scrollProgress > 0.60 && scrollProgress <= 0.85) ||
+                  (m.id === 4 && scrollProgress > 0.85);
+
+                return (
+                  <div
+                    key={m.id}
+                    className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-lg font-mono text-[9px] border transition-all duration-300 ${
+                      active
+                        ? 'bg-cyan-500/15 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border-cyan-500/50 dark:border-cyan-400 shadow-md shadow-cyan-500/20 font-bold'
+                        : 'bg-slate-100 dark:bg-slate-900/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-cyan-500 animate-ping' : 'bg-slate-400 dark:bg-slate-600'}`} />
+                    <span>{m.label} {m.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Song ngữ Anh - Việt */}
+            <div>
+              <span className="text-[9px] text-cyan-600 dark:text-cyan-400 uppercase font-mono font-bold tracking-wider block">
+                {currentStage}
+              </span>
+              <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100">
+                {scrollProgress <= 0.25
+                  ? 'Sự Hỗn Loạn Của Âm Thanh (The Sound Chaos)'
+                  : scrollProgress <= 0.60
+                  ? 'Cỗ Máy Bóc Tách Thân Âm AI (AI Demucs Extraction)'
+                  : scrollProgress <= 0.85
+                  ? 'Phép Màu Đồng Bộ Phách & Tông (Harmonic Calibration)'
+                  : 'Cổng Khởi Chạy Studio Vũ Trụ (Studio Warp Portal)'}
+              </h4>
+            </div>
+
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed font-sans hidden sm:block">
+              {scrollProgress <= 0.25
+                ? 'Hai bản thu âm với phách nhịp và cao độ phân tán. Hệ thống chuẩn bị nạp dữ liệu để phân tích đạo hàm phổ.'
+                : scrollProgress <= 0.60
+                ? 'Đội kỹ sư AI Demucs đang chia tách sóng âm thành 2 dải tần tinh khiết: Clean Vocals và Pure Instrumental.'
+                : scrollProgress <= 0.85
+                ? 'Thuật toán WSOLA và vòng tròn Camelot Wheel căn khớp tuyệt đối nhịp điệu và cao độ mà không biến dạng giọng ca.'
+                : 'Bản phối hoàn tất. Hệ thống kích hoạt cổng Warp siêu không gian mời bạn bước vào Studio.'}
+            </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span>LIMITER: TRUE_PEAK -0.45dB</span>
-            <span className="hidden sm:inline">•</span>
-            <span className="text-indigo-500 font-bold">320 KBPS CBR</span>
+          {/* GÓC DƯỚI PHẢI: PROGRESSION RULER & MASTERING SPEC */}
+          <div className="flex flex-col items-end gap-1.5 p-3 sm:p-3.5 rounded-2xl bg-white/85 dark:bg-slate-950/85 border border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md shadow-2xl max-w-xs text-right">
+            {/* Horizontal Scrubber Ruler */}
+            <div className="w-full space-y-1">
+              <div className="flex justify-between items-center text-[10px] font-mono">
+                <span className="text-slate-400 dark:text-slate-500">MISSION SCROLLER:</span>
+                <span className="text-purple-600 dark:text-purple-400 font-bold">{(scrollProgress * 100).toFixed(0)}% SCROLLED</span>
+              </div>
+              <div className="w-40 sm:w-48 h-1.5 bg-slate-200 dark:bg-slate-900 rounded-full overflow-hidden border border-slate-300/60 dark:border-slate-800">
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-500 via-cyan-400 to-pink-500 rounded-full transition-all duration-75"
+                  style={{ width: `${Math.max(5, scrollProgress * 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Timecode & Master Specs */}
+            <div className="text-[10px] font-mono text-slate-600 dark:text-slate-400 flex items-center gap-2">
+              <span>TIMECODE: 00:00:{Math.min(59, Math.round(scrollProgress * 59)).toString().padStart(2, '0')}</span>
+              <span className="text-slate-300 dark:text-slate-600">|</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">320 KBPS CBR</span>
+            </div>
+
+            <div className="text-[9px] font-mono text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>SPEC: 44.1KHZ STEREO // TRUE_PEAK -0.45dBFS</span>
+            </div>
           </div>
         </div>
       </div>
@@ -377,7 +767,13 @@ export default function LandingPage() {
       <header className="fixed top-0 left-0 right-0 z-40 backdrop-blur-xl bg-white/70 dark:bg-slate-950/70 border-b border-slate-200/80 dark:border-slate-800/80 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Logo Brand */}
-          <Link to="/" className="flex items-center gap-3 group" data-cursor-interactive="true">
+          <Link
+            to="/"
+            onClick={playHapticClick}
+            onMouseEnter={playHoverBlip}
+            className="flex items-center gap-3 group"
+            data-cursor-interactive="true"
+          >
             <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-500 to-emerald-400 text-white shadow-lg shadow-indigo-500/25 group-hover:scale-105 transition-transform">
               <AudioWaveform className="w-5 h-5 font-black" />
             </div>
@@ -398,6 +794,25 @@ export default function LandingPage() {
               <span>FFmpeg DSP Ready</span>
             </div>
 
+            {/* Nút Bật / Tắt Hiệu Ứng Âm Thanh Web Audio */}
+            <button
+              type="button"
+              onClick={() => {
+                toggleSoundMute();
+                playHapticClick();
+              }}
+              onMouseEnter={playHoverBlip}
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900/80 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 transition-colors flex items-center justify-center cursor-pointer"
+              title={isSoundMuted ? 'Bật âm thanh hiệu ứng (Muted)' : 'Tắt âm thanh hiệu ứng (Active)'}
+              data-cursor-interactive="true"
+            >
+              {isSoundMuted ? (
+                <VolumeX className="w-4 h-4 text-rose-500" />
+              ) : (
+                <Volume2 className="w-4 h-4 text-emerald-500 animate-pulse" />
+              )}
+            </button>
+
             {/* Nút Chuyển Đổi Theme Sáng / Tối */}
             <ThemeToggle />
 
@@ -406,6 +821,8 @@ export default function LandingPage() {
               href="https://github.com/TranAnPhuc/audio-mixer-poc"
               target="_blank"
               rel="noopener noreferrer"
+              onClick={playHapticClick}
+              onMouseEnter={playHoverBlip}
               className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900/80 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 transition-colors"
               title="Xem mã nguồn trên GitHub"
               data-cursor-interactive="true"
@@ -414,20 +831,24 @@ export default function LandingPage() {
             </a>
 
             {/* CTA Button vào Studio */}
-            <Link
-              to="/studio"
+            <button
+              type="button"
+              onClick={handleLaunchStudio}
+              onMouseEnter={playHoverBlip}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-[1.03] active:scale-[0.98] transition-all cursor-pointer"
               data-cursor-interactive="true"
             >
               <Zap className="w-3.5 h-3.5 fill-current" />
               <span>Vào Studio</span>
-            </Link>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* 4. HERO SECTION (Cinematic High-Tech Entrance) */}
+      {/* 4. HERO SECTION - GIAI ĐOẠN 1 (Stage 1: The Sound Chaos & High-Tech Entrance) */}
       <section
+        id="stage-1-hero"
+        data-stage="1"
         ref={heroRef}
         className="relative z-10 w-full min-h-screen flex items-center justify-center pt-24 pb-16 px-4 sm:px-6 max-w-7xl mx-auto"
       >
@@ -476,18 +897,24 @@ export default function LandingPage() {
               ref={heroCtaRef}
               className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto pt-2"
             >
-              <Link
-                to="/studio"
+              <button
+                type="button"
+                onClick={handleLaunchStudio}
+                onMouseEnter={playHoverBlip}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-sm font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-xl shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-[1.03] active:scale-[0.98] transition-all cursor-pointer"
                 data-cursor-interactive="true"
               >
                 <span>Khám Phá Studio Ngay</span>
                 <ArrowRight className="w-4 h-4" />
-              </Link>
+              </button>
 
               <button
                 type="button"
-                onClick={scrollToPinnedSection}
+                onClick={() => {
+                  playHapticClick();
+                  scrollToPinnedSection();
+                }}
+                onMouseEnter={playHoverBlip}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl text-sm font-semibold bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer backdrop-blur-md shadow-sm"
                 data-cursor-interactive="true"
               >
@@ -517,8 +944,14 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* CỘT PHẢI: Không gian trống cho Quả Cầu 3D Three.js và Thẻ HUD nổi */}
+          {/* CỘT PHẢI: Không gian trống cho Quả Cầu 3D Three.js, Phi hành gia Drifting và Thẻ HUD nổi */}
           <div className="lg:col-span-5 relative w-full h-[400px] lg:h-[520px] pointer-events-none flex items-center justify-center">
+            {/* Phi hành gia Giai đoạn 1: Lơ lửng cô đơn */}
+            <AstronautChaos
+              mouseNorm={mouseNorm}
+              className="hidden sm:block absolute -right-2 lg:right-4 top-6 z-10"
+            />
+
             {/* Thẻ Telemetry HUD nổi bên góc */}
             <div className="absolute top-4 left-2 sm:left-4 p-3 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/90 dark:border-indigo-500/30 backdrop-blur-xl shadow-xl flex items-center gap-2 text-xs font-mono text-indigo-600 dark:text-indigo-300 animate-pulse">
               <Headphones className="w-4 h-4 text-indigo-500" />
@@ -533,8 +966,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 5. SECTION PINNED: "PHẪU THUẬT LÕI HÒA ÂM" (Pinned Deep Tech Storytelling) */}
+      {/* 5. SECTION PINNED - GIAI ĐOẠN 2 (Stage 2: AI Stem Extraction Engine & Deep DSP) */}
       <section
+        id="stage-2-pinned"
+        data-stage="2"
         ref={pinnedSectionRef}
         className="relative z-10 w-full h-screen flex flex-col items-center justify-between py-12 px-4 sm:px-6 max-w-7xl mx-auto overflow-hidden"
       >
@@ -563,6 +998,12 @@ export default function LandingPage() {
 
         {/* Khung Chứa Các Thẻ Kính HUD Bay Vào Tương Ứng Với Quả Cầu 3D Biến Dạng Ở Giữa */}
         <div className="w-full flex-1 relative flex items-center justify-center my-6">
+          {/* Đội phi hành gia Giai đoạn 2: Cỗ máy bóc tách AI Demucs kéo cáp */}
+          <AstronautStemExtractor
+            mouseNorm={mouseNorm}
+            className="hidden lg:block absolute -top-8 left-12 xl:left-24 z-30"
+          />
+
           {/* Card 1: Onset Analysis (Bên Trái) */}
           <div
             ref={pinnedCard1Ref}
@@ -652,8 +1093,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 6. SECTION WORKFLOW: "QUY TRÌNH CHUẨN STUDIO" (Interactive Pipeline) */}
+      {/* 6. SECTION WORKFLOW - GIAI ĐOẠN 3 (Stage 3: Harmonic Sync & Precision Calibration) */}
       <section
+        id="stage-3-workflow"
+        data-stage="3"
         ref={workflowSectionRef}
         className="relative z-10 w-full max-w-5xl py-28 px-4 sm:px-6 mx-auto"
       >
@@ -707,6 +1150,12 @@ export default function LandingPage() {
 
             {/* Bước 2 */}
             <div className="relative flex flex-col md:flex-row-reverse items-center justify-between gap-8 group">
+              {/* Phi hành gia Giai đoạn 3: Chuyên gia hòa âm & phách nhịp */}
+              <AstronautCalibrator
+                mouseNorm={mouseNorm}
+                className="hidden xl:block absolute -left-36 top-1/2 -translate-y-1/2 z-20"
+              />
+
               <div className="md:w-5/12 text-center md:text-left space-y-2">
                 <span className="font-mono text-xs text-purple-500 font-bold">BƯỚC 02 // CĂN PHÁCH TRỰC QUAN</span>
                 <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -756,11 +1205,27 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 7. SECTION FINAL CTA: "STUDIO LAUNCHPAD" (Futuristic Control Deck) */}
-      <section className="relative z-10 w-full max-w-5xl py-24 px-4 sm:px-6 mx-auto">
-        <div className="relative p-10 sm:p-16 rounded-3xl bg-white/80 dark:bg-slate-900/70 border border-indigo-500/40 backdrop-blur-2xl text-center space-y-8 shadow-2xl overflow-hidden group">
+      {/* 7. SECTION FINAL CTA - GIAI ĐOẠN 4 (Stage 4: Studio Warp Launchpad & Hyperdrive Flight) */}
+      <section
+        id="stage-4-launchpad"
+        data-stage="4"
+        className="relative z-10 w-full min-h-screen flex items-center justify-center py-20 px-4 sm:px-6 max-w-5xl mx-auto"
+      >
+        <div className="relative p-10 sm:p-16 rounded-3xl bg-white/80 dark:bg-slate-900/70 border border-indigo-500/40 backdrop-blur-2xl text-center space-y-8 shadow-2xl overflow-visible group">
+          {/* Đội hình phi công Giai đoạn 4: Bay lướt chỉ đường hai bên Portal */}
+          <AstronautWarpPilot
+            mouseNorm={mouseNorm}
+            isLeft={true}
+            className="hidden lg:block absolute -left-24 top-1/2 -translate-y-1/2 z-20"
+          />
+          <AstronautWarpPilot
+            mouseNorm={mouseNorm}
+            isLeft={false}
+            className="hidden lg:block absolute -right-24 top-1/2 -translate-y-1/2 z-20"
+          />
+
           {/* Quầng sáng năng lượng hậu cảnh */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500/15 via-purple-500/10 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500/15 via-purple-500/10 to-transparent pointer-events-none rounded-3xl" />
 
           {/* Vạch chia góc High-Tech (L-brackets) */}
           <span className="absolute top-4 left-4 text-xs font-mono text-indigo-400">[ LAUNCHPAD // 01 ]</span>
@@ -781,15 +1246,17 @@ export default function LandingPage() {
           </div>
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              to="/studio"
+            <button
+              type="button"
+              onClick={handleLaunchStudio}
+              onMouseEnter={playHoverBlip}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-10 py-5 rounded-2xl text-base font-extrabold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-2xl shadow-indigo-500/40 hover:scale-[1.04] active:scale-[0.98] transition-all cursor-pointer font-mono"
               data-cursor-interactive="true"
             >
               <Zap className="w-5 h-5 fill-current" />
               <span>KHỞI CHẠY STUDIO PHỐI NHẠC</span>
               <ArrowRight className="w-5 h-5" />
-            </Link>
+            </button>
           </div>
 
           <div className="pt-4 text-[11px] font-mono text-slate-400">
@@ -804,6 +1271,33 @@ export default function LandingPage() {
           © 2026 Audio Mashup Studio • Engineered with Node.js, Express, FFmpeg, React 18, Three.js & GSAP ScrollTrigger
         </p>
       </footer>
+
+      {/* 9. MÀN HÌNH CHUYỂN CẢNH HYPERDRIVE WARP TRANSITION */}
+      {isWarping && (
+        <div className="fixed inset-0 z-[200] pointer-events-auto flex items-center justify-center bg-black/90 backdrop-blur-3xl animate-in fade-in duration-300">
+          {/* Vòng xoáy ánh sáng gia tốc */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-indigo-500/40 to-slate-950 animate-pulse" />
+
+          {/* Các tia sao kéo dãn (Warp Star Streaks & Gyro Rings) */}
+          <div className="relative flex flex-col items-center justify-center text-center space-y-4">
+            <div className="relative w-32 h-32 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-4 border-cyan-400 border-t-transparent animate-spin" />
+              <div className="absolute inset-2 rounded-full border-4 border-indigo-500 border-b-transparent animate-[spin_0.8s_linear_infinite_reverse]" />
+              <div className="absolute inset-5 rounded-full bg-cyan-400/20 blur-xl animate-ping" />
+              <Zap className="w-12 h-12 text-cyan-300 animate-bounce" />
+            </div>
+
+            <div className="space-y-1 font-mono">
+              <div className="text-xl sm:text-2xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-pink-300 animate-pulse">
+                WARP JUMP INITIALIZED
+              </div>
+              <p className="text-xs text-cyan-400/80 tracking-wider">
+                ENTERING AUDIO MASHUP STUDIO...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

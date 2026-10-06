@@ -7,3 +7,155 @@
     @apply bg-slate-950 text-slate-100 antialiased min-h-screen selection:bg-indigo-500 selection:text-white;
   }
 }
+
+/* ==========================================================================
+   HUD TELEMETRY & SCI-FI SCIENTIFIC VISUAL EFFECTS (Phase 12 V2)
+   ========================================================================== */
+
+@keyframes radar-sweep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes radar-ping {
+  0% {
+    transform: scale(0.15);
+    opacity: 0.95;
+  }
+  75% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes astronaut-float {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(6px, -14px) rotate(2.5deg);
+  }
+  50% {
+    transform: translate(-4px, -6px) rotate(-1.5deg);
+  }
+  75% {
+    transform: translate(-10px, -16px) rotate(1.8deg);
+  }
+}
+
+@keyframes astronaut-float-slow {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(-8px, -12px) rotate(-2deg);
+  }
+  50% {
+    transform: translate(5px, -18px) rotate(2deg);
+  }
+  75% {
+    transform: translate(8px, -6px) rotate(-1deg);
+  }
+}
+
+@keyframes cable-pulse {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -40;
+  }
+}
+
+@keyframes scanline-sweep {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+/* Utility Classes */
+.animate-radar-sweep {
+  animation: radar-sweep 4s linear infinite;
+  transform-origin: center center;
+}
+
+.animate-radar-ping {
+  animation: radar-ping 2.6s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+  transform-origin: center center;
+}
+
+.animate-astronaut-float {
+  animation: astronaut-float 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-astronaut-float-slow {
+  animation: astronaut-float-slow 8.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-cable-pulse {
+  animation: cable-pulse 1.8s linear infinite;
+}
+
+.animate-scanline {
+  animation: scanline-sweep 8s linear infinite;
+}
+
+/* Lưới nền ma trận HUD viễn tưởng (Matrix HUD Grid Lines) */
+.hud-matrix-grid {
+  background-image: 
+    linear-gradient(to right, rgba(99, 102, 241, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(99, 102, 241, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Hiệu ứng tia quét ngang CRT Scanline */
+.scanline-overlay {
+  background: linear-gradient(
+    to bottom,
+    transparent 50%,
+    rgba(0, 0, 0, 0.15) 51%,
+    transparent 52%
+  );
+  background-size: 100% 4px;
+}
+
+/* Chấm laser phát quang */
+.dot-glow-cyan {
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.4);
+}
+
+.dot-glow-emerald {
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.8), 0 0 20px rgba(16, 185, 129, 0.4);
+}
+
+.dot-glow-purple {
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.8), 0 0 20px rgba(168, 85, 247, 0.4);
+}
+
+/* Studio Entrance Fade-in */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

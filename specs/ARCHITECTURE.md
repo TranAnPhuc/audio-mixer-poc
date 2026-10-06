@@ -10,10 +10,12 @@
 +-----------------------------------------------------------------------------------+
 |                            CLIENT (React 18 + Vite)                               |
 |                                                                                   |
-|  [Route: "/"] Landing Page (Cinematic Showcase)                                   |
-|   - Three.js Interactive 3D Audio Orb (WebGL 60 FPS)                              |
-|   - GSAP ScrollTrigger Pinned Deep-Tech Storytelling                              |
-|   - HUD Telemetry Overlay & Magnetic Reticle Cursor                               |
+|  [Route: "/"] Landing Page (Cinematic Cosmic Storytelling V2)                     |
+|   - Three.js Interactive 3D Audio Orb (WebGL 60 FPS Camera Flight Path)            |
+|   - Astronaut characters & Cosmic DJ animation sprites                            |
+|   - GSAP ScrollTrigger 4-Stage Immersive storytelling & scrubbing                 |
+|   - HUD Telemetry Overlay, radar & Custom Magnetic Reticle Cursor                 |
+|   - Spatial audio sweep FX on stage transitions & button click sound haptic       |
 |                                                                                   |
 |  [Route: "/studio"] Studio Workspace (Mini-DAW)                                   |
 |   - DualDropzone (File Ingestion, AI Stem Toggle & Client Validation)             |
@@ -135,22 +137,22 @@ audio-mashup/
 ├── client/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── DualDropzone.jsx          # File ingestion, AI Stem toggle & drag-drop wrapper
+│   │   │   ├── DualDropzone.jsx          # File Ingestion & upload with settings
 │   │   │   ├── DualWaveformTimeline.jsx  # Mini-DAW Stacked Waveform with drag offset & audio sync
 │   │   │   ├── MixingStatus.jsx          # Polling progress card, tempo, key & stem badges
-│   │   │   ├── ThreeAudioVisualizer.jsx  # Three.js 3D Audio Orb Visualizer
-│   │   │   ├── ThemeToggle.jsx           # Sun/Moon theme switcher
+│   │   │   ├── ThreeAudioVisualizer.jsx  # Interactive 3D Audio Sphere (Multi-Stage Story Camera Flight Path)
+│   │   │   ├── ThemeToggle.jsx           # Dark/Light theme switcher widget
 │   │   │   └── WaveformPlayer.jsx        # Output WaveSurfer.js player
 │   │   ├── context/
 │   │   │   └── ThemeContext.jsx          # Light/Dark mode state & localStorage persistence
 │   │   ├── pages/
-│   │   │   ├── LandingPage.jsx           # Cinematic GSAP + Three.js Showcase Page
-│   │   │   └── StudioPage.jsx            # Dedicated Mini-DAW Mashup Studio Page
+│   │   │   ├── LandingPage.jsx           # Cinematic Cosmic Storytelling UI V2
+│   │   │   └── StudioPage.jsx            # Studio DAW desk Interface
 │   │   ├── hooks/
-│   │   │   └── useJobPolling.js          # Polling lifecycle hook with memory cleanup
+│   │   │   └── useJobPolling.js          # Polling lifecycle hook
 │   │   ├── services/
-│   │   │   └── api.js                    # Axios client with upload progress
-│   │   ├── App.jsx                       # React Router configuration
+│   │   │   └── api.js                    # Axios client
+│   │   ├── App.jsx                       # Routing configs
 │   │   ├── main.jsx
 │   │   └── index.css
 │   ├── package.json
@@ -161,7 +163,7 @@ audio-mashup/
 └── .gitignore
 ```
 
-#### Cấu hình biến môi trường (`server/.env.example`):
+#### Biến môi trường (`server/.env.example`):
 
 ```env
 PORT=5000
@@ -244,9 +246,34 @@ model MixJob {
 
 ---
 
-### 4. Chi Tiết Kỹ Thuật Pipeline Âm Thanh & AI (Audio DSP & AI Pipeline)
+### 4. Chi Tiết Kỹ Thuật Pipeline & Animation V2 (Audio DSP & WebGL Transition Matrix)
 
-#### 4.1. Kiến trúc Bóc Tách Thân Âm AI (`StemSeparatorService.js`)
+#### 4.1. Sơ đồ Trạng thái Diễn hoạt GSAP & WebGL (Phase 12 Camera Flight Path):
+
+```text
+[ScrollProgress: 0.0 - 0.2] ────────────────► Stage 01: The Chaos
+  Camera: Zoom sát (Z=6.5), Orbit: Nghiêng 45 độ.
+  Effects: Các hạt bay hỗn loạn, dải sóng co rúm, HUD báo "ALIGNMENT_ERROR".
+  Interactive: Astronaut floating on left. HUD telemetry scanning.
+  Audio Target: Tiếng nhiễu sóng (Static Radio FX).
+
+[ScrollProgress: 0.2 - 0.5] ────────────────► Stage 02: AI Demucs Separation
+  Camera: Camera lùi xa (Z=9.0), Orbit: Trượt ngang (X=-1.5).
+  Effects: Quả cầu 3D tách làm 2 lớp sóng (Vocal tím, Beat xanh ngọc), astronaut sprite bay lướt kéo cáp.
+  UI: HUD bừng sáng "SEPARATING_STAL_STEMS [100%]".
+
+[ScrollProgress: 0.5 - 0.8] ────────────────► Stage 03: Precision DJ Sync
+  Camera: Orbit trung tâm (X=0, Z=7.5), Camera xoay 120 độ quanh trục.
+  Effects: Vành đai hạt uốn lượn, các nốt nảy sóng, vòng Camelot xoay vòng.
+  UI: HUD: "BPM_MATCHED: 128 ⇄ 128", "KEY_HARMONIZED: 8B ⇄ 6A". Astronaut calibrating controls.
+
+[ScrollProgress: 0.8 - 1.0] ────────────────► Stage 04: Space Studio Launch
+  Camera: Camera bay xuyên thấu qua quả cầu (Camera Flight Path: Z -> 1.0), Fov -> 110.
+  Effects: Hào quang bùng nổ, các dòng hạt bay dạt hai bên.
+  UI: Cánh cổng "KHỞI CHẠY STUDIO" sáng cực đại.
+```
+
+#### 4.2. Khối bóc tách thân âm AI (`StemSeparatorService.js`)
 
 ```text
 Audio Input Stream (MP3/WAV)
@@ -259,24 +286,6 @@ Python Demucs Runner (separate_stems.py)
        │
        ▼
 Output: { vocalsPath: ".../vocals.wav", instrumentalPath: ".../no_vocals.wav" }
-```
-
-#### 4.2. Giải thuật Nhận diện Tông nhạc (`KeyDetectorService.js`)
-
-```text
-Raw Audio Stream (FFmpeg PCM 16-bit 22.05kHz Mono)
-       │
-       ▼
-Short-Time Fourier Transform (STFT / 4096-sample Window, Hanning, 50% Overlap)
-       │
-       ▼
-Pitch Class Profile (12-Bin Chroma Vector: C, C#, D, D#, E, F, F#, G, G#, A, A#, B)
-       │
-       ▼
-Pearson Correlation với 24 Krumhansl-Schmuckler Key Profiles (12 Major + 12 Minor)
-       │
-       ▼
-Output: { key: "Am", scale: "minor", camelot: "8A", confidence: 0.84 }
 ```
 
 #### 4.3. FFmpeg Complex FilterGraph Tổng Hợp (Tempo + Pitch + Offset Alignment)
@@ -372,3 +381,7 @@ Output: { key: "Am", scale: "minor", camelot: "8A", confidence: 0.84 }
 
 - **Endpoint:** `GET /api/v1/mix/:jobId/download`
 - **Header phản hồi:** `Content-Disposition: attachment; filename="mashup-[id].mp3"`.
+
+```
+
+```

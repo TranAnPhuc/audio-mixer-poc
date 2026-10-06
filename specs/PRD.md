@@ -21,7 +21,7 @@
 
 ### 3. Phạm Vi Triển Khai (Scope Matrix)
 
-| Hạng mục                   | Trong phạm vi (In-Scope - Giai đoạn 1 đến 11)                                                                                                            | Ngoài phạm vi (Out-of-Scope - Tương lai)                 |
+| Hạng mục                   | Trong phạm vi (In-Scope - Giai đoạn 1 đến 12)                                                                                                            | Ngoài phạm vi (Out-of-Scope - Tương lai)                 |
 | :------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------- |
 | **Định dạng vào**          | MP3, WAV (MIME: `audio/mpeg`, `audio/wav`)                                                                                                               | FLAC, AAC, OGG, M4A                                      |
 | **Kích thước tệp**         | Tối đa 25MB / tệp, thời lượng $\le 5\text{ phút}$ / tệp                                                                                                  | Tệp dung lượng lớn, video MP4                            |
@@ -31,7 +31,7 @@
 | **Khớp tông hòa âm**       | Dò tông tự động (Chroma + Krumhansl-Schmuckler), mã hóa Camelot Wheel, dịch cao độ pitch-shift qua FFmpeg                                                | Nhận diện vòng hòa âm phức tạp nhiều hợp âm chuyển giọng |
 | **Căn chỉnh độ trễ**       | Tinh chỉnh độ trễ (`vocalOffsetMs` từ $-3000\text{ ms}$ đến $+3000\text{ ms}$) qua filter `adelay` và `atrim`                                            | Tự động dò phase alignment bằng AI                       |
 | **Trực quan hóa timeline** | Timeline đa tầng (Dual-track Waveform Canvas), thước đo thời gian (Ruler), kéo trượt trực quan Vocal và nghe thử cục bộ (Zero-latency Web Audio Preview) | Tự động cắt ghép nhiều phân đoạn (Multi-region slicing)  |
-| **Trải nghiệm thị giác**   | Landing Page 3D Three.js 60 FPS, GSAP ScrollTrigger HUD Telemetry, chuyển đổi Dark/Light mode                                                            | Trình chỉnh sửa hiệu ứng ánh sáng sân khấu               |
+| **Trải nghiệm thị giác**   | Landing Page 3D Three.js 60 FPS, GSAP ScrollTrigger HUD Telemetry V2, astronaut storytelling sprites, chuyển đổi Dark/Light mode                         | Trình chỉnh sửa hiệu ứng ánh sáng sân khấu               |
 | **Xử lý tác vụ**           | Xử lý bất đồng bộ (Non-blocking Child Process) với trạng thái lưu DB                                                                                     | Message Queue phân tán (RabbitMQ, Redis BullMQ)          |
 | **Lưu trữ**                | Hệ thống tệp cục bộ (Local File System) có phân cấp thư mục                                                                                              | Cloud Storage (AWS S3, Cloudflare R2)                    |
 | **Bảo mật / Auth**         | Không yêu cầu đăng nhập (Public access theo Session/Job ID)                                                                                              | JWT Authentication, quản lý thư viện cá nhân             |
@@ -144,6 +144,19 @@
 - **Cơ chế Fallback & Tối ưu hiệu năng:**
   - Nếu tệp tải lên đã là Acappella hoặc Instrumental (người dùng tắt cờ AI), bỏ qua tiến trình AI để tiết kiệm tài nguyên tính toán.
   - Tự động kiểm tra môi trường Python & PyTorch; nếu thiếu GPU/CUDA, chạy chế độ CPU đa luồng có giới hạn thời lượng hoặc kích hoạt fallback DSP thông minh (Center-Channel Phase Inversion) trong môi trường test nhẹ.
+
+#### FR-11: Trải Nghiệm Kể Chuyện Vũ Trụ Nhạc Số (Cosmic Storytelling V2)
+
+- **Hành trình kể chuyện đa phân đoạn theo cuộn chuột (Immersive Horizontal & Vertical Scroll Tour):**
+  - Khóa màn hình và chia nhỏ Landing Page thành một chuỗi diễn hoạt liền mạch lấy cảm hứng từ Noomo Agency:
+    - **Phân đoạn 1: Sự hỗn loạn của âm thanh (The Un-synced Sound Chaos):** Hai tín hiệu sóng âm rời rạc, méo mó bay vô định trong không gian. Cần bộc lộ "vấn đề" của việc mix nhạc thủ công (Lệch nhịp, lạc tông).
+    - **Phân đoạn 2: Cỗ máy bóc tách AI (The AI Stem Extraction Engine):** Người dùng cuộn chuột, cỗ máy bóc tách (Visualizer 3D) xuất hiện, các phi hành gia hoạt họa (Astronaut characters) kéo cáp, dải sóng đục ngầu được lọc thành 2 luồng tinh khiết: _Clean Vocals (Track A)_ và _Pure Instrumental (Track B)_.
+    - **Phân đoạn 3: Phép màu Đồng bộ (Harmonic Sync & Calibration):** Visualizer uốn lượn uốn cong, vạch đo BPM và vòng tròn Camelot Wheel xoay khớp, hai luồng laser giao thoa vào tâm ma trận.
+    - **Phân đoạn 4: Studio Portal:** Portal phát sáng hào quang mở ra, mời gọi bay vào không gian làm việc Studio.
+- **HUD Telemetry & Game-like Widgets:**
+  - Bảng chỉ số góc tương tác: Tọa độ chuột `POS: [X | Y]`, tần số Hertz động, vạch quét, chấm laser, radar dập dình theo nhịp.
+  - Custom Reticle Cursor (Tâm ngắm âm thanh) đổi hình dạng & xoay tròn khi rê qua các nút bấm.
+  - Immersive Sound FX: Tiếng click cơ học, tiếng sóng không gian nhẹ sweep khi scroll qua stage.
 
 ---
 

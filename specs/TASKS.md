@@ -99,10 +99,10 @@
   - **File tác động:** `server/src/services/BpmDetectorService.js`, `server/tests/test_bpm.js`, `server/package.json`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Chạy `node tests/test_bpm.js` đo được BPM của 2 file fixture mẫu hoặc file nhạc thực tế với độ chính xác cao, in ra kết quả phân tích trong $\le 2\text{ giây}$.
 
-- [x] **Task 6.2: Cập nhật Prisma Schema & AudioMixerService với filter atempo**
+- [x] **Task 6.2: Cập nhật Prisma Schema & AudioMixerService with filter atempo**
   - **Mô tả:** Bổ sung các trường `trackABpm`, `trackBBpm`, `appliedTempoRatio` vào schema Prisma và chạy migration; cập nhật `AudioMixerService` nhận tham số `tempoRatio` để co dãn Track A (Vocal) theo nhịp của Track B (Beat) qua filter `atempo`.
   - **File tác động:** `server/prisma/schema.prisma`, `server/src/services/AudioMixerService.js`, `server/tests/test_mixer_tempo.js`.
-  - **Tiêu chuẩn nghiệm thu (DoD):** Render thử 1 bài vocal với tỷ lệ co dãn $1.25$, kiểm tra thời lượng co lại đúng $20\%$ nhưng cao độ (pitch) giữ nguyên vẹn, không bị hiệu ứng sóc chuột.
+  - **Tiêu chuẩn nghiệm thu (DoD):** Render thử 1 bài vocal with ratio $1.25$, verify duration contracts by $20\%$ with pitch untouched (no chipmunk effect).
 
 - [x] **Task 6.3: Tích hợp BPM Matching vào Background Worker & API**
   - **Mô tả:** Cập nhật luồng xử lý ngầm `processMixJobInBackground` trong `mixController.js`: Tự động dò BPM Track A và Track B $\rightarrow$ Tính tỷ lệ $r = \frac{BPM_B}{BPM_A}$ $\rightarrow$ Truyền $r$ vào AudioMixerService $\rightarrow$ Lưu thông số BPM và tỷ lệ vào SQLite. Cập nhật endpoint `GET /api/v1/mix/:jobId` trả về metadata nhịp độ.
@@ -121,7 +121,7 @@
 - [x] **Task 7.1: Mở rộng AudioMixerService với cơ chế Offset Delay & Script kiểm định**
   - **Mô tả:** Nâng cấp `AudioMixerService.js` hỗ trợ tham số `vocalOffsetMs`, xử lý 2 nhánh filter `adelay` (dương) và `atrim` (âm). Viết script kiểm tra độ lệch thời gian thực tế của luồng Vocal.
   - **File tác động:** `server/src/services/AudioMixerService.js`, `server/tests/test_mixer_offset.js`.
-  - **Tiêu chuẩn nghiệm thu (DoD):** Render thử với offset +1000ms và -1000ms; `ffprobe` và phân tích audio buffer xác nhận đoạn vocal bị dịch chuyển đúng $1.0\text{s}$ trên trục thời gian.
+  - **Tiêu chuẩn nghiệm thu (DoD):** Render thử with offset +1000ms and -1000ms; `ffprobe` and analysis audio buffer confirm vocal slice gets shifted exactly by $1.0\text{s}$ on timeline.
 
 - [x] **Task 7.2: Cập nhật Prisma Schema, Upload Controller & Background Worker**
   - **Mô tả:** Chạy migration bổ sung trường `vocalOffsetMs` vào bảng `MixJob`; cập nhật `mixController.js` nhận trường `vocalOffsetMs` từ `req.body`, truyền vào worker và lưu vào database.
@@ -147,7 +147,7 @@
   - **File tác động:** `client/src/components/DualWaveformTimeline.jsx`, `client/src/components/DualDropzone.jsx`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Kéo dải sóng Vocal bằng chuột, dải sóng dịch chuyển trực quan sang trái/phải, số mili-giây và nhãn hiển thị cập nhật thời gian thực không giật lag (60 FPS).
 
-- [x] **Task 8.3: Trình Phát Nghe Thử Đồng Thời Không Độ Trễ (Zero-Latency Web Audio Preview)**
+- [x] **Task 8.3: Trình Phát Nghe Thử Đồng Thới Không Độ Trễ (Zero-Latency Web Audio Preview)**
   - **Mô tả:** Xây dựng cơ chế phát đồng thời cả 2 track ngay trong trình duyệt trước khi render. Khi bấm "Nghe thử", cả 2 track phát đồng bộ với độ trễ đúng bằng `vocalOffsetMs` hiện tại, kèm vạch chỉ báo phát (Playhead) chạy xuyên suốt cả 2 track trên timeline.
   - **File tác động:** `client/src/components/DualWaveformTimeline.jsx`.
   - **Tiêu chuẩn nghiệm thu (DoD):** Bấm "Nghe thử Preview", nghe thấy cả giọng hát và nhạc nền hòa quyện với đúng độ lệch phách đã căn chỉnh; bấm "Tạm dừng" dừng cả 2 track; kim phát chạy đồng bộ.
@@ -205,4 +205,29 @@
   - **Tiêu chuẩn nghiệm thu (DoD):** Gửi request tạo mix job kèm `enableStemSeparation: true`, background worker tách file thành công, bản mix đầu ra được tạo từ các stem tách biệt và DB cập nhật các trường liên quan.
 
 - [x] **Task 11.3: Tích hợp Giao diện Điều Khiển AI Stem Trên Studio Page**
-  - **Mô tả:** Thêm công tắc gạt _"Tách Giọng Hát & Nhạc Nền Bằng AI (AI Stem Separation)"_ vào `DualDropzone.jsx`. Cập nhật thanh tiến trình `MixingStatus.jsx` hiển thị bước _"Đang bóc tách thân âm bằng mô hình AI Demucs..."_
+  - **Mô tả:** Thêm công tắc gạt _"Tách Giọng Hát & Nhạc Nền Bằng AI (AI Stem Separation)"_ vào `DualDropzone.jsx`. Cập nhật thanh tiến trình `MixingStatus.jsx` hiển thị bước _"Đang bóc tách thân âm bằng mô hình AI Demucs..."_ và hiển thị badge nhận diện trên card kết quả.
+  - **File tác động:** `client/src/components/DualDropzone.jsx`, `client/src/components/MixingStatus.jsx`, `client/src/services/api.js`.
+  - **Tiêu chuẩn nghiệm thu (DoD):** Người dùng có thể bật/tắt tính năng tách AI trên giao diện; khi bật, hệ thống hiển thị trạng thái xử lý AI rõ ràng và trả về bản mashup hoàn chỉnh từ 2 bài hát gốc.
+
+---
+
+## Giai đoạn 12: Kể Chuyện Vũ Trụ & Giao Diện HUD Điện Ảnh V2 (Cosmic Storytelling Landing)
+
+- [x] **Task 12.1: Thiết lập Hệ Thống Diễn Hoạt Camera & Canvas Đa Chặng V2**
+  - **Mô tả:** Nâng cấp `ThreeAudioVisualizer.jsx` nhận prop `scrollProgress` từ GSAP ScrollTrigger ở LandingPage để cấu hình 4 Stage biến chuyển góc máy, Orbit camera flight path, độ biến dạng lưới hạt uốn lượn 3D.
+  - **File tác động:** `client/src/components/ThreeAudioVisualizer.jsx`.
+  - **Tiêu chuẩn nghiệm thu (DoD):** Lăn chuột đến đâu, quả cầu 3D chuyển động vị trí, thay đổi kích thước, zoom xa-gần, biến hình và xoắn vệt laser theo góc máy điện ảnh 1:1 ăn khớp với từng Stage.
+
+- [x] **Task 12.2: Dựng Giao Diện HUD Telemetry & Binh đoàn Nhân vật Kể chuyện**
+  - **Mô tả:** Thiết kế các module chỉ số HUD viễn tưởng xung quanh LandingPage, các đường gióng lưới, radar xoay nhịp điệu, và chèn các nhân vật astronaut hoạt họa (Astronaut sprites/SVG) kéo cáp, sửa nút bám theo các mốc di chuyển 3D.
+  - **File tác động:** `client/src/pages/LandingPage.jsx`, `client/src/index.css`.
+  - **Tiêu chuẩn nghiệm thu (DoD):** Giao diện ngập tràn không khí phi thuyền không gian và radar nhảy số, các nhân vật hoạt họa bay xuất hiện đúng mốc cuộn trang một cách sinh động, tạo cảm giác một cỗ máy DJ vũ trụ.
+
+- [x] **Task 12.3: Tích hợp Âm Thanh Immersive & Cánh Cổng Studio Launchpad Portal**
+  - **Mô tả:** Tạo bộ nạp Sound FX (tiếng click cơ học khi rê qua nút, tiếng sóng không gian nhẹ sweep khi scroll qua stage). Xây dựng portal rực rỡ ở đáy Landing Page, tạo chuyển cảnh (Transition) mượt mà bằng hiệu ứng mờ nhòe máy (Glitch/Zoom blur) khi người dùng nhấp "KHỞI CHẠY STUDIO".
+  - **File tác động:** `client/src/pages/LandingPage.jsx`, `client/src/pages/StudioPage.jsx`.
+  - **Tiêu chuẩn nghiệm thu (DoD):** Âm thanh và hiệu ứng chuyển cảnh kích hoạt rực rỡ, đưa người dùng sang `/studio` với cảm giác bay vào không gian phòng thu tương lai.
+
+```
+
+```
