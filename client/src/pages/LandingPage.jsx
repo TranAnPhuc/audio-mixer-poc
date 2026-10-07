@@ -14,7 +14,8 @@ import {
   Film,
   HelpCircle,
   Box,
-  Palette
+  Palette,
+  Layers
 } from 'lucide-react';
 import { playHapticClick, playHoverBlip, playHeavyMetalSwitch } from '../utils/soundEffects';
 import Turntable3D from '../components/Turntable3D';
@@ -84,6 +85,7 @@ export default function LandingPage() {
   const [isShortcutModalOpen, setIsShortcutModalOpen] = useState(false);
   const [isGramophoneModalOpen, setIsGramophoneModalOpen] = useState(false);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
   const [customization, setCustomization] = useState(() => getSavedTurntableStyle());
 
   const handleChangeCustomization = (newStyle) => {
@@ -595,7 +597,9 @@ export default function LandingPage() {
           return next;
         });
       } else if (e.code === 'Escape' || e.key === 'Escape') {
-        if (isCustomizerOpen) {
+        if (isToolsMenuOpen) {
+          setIsToolsMenuOpen(false);
+        } else if (isCustomizerOpen) {
           setIsCustomizerOpen(false);
         } else if (isGramophoneModalOpen) {
           setIsGramophoneModalOpen(false);
@@ -690,42 +694,48 @@ export default function LandingPage() {
         onClose={() => setIsShortcutModalOpen(false)}
       />
 
-      {/* 4. TOP NAV: Minimalist Header (Ẩn trong Zen Mode hoặc khi UI tự động ẩn) */}
+      {/* 4. TOP NAV: Minimalist Floating Frosted Glass Header */}
       {!isZenMode && (
         <header
-          className={`relative z-20 w-full h-16 border-b border-white/10 bg-[#0c0e17]/80 backdrop-blur-xl px-4 sm:px-8 flex items-center justify-between transition-opacity duration-700 ease-in-out ${
-            isUiVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          className={`fixed top-4 inset-x-3 sm:inset-x-6 lg:inset-x-8 z-30 h-14 rounded-2xl bg-black/40 backdrop-blur-2xl border border-white/10 px-3 sm:px-5 flex items-center justify-between shadow-2xl transition-all duration-700 ease-in-out ${
+            isUiVisible ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-3 pointer-events-none'
           }`}
         >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-amber-200 flex items-center justify-center shadow-lg shadow-amber-500/25">
-              <Disc3 className={`w-5 h-5 text-slate-950 ${isPlaying ? 'animate-[spin_3s_linear_infinite]' : ''}`} />
+          {/* Logo Brand & Studio Status */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-600/30 via-amber-400/20 to-amber-200/40 border border-amber-300/30 flex items-center justify-center shadow-lg shadow-amber-500/10">
+              <Disc3 className={`w-4 h-4 text-amber-300 ${isPlaying ? 'animate-[spin_4s_linear_infinite]' : ''}`} />
             </div>
             <div className="flex flex-col">
-              <span className="font-extrabold text-sm sm:text-base tracking-wider bg-gradient-to-r from-amber-200 via-amber-400 to-amber-100 bg-clip-text text-transparent">
+              <span className="font-extrabold text-xs sm:text-sm tracking-wider bg-gradient-to-r from-amber-100 via-amber-300 to-amber-100 bg-clip-text text-transparent">
                 AuraLofi
               </span>
-              <span className="text-[10px] font-mono tracking-widest text-slate-300 uppercase -mt-0.5 font-semibold">
-                3D AMBIENT STUDY & FOCUS SPACE
+              <span className="text-[9px] font-mono tracking-widest text-white/50 uppercase -mt-0.5">
+                STUDY & FOCUS
               </span>
+            </div>
+            <div className="hidden md:flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] font-mono text-slate-300">
+              <span className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-amber-400/60'}`} />
+              <span className="tracking-wider">{isPlaying ? '33⅓ RPM' : 'STANDBY'}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Nút Đổi Cảnh Nền Nghệ Thuật */}
+          {/* Cụm Điều Khiển Chính: Tối Giản, Thanh Lịch Chuẩn Lofi Chill */}
+          <div className="flex items-center gap-1.5 sm:gap-2 relative">
+            {/* 1. Nút Đổi Cảnh Nền Nghệ Thuật (Scene Switcher) */}
             <button
               type="button"
               onClick={handleCycleScene}
               onMouseEnter={playHoverBlip}
-              className="anodize-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 hover:border-amber-400/50 text-xs font-semibold text-amber-200 hover:text-white transition-all cursor-pointer shadow-sm"
+              className="anodize-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] border border-white/10 hover:border-amber-300/40 text-xs font-medium text-amber-200 hover:text-white transition-all cursor-pointer"
               title="Đổi cảnh không gian nghệ thuật (Phím G)"
             >
               <span>{currentScene?.icon || '🌧️'}</span>
-              <span className="hidden md:inline font-mono text-[11px]">{currentScene?.nameVi || currentScene?.name || 'Đổi Cảnh'}</span>
-              <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-black/50 border border-white/20 text-slate-300">G</kbd>
+              <span className="hidden sm:inline font-mono text-[11px]">{currentScene?.nameVi || currentScene?.name || 'Đổi Cảnh'}</span>
+              <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-black/40 border border-white/10 text-white/60">G</kbd>
             </button>
 
-            {/* Nút Mở Khay Đĩa Than Trực Tuyến Audius & Nhạc Việt */}
+            {/* 2. Nút Mở Khay Đĩa Than Tuyển Chọn */}
             <button
               type="button"
               onClick={() => {
@@ -733,47 +743,15 @@ export default function LandingPage() {
                 setIsCratesDrawerOpen(true);
               }}
               onMouseEnter={playHoverBlip}
-              className="anodize-btn inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-amber-400/30 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-400/40 border border-amber-400/50 hover:border-amber-300 text-xs font-bold text-amber-200 hover:text-white transition-all cursor-pointer shadow-md shadow-amber-500/15"
-              title="Mở khay đĩa than tuyển chọn"
+              className="anodize-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400/10 hover:bg-amber-400/20 border border-amber-300/30 hover:border-amber-300 text-xs font-semibold text-amber-200 transition-all cursor-pointer"
+              title="Khám phá đĩa than tuyển chọn & Audius"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
               <span className="hidden sm:inline">Khám Phá Đĩa Than</span>
               <span className="sm:hidden">Đĩa Than</span>
             </button>
 
-            {/* Nút Nạp Tệp Âm Thanh Cục Bộ */}
-            <button
-              type="button"
-              onClick={() => {
-                playHapticClick();
-                fileInputRef.current?.click();
-              }}
-              onMouseEnter={playHoverBlip}
-              className="anodize-btn hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 hover:border-amber-300 text-xs text-white transition-all cursor-pointer font-semibold shadow-sm"
-              title="Nạp tệp âm thanh từ máy (.mp3, .wav, .flac)"
-            >
-              <Upload className="w-3.5 h-3.5 text-amber-300" />
-              <span>Nạp Tệp</span>
-            </button>
-
-            {/* Nút Xem Mô Hình 3D Máy Hát Cổ Điển STL */}
-            <button
-              type="button"
-              onClick={() => {
-                playHapticClick();
-                setIsGramophoneModalOpen(true);
-              }}
-              onMouseEnter={playHoverBlip}
-              className="anodize-btn inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600/25 via-amber-400/35 to-amber-600/25 hover:from-amber-600/35 hover:to-amber-400/45 border border-amber-400/50 hover:border-amber-300 text-xs font-bold text-amber-200 hover:text-white transition-all cursor-pointer shadow-md shadow-amber-500/15"
-              title="Xem mô hình 3D máy phát đĩa than cổ điển STL (Phím V)"
-            >
-              <Box className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-              <span className="hidden sm:inline">Máy Hát 3D (STL)</span>
-              <span className="sm:hidden">3D STL</span>
-              <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-black/50 border border-white/20 text-slate-300">V</kbd>
-            </button>
-
-            {/* Nút Tùy Biến Máy Hát 3D */}
+            {/* 3. Nút Tùy Biến Máy Hát 3D (Customizer) */}
             <button
               type="button"
               onClick={() => {
@@ -781,50 +759,105 @@ export default function LandingPage() {
                 setIsCustomizerOpen(true);
               }}
               onMouseEnter={playHoverBlip}
-              className="anodize-btn inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-sky-400/25 to-amber-500/20 hover:from-amber-500/30 hover:to-sky-400/35 border border-amber-400/40 hover:border-amber-300 text-xs font-bold text-amber-200 hover:text-white transition-all cursor-pointer shadow-md"
+              className="anodize-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] border border-white/10 hover:border-amber-300/40 text-xs font-semibold text-white/80 hover:text-white transition-all cursor-pointer"
               title="Tùy biến vỏ gỗ, loa kèn, đĩa than 3D (Phím C)"
             >
               <Palette className="w-3.5 h-3.5 text-amber-300" />
-              <span className="hidden sm:inline">Tùy Biến 3D</span>
-              <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-black/50 border border-white/20 text-slate-300">C</kbd>
+              <span className="hidden md:inline">Tùy Biến 3D</span>
+              <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-black/40 border border-white/10 text-white/60">C</kbd>
             </button>
 
-            {/* Nút Mở Modal Xuất Video Visualizer */}
-            <button
-              type="button"
-              onClick={() => {
-                playHapticClick();
-                setIsExportModalOpen(true);
-              }}
-              onMouseEnter={playHoverBlip}
-              className="anodize-btn inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-500/20 via-amber-400/25 to-rose-500/20 hover:from-rose-500/30 hover:to-amber-400/35 border border-amber-400/40 hover:border-amber-300 text-xs font-bold text-amber-200 hover:text-white transition-all cursor-pointer shadow-md shadow-rose-500/10"
-              title="Xuất video Visualizer 60 FPS (TikTok/Reels/YouTube)"
-            >
-              <Film className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-              <span className="hidden sm:inline">Xuất Video 60FPS</span>
-              <span className="sm:hidden">Xuất Video</span>
-            </button>
+            {/* 4. Menu Tiện Ích Gom Nhóm (Tools Dropdown) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  playHapticClick();
+                  setIsToolsMenuOpen((prev) => !prev);
+                }}
+                onMouseEnter={playHoverBlip}
+                className={`anodize-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                  isToolsMenuOpen
+                    ? 'bg-amber-400/20 border-amber-300/60 text-amber-200'
+                    : 'bg-white/[0.05] hover:bg-white/[0.12] border-white/10 text-white/80 hover:text-white'
+                }`}
+                title="Các công cụ và tùy chọn khác"
+              >
+                <Layers className="w-3.5 h-3.5 text-amber-300" />
+                <span className="hidden md:inline text-[11px]">Tiện Ích</span>
+              </button>
 
-            {/* Nút Hướng Dẫn Phím Tắt */}
-            <button
-              type="button"
-              onClick={() => {
-                playHapticClick();
-                setIsShortcutModalOpen(true);
-              }}
-              onMouseEnter={playHoverBlip}
-              className="p-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 hover:border-amber-400/60 text-slate-300 hover:text-amber-300 transition-all cursor-pointer"
-              title="Bảng tra cứu phím tắt (Phím H hoặc ?)"
-            >
-              <HelpCircle className="w-4 h-4" />
-            </button>
+              {/* Dropdown Menu Tiện Ích */}
+              {isToolsMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-[#0e111a]/95 backdrop-blur-2xl border border-white/15 shadow-2xl p-2 z-50 flex flex-col gap-1 animate-fadeIn">
+                  {/* Nạp tệp */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playHapticClick();
+                      setIsToolsMenuOpen(false);
+                      fileInputRef.current?.click();
+                    }}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-white/90 hover:text-white hover:bg-white/[0.08] transition-all text-left"
+                  >
+                    <Upload className="w-4 h-4 text-amber-300" />
+                    <span>Nạp Tệp Âm Thanh (.mp3)</span>
+                  </button>
 
-            <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-black/60 border border-white/15 text-[11px] font-mono text-slate-200 font-semibold shadow-inner">
-              <span className={`w-2 h-2 rounded-full transition-all duration-300 ${isPlaying ? 'led-indicator-active animate-pulse' : 'led-indicator-idle'}`} />
-              <span className="tracking-wider">{isPlaying ? '33⅓ RPM' : 'STANDBY'}</span>
+                  {/* Mô hình 3D STL */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playHapticClick();
+                      setIsToolsMenuOpen(false);
+                      setIsGramophoneModalOpen(true);
+                    }}
+                    className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-white/90 hover:text-white hover:bg-white/[0.08] transition-all text-left"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Box className="w-4 h-4 text-amber-300" />
+                      <span>Máy Hát 3D (STL)</span>
+                    </div>
+                    <kbd className="px-1.5 py-0.5 text-[9px] font-mono rounded bg-black/40 border border-white/15 text-white/60">V</kbd>
+                  </button>
+
+                  {/* Xuất video 60FPS */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playHapticClick();
+                      setIsToolsMenuOpen(false);
+                      setIsExportModalOpen(true);
+                    }}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-white/90 hover:text-white hover:bg-white/[0.08] transition-all text-left"
+                  >
+                    <Film className="w-4 h-4 text-rose-300" />
+                    <span>Xuất Video 60FPS</span>
+                  </button>
+
+                  <div className="my-1 border-t border-white/10" />
+
+                  {/* Bảng phím tắt */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playHapticClick();
+                      setIsToolsMenuOpen(false);
+                      setIsShortcutModalOpen(true);
+                    }}
+                    className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-white/90 hover:text-white hover:bg-white/[0.08] transition-all text-left"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <HelpCircle className="w-4 h-4 text-amber-300" />
+                      <span>Hướng Dẫn Phím Tắt</span>
+                    </div>
+                    <kbd className="px-1.5 py-0.5 text-[9px] font-mono rounded bg-black/40 border border-white/15 text-white/60">H</kbd>
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Nút Kích Hoạt Zen Mode Toàn Màn Hình */}
+            {/* 5. Nút Zen Mode Toàn Màn Hình */}
             <button
               type="button"
               onClick={() => {
@@ -832,10 +865,10 @@ export default function LandingPage() {
                 setIsZenMode(true);
               }}
               onMouseEnter={playHoverBlip}
-              className="p-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 hover:border-amber-400/60 text-slate-300 hover:text-amber-300 transition-all cursor-pointer"
+              className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] border border-white/10 hover:border-amber-300/40 text-white/80 hover:text-white transition-all cursor-pointer"
               title="Chế độ Zen Mode toàn màn hình (Phím F)"
             >
-              <Maximize2 className="w-4 h-4" />
+              <Maximize2 className="w-3.5 h-3.5" />
             </button>
           </div>
         </header>
@@ -858,28 +891,28 @@ export default function LandingPage() {
         </button>
       )}
 
-      {/* 5. MAIN CONTAINER: Fullscreen Seamless Turntable Centerpiece */}
+      {/* 5. FULLSCREEN 3D TURNTABLE VIEWPORT: Seamless Edge-to-Edge Experience */}
       <main
+        onClick={() => {
+          if (isToolsMenuOpen) setIsToolsMenuOpen(false);
+        }}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        className="relative z-10 flex-1 w-full flex flex-col items-center justify-center p-3 sm:p-6 lg:p-8 overflow-hidden select-none"
+        className="absolute inset-0 z-10 w-full h-full overflow-hidden select-none"
       >
-        <div className="w-full max-w-4xl flex-1 flex flex-col items-center justify-center min-h-[440px] sm:min-h-[520px] lg:min-h-[600px] relative">
-          {/* Mâm Đĩa Than 3D Gỗ Óc Chó & Đồng Thau Tương Tác Vật Lý */}
-          <Turntable3D
-            isPlaying={isPlaying}
-            coverUrl={trackInfo?.coverUrl}
-            albumCoverUrl={trackInfo?.coverUrl}
-            ambientColors={ambientColors}
-            currentTime={currentTime}
-            duration={duration}
-            isZenMode={isZenMode}
-            customization={customization}
-            onScratch={handleScratch}
-            onSeek={handleSeekFromTurntable}
-          />
-        </div>
+        <Turntable3D
+          isPlaying={isPlaying}
+          coverUrl={trackInfo?.coverUrl}
+          albumCoverUrl={trackInfo?.coverUrl}
+          ambientColors={ambientColors}
+          currentTime={currentTime}
+          duration={duration}
+          isZenMode={isZenMode}
+          customization={customization}
+          onScratch={handleScratch}
+          onSeek={handleSeekFromTurntable}
+        />
       </main>
 
       {/* Lớp Overlay Kéo Thả Tệp Toàn Màn Hình */}
@@ -891,11 +924,11 @@ export default function LandingPage() {
         </div>
       )}
 
-      {/* 6. BOTTOM CONTROL BAR: Master Transport Deck (Ẩn trong Zen Mode hoặc khi UI tự động ẩn) */}
+      {/* 6. BOTTOM CONTROL BAR: Floating Glass Master Transport Deck */}
       {!isZenMode && (
         <footer
-          className={`relative z-20 w-full h-24 border-t border-white/10 bg-[#0c0e17]/85 backdrop-blur-xl px-4 sm:px-8 flex items-center justify-between gap-4 select-none transition-opacity duration-700 ease-in-out ${
-            isUiVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          className={`fixed bottom-4 inset-x-3 sm:inset-x-6 lg:inset-x-8 max-w-5xl mx-auto z-20 h-20 rounded-2xl bg-black/50 backdrop-blur-2xl border border-white/10 px-4 sm:px-6 flex items-center justify-between gap-4 select-none shadow-2xl transition-all duration-700 ease-in-out ${
+            isUiVisible ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'
           }`}
         >
           {/* Khối Trái: Mini Track Info */}
@@ -1032,10 +1065,10 @@ export default function LandingPage() {
         </footer>
       )}
 
-      {/* 7. FLOATING FOCUS DOCK (AuraLofi Study Space Quick Navigation) */}
+      {/* 7. FLOATING FOCUS DOCK: Quick Navigation Pill */}
       <div
-        className={`fixed bottom-28 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 sm:gap-2 p-1.5 rounded-2xl bg-[#0f121a]/90 backdrop-blur-2xl border border-white/15 shadow-2xl shadow-black/80 transition-opacity duration-700 ease-in-out ${
-          isUiVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        className={`fixed bottom-26 left-1/2 -translate-x-1/2 z-25 flex items-center gap-1.5 sm:gap-2 p-1.5 rounded-2xl bg-black/60 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/80 transition-all duration-700 ease-in-out ${
+          isUiVisible ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'
         }`}
       >
         {/* Nút 1: Đổi Cảnh Nền Nghệ Thuật */}
