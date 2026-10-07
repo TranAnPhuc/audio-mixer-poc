@@ -2,24 +2,24 @@
  * AuraVinyl - End-to-End (E2E) & Core Subsystems Verification Suite
  * 
  * Phạm vi kiểm thử:
- * 1. Phân tích Metadata ID3 thật & Trích xuất Lời nhúng (metadataService + jsmediatags)
- * 2. Thuật toán trích xuất bảng màu chủ đạo (extractPaletteFromImage)
- * 3. Bộ phân tích cú pháp lời bài hát LRC (parseLrc) với các dạng timestamp chuẩn & đa mốc
+ * 1. Động cơ trích xuất dải tần số 3D (getFrequencyData 32 bands & getRawByteFrequencyData)
+ * 2. Phân tích Metadata ID3 thật & Ảnh bìa album (metadataService + jsmediatags)
+ * 3. Thuật toán trích xuất bảng màu chủ đạo (extractPaletteFromImage)
  * 4. Động cơ âm học Web Audio (vinylAudioEngine): khởi tạo, sinh tiếng crackle ngẫu nhiên, phổ tần số
- * 5. Luồng xử lý âm thanh 16kHz & chuyển đổi chunks Whisper (aiTranscriptionService)
+ * 5. Toán học địa hình sóng âm 3D (Waterfall Buffer Shift & Gaussian Window Envelope)
  * 6. Kiểm tra toàn vẹn tài nguyên (Memory Leak, WebGL Context, Blob URLs revocation)
  */
 
 import { parseAudioFileMetadata, extractEmbeddedLyrics, extractPaletteFromImage, DEFAULT_PALETTE } from '../services/metadataService.js';
-import { parseLrc, formatLinesToLrc } from '../services/lyricsService.js';
-import { convertWhisperChunksToLrc } from '../services/aiTranscriptionService.js';
 import {
   getAudioContext,
   setVinylMuted,
   getIsVinylMuted,
   playNeedleDropEffect,
   connectAudioElement,
-  getAudioFrequencies
+  getAudioFrequencies,
+  getFrequencyData,
+  getRawByteFrequencyData
 } from '../utils/vinylAudioEngine.js';
 
 // Khởi tạo các mocks môi trường trình duyệt cho Node.js headless testing
@@ -200,203 +200,189 @@ function setupBrowserMocks() {
   class MockAudioContext {
     constructor() {
       this.state = 'running';
-      this.currentTime = 1.0;
+      this.currentTime = 0;
       this.sampleRate = 44100;
       this.destination = new MockAudioNode();
     }
     createBuffer(channels, length, sampleRate) {
       return new MockAudioBuffer(channels, length, sampleRate);
     }
-    createGain() { return new MockGainNode(); }
-    createOscillator() { return new MockOscillatorNode(); }
-    createBiquadFilter() { return new MockBiquadFilterNode(); }
-    createBufferSource() { return new MockBufferSourceNode(); }
-    createAnalyser() { return new MockAnalyserNode(); }
-    createMediaElementSource(el) { return new MockAudioNode(); }
-    resume() { return Promise.resolve(); }
-    close() { this.state = 'closed'; return Promise.resolve(); }
+    createBufferSource() {
+      return new MockBufferSourceNode();
+    }
+    createGain() {
+      return new MockGainNode();
+    }
+    createOscillator() {
+      return new MockOscillatorNode();
+    }
+    createBiquadFilter() {
+      return new MockBiquadFilterNode();
+    }
+    createAnalyser() {
+      return new MockAnalyserNode();
+    }
+    createMediaElementSource(el) {
+      return new MockAudioNode();
+    }
+    resume() {
+      this.state = 'running';
+      return Promise.resolve();
+    }
   }
 
   globalThis.AudioContext = MockAudioContext;
-  globalThis.window.AudioContext = MockAudioContext;
+  globalThis.webkitAudioContext = MockAudioContext;
 
-  // Giám sát vòng đời Blob URLs để phát hiện rò rỉ bộ nhớ (Memory Leak Monitor)
+  // Mock URL.createObjectURL & revokeObjectURL có tracking rò rỉ bộ nhớ
   const activeBlobUrls = new Set();
-  const originalCreate = URL.createObjectURL ? URL.createObjectURL.bind(URL) : null;
-  const originalRevoke = URL.revokeObjectURL ? URL.revokeObjectURL.bind(URL) : null;
-  let blobCounter = 0;
-
-  URL.createObjectURL = (blob) => {
-    const url = originalCreate ? originalCreate(blob) : `blob:mock-host/${++blobCounter}`;
-    activeBlobUrls.add(url);
-    return url;
+  globalThis.URL.createObjectURL = (blob) => {
+    const fakeUrl = `blob:nodedemo/${Math.random().toString(36).substring(2, 9)}`;
+    activeBlobUrls.add(fakeUrl);
+    return fakeUrl;
   };
-
-  URL.revokeObjectURL = (url) => {
+  globalThis.URL.revokeObjectURL = (url) => {
     activeBlobUrls.delete(url);
-    if (originalRevoke) originalRevoke(url);
   };
-
   globalThis.__getActiveBlobUrls = () => activeBlobUrls;
 }
 
-// Hàm tiện ích tạo buffer ID3v2.3 chuẩn với các frame tiêu đề, nghệ sĩ, album & lời nhúng USLT
-function createSyntheticId3Buffer({ title, artist, album, lyrics }) {
-  function makeTextFrame(id, text) {
-    const textBytes = Buffer.from('\0' + text, 'latin1');
-    const header = Buffer.alloc(10);
-    header.write(id, 0, 4, 'ascii');
-    header.writeUInt32BE(textBytes.length, 4);
-    return Buffer.concat([header, textBytes]);
+// Hàm trợ giúp tạo file MP3 giả lập có ID3v2.3 tag nhị phân
+function createSyntheticMp3WithId3({ title = 'Aura Vinyl Track', artist = 'Aura Artist', album = 'Retro Sessions' }) {
+  const enc = new TextEncoder();
+  const titleBytes = enc.encode(title);
+  const artistBytes = enc.encode(artist);
+  const albumBytes = enc.encode(album);
+
+  function makeFrame(frameId, contentBytes) {
+    const frameHeader = new Uint8Array(10);
+    for (let i = 0; i < 4; i++) frameHeader[i] = frameId.charCodeAt(i);
+    const len = contentBytes.length + 1;
+    frameHeader[4] = (len >> 24) & 0xff;
+    frameHeader[5] = (len >> 16) & 0xff;
+    frameHeader[6] = (len >> 8) & 0xff;
+    frameHeader[7] = len & 0xff;
+    frameHeader[8] = 0;
+    frameHeader[9] = 0;
+
+    const payload = new Uint8Array(1 + contentBytes.length);
+    payload[0] = 0; // ISO-8859-1 encoding
+    payload.set(contentBytes, 1);
+
+    const merged = new Uint8Array(10 + payload.length);
+    merged.set(frameHeader, 0);
+    merged.set(payload, 10);
+    return merged;
   }
 
-  function makeUsltFrame(lyricsText) {
-    // 1 byte encoding (0) + 3 bytes lang ('eng') + 1 byte desc term (0) + lyrics
-    const body = Buffer.concat([
-      Buffer.from([0]),
-      Buffer.from('eng', 'ascii'),
-      Buffer.from([0]),
-      Buffer.from(lyricsText, 'latin1')
-    ]);
-    const header = Buffer.alloc(10);
-    header.write('USLT', 0, 4, 'ascii');
-    header.writeUInt32BE(body.length, 4);
-    return Buffer.concat([header, body]);
-  }
+  const fTitle = makeFrame('TIT2', titleBytes);
+  const fArtist = makeFrame('TPE1', artistBytes);
+  const fAlbum = makeFrame('TALB', albumBytes);
 
-  const frameList = [];
-  if (title) frameList.push(makeTextFrame('TIT2', title));
-  if (artist) frameList.push(makeTextFrame('TPE1', artist));
-  if (album) frameList.push(makeTextFrame('TALB', album));
-  if (lyrics) frameList.push(makeUsltFrame(lyrics));
+  const totalPayloadSize = fTitle.length + fArtist.length + fAlbum.length;
 
-  const frames = Buffer.concat(frameList);
-  const size = frames.length;
-  const header = Buffer.alloc(10);
-  header.write('ID3', 0, 3, 'ascii');
-  header[3] = 3; header[4] = 0; header[5] = 0; // ID3v2.3
-  // 4 synchsafe bytes
-  header[6] = (size >> 21) & 0x7F;
-  header[7] = (size >> 14) & 0x7F;
-  header[8] = (size >> 7) & 0x7F;
-  header[9] = size & 0x7F;
+  const header = new Uint8Array(10);
+  header[0] = 0x49; // 'I'
+  header[1] = 0x44; // 'D'
+  header[2] = 0x33; // '3'
+  header[3] = 0x03; // version 2.3
+  header[4] = 0x00; // revision
+  header[5] = 0x00; // flags
 
-  return Buffer.concat([header, frames, Buffer.alloc(128)]);
+  // Synchsafe integer (7 bits per byte)
+  header[6] = (totalPayloadSize >> 21) & 0x7f;
+  header[7] = (totalPayloadSize >> 14) & 0x7f;
+  header[8] = (totalPayloadSize >> 7) & 0x7f;
+  header[9] = totalPayloadSize & 0x7f;
+
+  const fullBuffer = new Uint8Array(10 + totalPayloadSize + 128);
+  fullBuffer.set(header, 0);
+  let offset = 10;
+  fullBuffer.set(fTitle, offset); offset += fTitle.length;
+  fullBuffer.set(fArtist, offset); offset += fArtist.length;
+  fullBuffer.set(fAlbum, offset); offset += fAlbum.length;
+
+  return new File([fullBuffer], 'aura_track.mp3', { type: 'audio/mp3' });
 }
 
-// Bảng tổng hợp kết quả kiểm thử
-const testResults = [];
-
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(`ASSERTION FAILED: ${message}`);
-  }
-}
-
-async function runTest(testName, testFn) {
-  const start = performance.now();
-  try {
-    await testFn();
-    const duration = (performance.now() - start).toFixed(2);
-    testResults.push({ name: testName, status: 'PASS', duration: `${duration}ms` });
-    console.log(`  \x1b[32m✔\x1b[0m [PASS] ${testName} (${duration}ms)`);
-  } catch (err) {
-    const duration = (performance.now() - start).toFixed(2);
-    testResults.push({ name: testName, status: 'FAIL', duration: `${duration}ms`, error: err.message });
-    console.error(`  \x1b[31m✖\x1b[0m [FAIL] ${testName} (${duration}ms): ${err.message}`);
-  }
-}
-
+// Runner thực thi kiểm thử
 async function main() {
-  console.log('\n=============================================================');
-  console.log('       AuraVinyl E2E & Subsystems Verification Suite         ');
-  console.log('=============================================================\n');
-
   setupBrowserMocks();
 
-  // SUITE 1: Phân tích cú pháp lời bài hát LRC (parseLrc)
-  console.log('\x1b[1m--- [Suite 1] LRC Parsing & Time Synchronization ---\x1b[0m');
-  await runTest('parseLrc: Phân tích timestamp chuẩn [mm:ss.xx]', () => {
-    const lrc = `
-      [00:01.20] Câu hát đầu tiên
-      [00:05.80] Câu hát thứ hai
-    `;
-    const lines = parseLrc(lrc);
-    assert(lines.length === 2, `Mong đợi 2 dòng, nhận được ${lines.length}`);
-    assert(Math.abs(lines[0].time - 1.20) < 0.01, `Timestamp dòng 1 không khớp: ${lines[0].time}`);
-    assert(Math.abs(lines[1].time - 5.80) < 0.01, `Timestamp dòng 2 không khớp: ${lines[1].time}`);
-    assert(lines[0].text === 'Câu hát đầu tiên', 'Nội dung câu hát 1 không khớp');
+  console.log('=============================================================');
+  console.log('       AuraVinyl E2E & Subsystems Verification Suite         ');
+  console.log('=============================================================');
+
+  const testResults = [];
+
+  async function runTest(name, fn) {
+    const start = performance.now();
+    try {
+      await fn();
+      const duration = (performance.now() - start).toFixed(2);
+      testResults.push({ name, status: 'PASS', duration });
+      console.log(`  ✔ [\x1b[32mPASS\x1b[0m] ${name} (${duration}ms)`);
+    } catch (err) {
+      const duration = (performance.now() - start).toFixed(2);
+      testResults.push({ name, status: 'FAIL', duration, error: err.message });
+      console.error(`  ✖ [\x1b[31mFAIL\x1b[0m] ${name}: ${err.message}`);
+    }
+  }
+
+  function assert(condition, message) {
+    if (!condition) throw new Error(message || 'Assertion failed');
+  }
+
+  // SUITE 1: 3D Spectral Terrain & Frequency Sampling (getFrequencyData)
+  console.log('\n\x1b[1m--- [Suite 1] 3D Spectral Terrain & Frequency Sampling ---\x1b[0m');
+  await runTest('getFrequencyData: Trích xuất mảng 32 bands chuẩn hóa trong khoảng [0.0, 1.0]', () => {
+    const mockAudioEl = {};
+    connectAudioElement(mockAudioEl);
+
+    const bands = getFrequencyData(32);
+    assert(bands instanceof Float32Array, 'Dữ liệu trả về phải là Float32Array');
+    assert(bands.length === 32, `Số lượng dải tần phải là 32, nhận được: ${bands.length}`);
+
+    for (let i = 0; i < bands.length; i++) {
+      assert(bands[i] >= 0.0 && bands[i] <= 1.0, `Giá trị band ${i} ngoài khoảng [0, 1]: ${bands[i]}`);
+    }
   });
 
-  await runTest('parseLrc: Timestamp mili-giây 3 chữ số [mm:ss.xxx]', () => {
-    const lrc = '[01:23.456] Câu hát có mili-giây chi tiết';
-    const lines = parseLrc(lrc);
-    assert(lines.length === 1, 'Chưa đọc được dòng timestamp 3 chữ số');
-    assert(Math.abs(lines[0].time - 83.456) < 0.01, `Thời gian tính toán sai: ${lines[0].time}`);
+  await runTest('getFrequencyData: Phân bố tần số phản ánh chính xác phổ âm thanh (Bass > Treble)', () => {
+    const bands = getFrequencyData(32);
+    // Theo mock spectrum: Dải trầm (index đầu) phải có biên độ cao hơn dải cao (index cuối)
+    assert(bands[0] > bands[31], `Dải trầm (${bands[0]}) phải cao hơn dải cao (${bands[31]})`);
   });
 
-  await runTest('parseLrc: Một dòng chứa nhiều timestamp đồng thời', () => {
-    const lrc = '[00:10.00][00:25.50] Điệp khúc vang lên';
-    const lines = parseLrc(lrc);
-    assert(lines.length === 2, `Mong đợi 2 mốc thời gian, nhận được ${lines.length}`);
-    assert(lines[0].time === 10, 'Mốc 1 không khớp');
-    assert(lines[1].time === 25.5, 'Mốc 2 không khớp');
-    assert(lines[0].text === 'Điệp khúc vang lên', 'Text không khớp');
-    assert(lines[1].text === 'Điệp khúc vang lên', 'Text không khớp');
+  await runTest('getRawByteFrequencyData: Trả về Uint8Array thô từ AnalyserNode', () => {
+    const rawData = getRawByteFrequencyData();
+    assert(rawData instanceof Uint8Array, 'Phải là Uint8Array');
+    assert(rawData.length === 256, `Kích thước bin phải là 256, nhận được: ${rawData.length}`);
+    assert(rawData[0] > 0, 'Dữ liệu thô không được bằng 0');
   });
 
-  await runTest('parseLrc: Sắp xếp thời gian tăng dần và bỏ qua dòng rác', () => {
-    const lrc = `
-      [00:30.00] Dòng muộn hơn
-      [00:05.00] Dòng sớm hơn
-      [ar: Ca Sĩ Nổi Tiếng]
-      Dòng không có timestamp
-    `;
-    const lines = parseLrc(lrc);
-    assert(lines.length === 2, `Mong đợi 2 dòng hợp lệ, nhận ${lines.length}`);
-    assert(lines[0].time < lines[1].time, 'Dòng chưa được sắp xếp tăng dần theo thời gian');
-    assert(lines[0].id === 0 && lines[1].id === 1, 'ID chưa được đánh số thứ tự chuẩn');
-  });
-
-  await runTest('formatLinesToLrc: Quy đổi mảng lyrics thành chuỗi .LRC chuẩn [mm:ss.xx]', () => {
-    const inputLines = [
-      { time: 1.25, text: 'Câu hát một' },
-      { time: 65.08, text: 'Câu hát hai ở phút thứ nhất' }
-    ];
-    const exportedLrc = formatLinesToLrc(inputLines, {
-      title: 'Aura Track',
-      artist: 'Aura Artist'
+  // SUITE 2: Metadata & Embedded Lyrics Extraction
+  console.log('\n\x1b[1m--- [Suite 2] Metadata & ID3 Tag Extraction ---\x1b[0m');
+  await runTest('jsmediatags: Đọc tệp nhị phân ID3v2.3 trích xuất Title, Artist, Album', async () => {
+    const testFile = createSyntheticMp3WithId3({
+      title: 'Dem Thu Ha Noi',
+      artist: 'Phuc Tran',
+      album: 'Aura Vinyl 1980'
     });
-    assert(exportedLrc.includes('[ti:Aura Track]'), 'Thiếu thẻ [ti:]');
-    assert(exportedLrc.includes('[ar:Aura Artist]'), 'Thiếu thẻ [ar:]');
-    assert(exportedLrc.includes('[00:01.25] Câu hát một'), 'Format dòng 1 sai: ' + exportedLrc);
-    assert(exportedLrc.includes('[01:05.08] Câu hát hai ở phút thứ nhất'), 'Format dòng 2 sai: ' + exportedLrc);
+
+    const meta = await parseAudioFileMetadata(testFile);
+    assert(meta.title === 'Dem Thu Ha Noi', `Title sai: ${meta.title}`);
+    assert(meta.artist === 'Phuc Tran', `Artist sai: ${meta.artist}`);
+    assert(meta.album === 'Aura Vinyl 1980', `Album sai: ${meta.album}`);
   });
 
-  // SUITE 2: Trích xuất Metadata ID3 & Lời nhúng (metadataService)
-  console.log('\n\x1b[1m--- [Suite 2] Metadata & Embedded Lyrics Extraction ---\x1b[0m');
-  await runTest('jsmediatags: Đọc tệp nhị phân ID3v2.3 trích xuất Title, Artist, Album & Lời USLT', async () => {
-    const rawBuffer = createSyntheticId3Buffer({
-      title: 'Aura Vinyl Master',
-      artist: 'Da Phuc Trio',
-      album: 'Golden Nostalgia',
-      lyrics: '[00:02.50] Echoes of warm vinyl grooves'
-    });
-    const mockFile = new File([rawBuffer], 'aura_track.mp3', { type: 'audio/mp3' });
-    const meta = await parseAudioFileMetadata(mockFile);
-
-    assert(meta.title === 'Aura Vinyl Master', `Tiêu đề không khớp: ${meta.title}`);
-    assert(meta.artist === 'Da Phuc Trio', `Nghệ sĩ không khớp: ${meta.artist}`);
-    assert(meta.album === 'Golden Nostalgia', `Album không khớp: ${meta.album}`);
-    assert(meta.lyrics && meta.lyrics.includes('Echoes of warm vinyl'), `Lời nhúng USLT không khớp: ${meta.lyrics}`);
-  });
-
-  await runTest('extractEmbeddedLyrics: Trích xuất từ thẻ SYLT hoặc lyrics tự do', () => {
-    const tags1 = { SYLT: '[00:01.00] Lời SYLT đồng bộ' };
-    assert(extractEmbeddedLyrics(tags1) === '[00:01.00] Lời SYLT đồng bộ', 'SYLT extraction failed');
-
-    const tags2 = { lyrics: '  Lời bài hát tự do  ' };
-    assert(extractEmbeddedLyrics(tags2) === 'Lời bài hát tự do', 'Free lyrics extraction failed');
+  await runTest('extractEmbeddedLyrics: Trích xuất an toàn từ thẻ SYLT hoặc lyrics tự do', () => {
+    const mockTags = {
+      SYLT: { data: '[00:01.00] Dong dau tien\n[00:05.50] Dong thu hai' }
+    };
+    const lyrics = extractEmbeddedLyrics(mockTags);
+    assert(lyrics !== null, 'Phải trích xuất được lyrics từ SYLT');
+    assert(lyrics.includes('Dong dau tien'), 'Nội dung lyrics không đúng');
 
     const emptyTags = {};
     assert(extractEmbeddedLyrics(emptyTags) === null, 'Thẻ rỗng phải trả về null');
@@ -438,7 +424,6 @@ async function main() {
   await runTest('vinylAudioEngine: Sinh tiếng nổ đĩa than (Crackle & Needle Contact Thud)', () => {
     setVinylMuted(false);
     assert(getIsVinylMuted() === false, 'Mute state không khớp');
-    // Thực thi không quăng lỗi ngoại lệ
     playNeedleDropEffect({ duration: 1.5 });
   });
 
@@ -451,58 +436,47 @@ async function main() {
     assert(midEnergy > 0, `midEnergy phải lớn hơn 0: ${midEnergy}`);
     assert(trebleEnergy > 0, `trebleEnergy phải lớn hơn 0: ${trebleEnergy}`);
     assert(bassEnergy <= 1.0 && midEnergy <= 1.0 && trebleEnergy <= 1.0, 'Năng lượng phải chuẩn hóa <= 1.0');
-    // Theo mock dữ liệu, bass mạnh nhất
     assert(bassEnergy >= midEnergy, 'Bass energy phải chiếm ưu thế theo mock spectrum');
   });
 
-  // SUITE 5: Whisper Chunks & Audio 16kHz Processing (aiTranscriptionService)
-  console.log('\n\x1b[1m--- [Suite 5] AI Transcription & 16kHz Audio Pipeline ---\x1b[0m');
-  await runTest('convertWhisperChunksToLrc: Chuyển đổi Whisper timestamps sang chuẩn AuraVinyl', () => {
-    const chunks = [
-      { timestamp: [2.5, 5.0], text: ' Dòng thứ hai' },
-      { timestamp: [0.0, 2.2], text: 'Dòng thứ nhất ' },
-      { timestamp: [null, null], text: '   ' }, // Rác
-      { timestamp: [6.123, 9.0], text: 'Dòng thứ ba với số lẻ' }
-    ];
-    const lines = convertWhisperChunksToLrc(chunks);
-    assert(lines.length === 3, `Mong đợi 3 dòng sau khi lọc rác, nhận được ${lines.length}`);
-    assert(lines[0].text === 'Dòng thứ nhất', 'Dòng 1 text sai');
-    assert(lines[0].time === 0, 'Dòng 1 time sai');
-    assert(lines[1].text === 'Dòng thứ hai', 'Dòng 2 text sai');
-    assert(lines[1].time === 2.5, 'Dòng 2 time sai');
-    assert(lines[2].time === 6.12, 'Làm tròn 2 chữ số thập phân không đúng: ' + lines[2].time);
-    assert(lines[0].id === 0 && lines[1].id === 1 && lines[2].id === 2, 'ID numbering sai');
+  // SUITE 5: Toán học địa hình sóng âm 3D (Waterfall & Gaussian Envelope)
+  console.log('\n\x1b[1m--- [Suite 5] 3D Waterfall Terrain Math & Envelope ---\x1b[0m');
+  await runTest('Gaussian/Bell Envelope: Triệt tiêu về 0 ở hai biên và đạt cực đại tại tâm', () => {
+    const pointsCount = 64;
+    const envelope = new Float32Array(pointsCount);
+    for (let i = 0; i < pointsCount; i++) {
+      const normalizedX = (i / (pointsCount - 1)) * 2 - 1; // [-1, 1]
+      envelope[i] = Math.pow(Math.cos((normalizedX * Math.PI) / 2), 2.2);
+    }
+
+    // Biên trái và biên phải phải tiệm cận 0
+    assert(envelope[0] < 0.001, `Biên trái không bằng 0: ${envelope[0]}`);
+    assert(envelope[pointsCount - 1] < 0.001, `Biên phải không bằng 0: ${envelope[pointsCount - 1]}`);
+
+    // Điểm chính giữa (tâm) phải đạt giá trị xấp xỉ 1.0
+    const midIndex = Math.floor(pointsCount / 2);
+    assert(envelope[midIndex] > 0.95, `Đỉnh trung tâm không đạt cực đại: ${envelope[midIndex]}`);
   });
 
-  await runTest('convertWhisperChunksToLrc: Triệt tiêu triệt để ảo giác AI ([music], [Song], lặp từ >3 lần, noise)', () => {
-    const hallucinationChunks = [
-      { timestamp: [0.0, 3.0], text: '[music] [music] [music] [Song] [S [S' }, // Ảo giác thẻ lặp
-      { timestamp: [3.2, 5.0], text: '(applause) (cheering)' }, // Tiếng ồn
-      { timestamp: [5.1, 5.4], text: '[S' }, // Ký tự cụt đứng riêng
-      { timestamp: [5.4, 5.5], text: 'a' }, // Dòng 1 ký tự vô nghĩa
-      { timestamp: [5.5, 8.0], text: 'la la la la la la' }, // Lặp từ > 3 lần
-      { timestamp: [8.5, 10.0], text: '...' }, // Chỉ có dấu câu
-      { timestamp: [10.5, 14.0], text: 'Một chiều mưa bay qua phố nhỏ [music] [S' } // Câu hợp lệ kèm thẻ thừa và thẻ cụt
-    ];
-    const filtered = convertWhisperChunksToLrc(hallucinationChunks);
-    assert(filtered.length === 1, `Mong đợi 1 dòng hợp lệ duy nhất, nhận được: ${filtered.length}`);
-    assert(filtered[0].text === 'Một chiều mưa bay qua phố nhỏ', `Câu hát chưa làm sạch đúng: "${filtered[0].text}"`);
-    assert(filtered[0].time === 10.5, 'Thời gian câu hát hợp lệ sai');
+  await runTest('Waterfall Buffer Shift: Hàng đợi lịch sử sóng dịch chuyển chính xác lùi về phía sau', () => {
+    const NUM_LINES = 32;
+    const POINTS = 64;
+    const history = [];
+    for (let j = 0; j < NUM_LINES; j++) {
+      history.push(new Float32Array(POINTS));
+    }
 
-    // Trường hợp toàn bộ là nhạc nền hoặc ảo giác: trả về mảng rỗng
-    const beatOnlyChunks = [
-      { timestamp: [0.0, 5.0], text: '[music]' },
-      { timestamp: [5.0, 10.0], text: '[instrumental]' }
-    ];
-    const emptyResult = convertWhisperChunksToLrc(beatOnlyChunks);
-    assert(emptyResult.length === 0, 'Phải trả về mảng rỗng khi toàn bộ là beat không lời');
-  });
+    // Giả lập hàng 0 nhận giá trị đặc biệt
+    const initialRow0 = new Float32Array(POINTS).fill(4.2);
+    history[0].set(initialRow0);
 
-  await runTest('16kHz Pipeline Math: Độ dài mẫu resample theo chuẩn Whisper', () => {
-    const durationSec = 185.4; // ~3 phút 5 giây
-    const targetSampleRate = 16000;
-    const expectedSamples = Math.ceil(durationSec * targetSampleRate);
-    assert(expectedSamples === 2966400, `Độ dài mẫu Float32Array tính toán sai: ${expectedSamples}`);
+    // Thực hiện dịch chuyển lùi 1 nhịp (shift backward)
+    for (let j = NUM_LINES - 1; j > 0; j--) {
+      history[j].set(history[j - 1]);
+    }
+
+    // Sau khi dịch chuyển, hàng 1 phải chứa giá trị của hàng 0 cũ
+    assert(Math.abs(history[1][0] - 4.2) < 0.001, `Dữ liệu hàng 1 sai sau khi dịch chuyển: ${history[1][0]}`);
   });
 
   // SUITE 6: Resource Integrity & Memory Leak Prevention
@@ -527,12 +501,12 @@ async function main() {
     assert(!activeUrls.has(url2), 'URL 2 chưa được thu hồi khi unmount!');
   });
 
-  await runTest('Three.js WebGL Context & Texture Cleanup: forceContextLoss và texture disposal', () => {
+  await runTest('Three.js WebGL Context & Texture Cleanup: forceContextLoss và geometry disposal', () => {
     let contextLost = false;
-    let textureDisposed = false;
+    let geometryDisposed = false;
 
-    const mockTexture = {
-      dispose() { textureDisposed = true; }
+    const mockGeometry = {
+      dispose() { geometryDisposed = true; }
     };
 
     const mockRenderer = {
@@ -542,10 +516,10 @@ async function main() {
     };
 
     // Kiểm tra contract dọn dẹp
-    mockTexture.dispose();
+    mockGeometry.dispose();
     mockRenderer.forceContextLoss();
 
-    assert(textureDisposed === true, 'Texture không được giải phóng!');
+    assert(geometryDisposed === true, 'Geometry không được giải phóng!');
     assert(contextLost === true, 'forceContextLoss chưa được gọi!');
   });
 

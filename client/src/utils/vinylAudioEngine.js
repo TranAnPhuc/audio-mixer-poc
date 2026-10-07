@@ -220,3 +220,38 @@ export function getAudioFrequencies() {
 
   return { bassEnergy, midEnergy, trebleEnergy };
 }
+
+/**
+ * 4. getFrequencyData: Trích xuất mảng phổ tần số chi tiết cho địa hình 3D (Audio Terrain)
+ * @param {number} numBands - Số dải tần cần lấy mẫu (mặc định 32)
+ * @returns {Float32Array} - Mảng giá trị biên độ chuẩn hóa từ 0.0 đến 1.0
+ */
+export function getFrequencyData(numBands = 32) {
+  const result = new Float32Array(numBands);
+  if (!analyserNode || !frequencyData) {
+    return result;
+  }
+
+  analyserNode.getByteFrequencyData(frequencyData);
+
+  // Phân bố phi tuyến trên dải tần hoạt động (dày ở bass/mid, trải đều đến treble)
+  const binCount = Math.min(128, frequencyData.length);
+  for (let i = 0; i < numBands; i++) {
+    const t = i / (numBands - 1);
+    const binIndex = Math.min(binCount - 1, Math.floor(Math.pow(t, 1.4) * (binCount - 1)));
+    result[i] = frequencyData[binIndex] / 255.0;
+  }
+
+  return result;
+}
+
+/**
+ * 5. getRawByteFrequencyData: Trả về Uint8Array thô từ AnalyserNode
+ */
+export function getRawByteFrequencyData() {
+  if (!analyserNode || !frequencyData) {
+    return new Uint8Array(256);
+  }
+  analyserNode.getByteFrequencyData(frequencyData);
+  return frequencyData;
+}
