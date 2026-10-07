@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Disc3,
   Play,
@@ -702,8 +703,12 @@ export default function LandingPage() {
           }`}
         >
           {/* Logo Brand & Studio Status */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-600/30 via-amber-400/20 to-amber-200/40 border border-amber-300/30 flex items-center justify-center shadow-lg shadow-amber-500/10">
+          <Link
+            to="/"
+            title="Quay về trang giới thiệu AuraLofi"
+            className="flex items-center gap-2.5 cursor-pointer group hover:opacity-90 transition-opacity"
+          >
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-600/30 via-amber-400/20 to-amber-200/40 border border-amber-300/30 flex items-center justify-center shadow-lg shadow-amber-500/10 group-hover:scale-105 transition-transform">
               <Disc3 className={`w-4 h-4 text-amber-300 ${isPlaying ? 'animate-[spin_4s_linear_infinite]' : ''}`} />
             </div>
             <div className="flex flex-col">
@@ -718,7 +723,7 @@ export default function LandingPage() {
               <span className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-amber-400/60'}`} />
               <span className="tracking-wider">{isPlaying ? '33⅓ RPM' : 'STANDBY'}</span>
             </div>
-          </div>
+          </Link>
 
           {/* Cụm Điều Khiển Chính: Tối Giản, Thanh Lịch Chuẩn Lofi Chill */}
           <div className="flex items-center gap-1.5 sm:gap-2 relative">

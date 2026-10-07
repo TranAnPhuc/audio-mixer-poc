@@ -127,6 +127,40 @@ function createDefaultLabelTexture() {
 }
 
 /**
+ * Procedural Texture Generator cho Vân Gỗ Óc Chó Chân Thực (Walnut Wood Grain)
+ */
+function createProceduralWoodTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#422413';
+  ctx.fillRect(0, 0, 512, 512);
+
+  for (let i = 0; i < 150; i++) {
+    const x = Math.random() * 512;
+    const width = 1.5 + Math.random() * 6;
+    const alpha = 0.04 + Math.random() * 0.08;
+    ctx.strokeStyle = Math.random() > 0.5 ? `rgba(26, 12, 6, ${alpha})` : `rgba(88, 52, 28, ${alpha})`;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    const cp1x = x + (Math.random() - 0.5) * 40;
+    const cp2x = x + (Math.random() - 0.5) * 40;
+    const endx = x + (Math.random() - 0.5) * 50;
+    ctx.bezierCurveTo(cp1x, 170, cp2x, 340, endx, 512);
+    ctx.stroke();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1.5, 1.5);
+  return texture;
+}
+
+/**
  * Procedural Texture Generator cho Hạt Bụi Ánh Sáng Hoài Niệm
  */
 function createDustTexture() {
@@ -740,7 +774,12 @@ export default function Turntable3D({
     const initialWood = WOOD_STYLES.find((w) => w.id === initialCustom.wood) || WOOD_STYLES[0];
     const initialHorn = HORN_STYLES.find((h) => h.id === initialCustom.horn) || HORN_STYLES[0];
 
+    const woodTexture = createProceduralWoodTexture();
+
     const walnutWoodMat = new THREE.MeshStandardMaterial({
+      map: woodTexture,
+      bumpMap: woodTexture,
+      bumpScale: 0.012,
       color: initialWood.color || 0x4a2c19,
       roughness: initialWood.roughness,
       metalness: initialWood.metalness
@@ -798,6 +837,60 @@ export default function Turntable3D({
     const topDeck = new THREE.Mesh(topDeckGeom, walnutWoodMat);
     topDeck.position.y = 1.84;
     turntableGroup.add(topDeck);
+
+    // Tấm đồng thau phay xước gắn chìm trên mặt máy (Brushed Brass Plinth Inset)
+    const insetPlateGeom = new THREE.CylinderGeometry(2.32, 2.32, 0.02, 8);
+    insetPlateGeom.rotateY(Math.PI / 8);
+    const insetPlate = new THREE.Mesh(insetPlateGeom, darkGoldMat);
+    insetPlate.position.y = 1.94;
+    turntableGroup.add(insetPlate);
+
+    // 8 Con ốc vít nhỏ bằng đồng ở 8 góc mặt máy
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * Math.PI) / 4 + Math.PI / 8;
+      const screwGeom = new THREE.CylinderGeometry(0.035, 0.035, 0.025, 12);
+      const screw = new THREE.Mesh(screwGeom, polishedBrassMat);
+      screw.position.set(Math.cos(angle) * 2.22, 1.95, Math.sin(angle) * 2.22);
+      turntableGroup.add(screw);
+    }
+
+    // Nút Bật/Tắt cơ học có viền Bezel
+    const startBtnGroup = new THREE.Group();
+    startBtnGroup.position.set(-1.45, 1.95, 1.25);
+    const btnBezel = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.20, 0.04, 24), darkGoldMat);
+    startBtnGroup.add(btnBezel);
+    const btnCap = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.06, 24), polishedBrassMat);
+    btnCap.position.y = 0.03;
+    startBtnGroup.add(btnCap);
+    turntableGroup.add(startBtnGroup);
+
+    // Cần gạt tốc độ 33 / 45 / 78 RPM
+    const speedSwitchGroup = new THREE.Group();
+    speedSwitchGroup.position.set(-1.45, 1.95, 0.70);
+    const switchBase = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.32), darkGoldMat);
+    speedSwitchGroup.add(switchBase);
+    const switchLever = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.024, 0.15, 12), polishedBrassMat);
+    switchLever.position.set(0, 0.08, -0.03);
+    switchLever.rotation.x = 0.22;
+    speedSwitchGroup.add(switchLever);
+    turntableGroup.add(speedSwitchGroup);
+
+    // Đèn rọi kim Stylus Target Light Tower
+    const targetLightGroup = new THREE.Group();
+    targetLightGroup.position.set(-1.58, 1.95, -0.20);
+    const lightPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.36, 16), darkGoldMat);
+    lightPillar.position.y = 0.18;
+    targetLightGroup.add(lightPillar);
+    const lightHead = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.06, 0.12, 16), polishedBrassMat);
+    lightHead.position.set(0.03, 0.38, 0.03);
+    lightHead.rotateX(Math.PI / 4);
+    targetLightGroup.add(lightHead);
+    const stylusSpot = new THREE.SpotLight(0xffedd5, 1.5, 3.5, Math.PI / 6, 0.5);
+    stylusSpot.position.set(0.03, 0.40, 0.03);
+    stylusSpot.target.position.set(0.5, 2.05, 0.5);
+    targetLightGroup.add(stylusSpot);
+    targetLightGroup.add(stylusSpot.target);
+    turntableGroup.add(targetLightGroup);
 
     // 8 Chân đế bát giác
     for (let i = 0; i < 8; i++) {
@@ -946,6 +1039,40 @@ export default function Turntable3D({
     spindle.position.set(0, 0.12, 0);
     recordGroup.add(spindle);
 
+    // CỤC CHẶN ĐĨA KIM LOẠI NẶNG (AUDIOPHILE RECORD WEIGHT CLAMP)
+    const clampGroup = new THREE.Group();
+    clampGroup.position.set(0, 0.03, 0);
+    recordGroup.add(clampGroup);
+
+    const clampBase = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.38, 0.42, 0.11, 32),
+      polishedBrassMat
+    );
+    clampBase.position.y = 0.055;
+    clampGroup.add(clampBase);
+
+    const clampGrip = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.28, 0.28, 0.09, 32),
+      darkGoldMat
+    );
+    clampGrip.position.y = 0.155;
+    clampGroup.add(clampGrip);
+
+    const clampCap = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.34, 0.30, 0.07, 32),
+      polishedBrassMat
+    );
+    clampCap.position.y = 0.235;
+    clampGroup.add(clampCap);
+
+    const bubbleLevel = new THREE.Mesh(
+      new THREE.CircleGeometry(0.11, 24),
+      new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.15, metalness: 0.8 })
+    );
+    bubbleLevel.rotation.x = -Math.PI / 2;
+    bubbleLevel.position.y = 0.271;
+    clampGroup.add(bubbleLevel);
+
     // Bể chứa 3 vòng sóng xung kích âm thanh 3D
     const shockwaveCount = 3;
     const shockwaveGeom = new THREE.RingGeometry(1.68, 1.78, 64);
@@ -1027,6 +1154,44 @@ export default function Turntable3D({
     const armTubeGeom = new THREE.TubeGeometry(armCurve, 32, 0.058, 16, false);
     const armTube = new THREE.Mesh(armTubeGeom, polishedBrassMat);
     tonearmPitch.add(armTube);
+
+    // TẠ ĐỐI TRỌNG CÂN BẰNG PHÍA SAU (AUDIOPHILE COUNTERWEIGHT)
+    const counterweightGroup = new THREE.Group();
+    counterweightGroup.position.set(0.16, 0.06, -0.18);
+
+    const weightStem = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.035, 0.035, 0.36, 16),
+      darkGoldMat
+    );
+    weightStem.rotateX(-Math.PI / 4);
+    counterweightGroup.add(weightStem);
+
+    const weightBody = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.16, 0.16, 0.18, 32),
+      polishedBrassMat
+    );
+    weightBody.position.set(0, 0.05, -0.05);
+    weightBody.rotateX(-Math.PI / 4);
+    counterweightGroup.add(weightBody);
+
+    const weightDial = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.165, 0.165, 0.05, 32),
+      new THREE.MeshStandardMaterial({ color: 0x16161a, roughness: 0.85 })
+    );
+    weightDial.position.set(0, 0.015, -0.015);
+    weightDial.rotateX(-Math.PI / 4);
+    counterweightGroup.add(weightDial);
+
+    tonearmPitch.add(counterweightGroup);
+
+    // Cần gạt nâng hạ kim (Cueing Lever)
+    const cueingStem = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.015, 0.015, 0.16, 12),
+      polishedBrassMat
+    );
+    cueingStem.position.set(-0.10, 1.15, 0.08);
+    cueingStem.rotation.z = -0.32;
+    bracketGroup.add(cueingStem);
 
     // CỦ PHÁT ÂM HOA VĂN 6 CÁNH HOA (SOUNDBOX REPRODUCER)
     const soundboxGroup = new THREE.Group();
