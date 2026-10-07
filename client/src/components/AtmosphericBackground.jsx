@@ -240,12 +240,12 @@ export default function AtmosphericBackground({ currentScene, className = '' }) 
         className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-700 ease-in-out"
       />
 
-      {/* Lớp Vignette viền tối cổ điển giúp tập trung thị giác vào trung tâm */}
+      {/* Lớp Vignette viền mềm mại giúp tập trung thị giác êm ái mà không bị tối đen */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse at center, transparent 40%, rgba(5, 7, 12, 0.55) 85%, rgba(2, 3, 6, 0.85) 100%)'
+            'radial-gradient(ellipse at center, transparent 55%, rgba(15, 23, 42, 0.22) 85%, rgba(15, 23, 42, 0.45) 100%)'
         }}
       />
 

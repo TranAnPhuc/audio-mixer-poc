@@ -13,7 +13,8 @@ import {
   Sparkles,
   Film,
   HelpCircle,
-  Box
+  Box,
+  Palette
 } from 'lucide-react';
 import { playHapticClick, playHoverBlip, playHeavyMetalSwitch } from '../utils/soundEffects';
 import Turntable3D from '../components/Turntable3D';
@@ -26,6 +27,8 @@ import AtmosphericBackground from '../components/AtmosphericBackground';
 import RetroCrtOsd from '../components/RetroCrtOsd';
 import RetroShortcutModal from '../components/RetroShortcutModal';
 import GramophoneViewerModal from '../components/GramophoneViewerModal';
+import TurntableCustomizerDrawer from '../components/TurntableCustomizerDrawer';
+import { getSavedTurntableStyle, saveTurntableStyle } from '../data/turntableStyles';
 import { LOFI_SCENES, DEFAULT_SCENE, getNextScene, getSceneById } from '../data/lofiScenes';
 import { setAmbientVolume } from '../utils/ambientSoundSynth';
 import { VIETNAMESE_TRACKS } from '../data/vietnameseTracks';
@@ -80,6 +83,14 @@ export default function LandingPage() {
   const [actionFeedback, setActionFeedback] = useState(null);
   const [isShortcutModalOpen, setIsShortcutModalOpen] = useState(false);
   const [isGramophoneModalOpen, setIsGramophoneModalOpen] = useState(false);
+  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [customization, setCustomization] = useState(() => getSavedTurntableStyle());
+
+  const handleChangeCustomization = (newStyle) => {
+    setCustomization(newStyle);
+    saveTurntableStyle(newStyle);
+    triggerActionFeedback('[TÙY BIẾN 3D CẬP NHẬT]');
+  };
 
   // Kích hoạt thông báo phím tắt transient trên Retro CRT OSD
   const triggerActionFeedback = (text) => {
@@ -488,6 +499,7 @@ export default function LandingPage() {
     isTodoOpen,
     isExportModalOpen,
     isShortcutModalOpen,
+    isCustomizerOpen,
     isDragging
   ]);
 
@@ -574,8 +586,18 @@ export default function LandingPage() {
           triggerActionFeedback(next ? '[3D GRAMOPHONE: OPEN]' : '[3D GRAMOPHONE: CLOSE]');
           return next;
         });
+      } else if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault();
+        playHapticClick();
+        setIsCustomizerOpen((prev) => {
+          const next = !prev;
+          triggerActionFeedback(next ? '[TÙY BIẾN 3D: MỞ]' : '[TÙY BIẾN 3D: ĐÓNG]');
+          return next;
+        });
       } else if (e.code === 'Escape' || e.key === 'Escape') {
-        if (isGramophoneModalOpen) {
+        if (isCustomizerOpen) {
+          setIsCustomizerOpen(false);
+        } else if (isGramophoneModalOpen) {
           setIsGramophoneModalOpen(false);
         } else if (isShortcutModalOpen) {
           setIsShortcutModalOpen(false);
@@ -610,6 +632,8 @@ export default function LandingPage() {
     isTodoOpen,
     isExportModalOpen,
     isShortcutModalOpen,
+    isGramophoneModalOpen,
+    isCustomizerOpen,
     currentScene
   ]);
 
@@ -749,6 +773,22 @@ export default function LandingPage() {
               <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-black/50 border border-white/20 text-slate-300">V</kbd>
             </button>
 
+            {/* Nút Tùy Biến Máy Hát 3D */}
+            <button
+              type="button"
+              onClick={() => {
+                playHapticClick();
+                setIsCustomizerOpen(true);
+              }}
+              onMouseEnter={playHoverBlip}
+              className="anodize-btn inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-sky-400/25 to-amber-500/20 hover:from-amber-500/30 hover:to-sky-400/35 border border-amber-400/40 hover:border-amber-300 text-xs font-bold text-amber-200 hover:text-white transition-all cursor-pointer shadow-md"
+              title="Tùy biến vỏ gỗ, loa kèn, đĩa than 3D (Phím C)"
+            >
+              <Palette className="w-3.5 h-3.5 text-amber-300" />
+              <span className="hidden sm:inline">Tùy Biến 3D</span>
+              <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-black/50 border border-white/20 text-slate-300">C</kbd>
+            </button>
+
             {/* Nút Mở Modal Xuất Video Visualizer */}
             <button
               type="button"
@@ -835,6 +875,7 @@ export default function LandingPage() {
             currentTime={currentTime}
             duration={duration}
             isZenMode={isZenMode}
+            customization={customization}
             onScratch={handleScratch}
             onSeek={handleSeekFromTurntable}
           />
@@ -1066,6 +1107,25 @@ export default function LandingPage() {
           <span className="hidden sm:inline">Ghi Chú</span>
         </button>
 
+        {/* Nút 5: Tùy Biến Máy Hát 3D */}
+        <button
+          type="button"
+          onClick={() => {
+            playHapticClick();
+            setIsCustomizerOpen((prev) => !prev);
+          }}
+          onMouseEnter={playHoverBlip}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
+            isCustomizerOpen
+              ? 'bg-amber-400/20 border-amber-400 text-amber-300 shadow-sm'
+              : 'bg-white/[0.04] border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
+          }`}
+          title="Tùy biến vỏ gỗ, loa kèn, đĩa than 3D (Phím C)"
+        >
+          <span>🎨</span>
+          <span className="hidden sm:inline">Tùy Biến [C]</span>
+        </button>
+
         {/* Nút 5: Phím Tắt */}
         <button
           type="button"
@@ -1138,6 +1198,14 @@ export default function LandingPage() {
       <GramophoneViewerModal
         isOpen={isGramophoneModalOpen}
         onClose={() => setIsGramophoneModalOpen(false)}
+      />
+
+      {/* 10. DRAWER TÙY BIẾN MÁY HÁT 3D THỜI GIAN THỰC */}
+      <TurntableCustomizerDrawer
+        isOpen={isCustomizerOpen}
+        onClose={() => setIsCustomizerOpen(false)}
+        customization={customization}
+        onChangeCustomization={handleChangeCustomization}
       />
 
       {toast && (

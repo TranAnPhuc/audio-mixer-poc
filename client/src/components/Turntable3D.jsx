@@ -3,6 +3,13 @@ import * as THREE from 'three';
 import gsap from 'gsap';
 import { getAudioFrequencies } from '../utils/vinylAudioEngine';
 import { playNeedleScratch } from '../utils/soundEffects';
+import {
+  WOOD_STYLES,
+  HORN_STYLES,
+  VINYL_STYLES,
+  UNDERGLOW_COLORS,
+  DEFAULT_TURNTABLE_STYLE
+} from '../data/turntableStyles';
 
 /**
  * Procedural Texture Generator cho Vi Rãnh Đĩa Than (Micro-Grooves)
@@ -136,6 +143,7 @@ export default function Turntable3D({
   currentTime = 0,
   duration = 0,
   isZenMode = false,
+  customization = null,
   onScratch = null,
   onSeek = null
 }) {
@@ -166,6 +174,12 @@ export default function Turntable3D({
   const currentCoverTextureRef = useRef(null);
   const defaultLabelTextureRef = useRef(null);
   const isDroppingInRef = useRef(false);
+
+  // Tham chiếu vật liệu tùy biến thời gian thực
+  const woodMatRef = useRef(null);
+  const metalMatRef = useRef(null);
+  const metalAccentMatRef = useRef(null);
+  const recordMatRef = useRef(null);
 
   // Tham chiếu trường hạt bụi và sóng âm
   const dustGeomRef = useRef(null);
@@ -343,6 +357,52 @@ export default function Turntable3D({
     }
   }, [ambientColors]);
 
+  // Cập nhật tùy biến vật liệu thời gian thực (Live Customization Preview)
+  useEffect(() => {
+    if (!customization) return;
+
+    if (woodMatRef.current && customization.wood) {
+      const woodCfg = WOOD_STYLES.find((w) => w.id === customization.wood) || WOOD_STYLES[0];
+      woodMatRef.current.color.setHex(woodCfg.color);
+      woodMatRef.current.roughness = woodCfg.roughness;
+      woodMatRef.current.metalness = woodCfg.metalness;
+      woodMatRef.current.needsUpdate = true;
+    }
+
+    if (metalMatRef.current && customization.horn) {
+      const hornCfg = HORN_STYLES.find((h) => h.id === customization.horn) || HORN_STYLES[0];
+      metalMatRef.current.color.setHex(hornCfg.color);
+      metalMatRef.current.metalness = hornCfg.metalness;
+      metalMatRef.current.roughness = hornCfg.roughness;
+      metalMatRef.current.needsUpdate = true;
+    }
+
+    if (metalAccentMatRef.current && customization.horn) {
+      const hornCfg = HORN_STYLES.find((h) => h.id === customization.horn) || HORN_STYLES[0];
+      metalAccentMatRef.current.color.setHex(hornCfg.darkColor || hornCfg.color);
+      metalAccentMatRef.current.metalness = Math.max(0.7, hornCfg.metalness - 0.08);
+      metalAccentMatRef.current.roughness = hornCfg.roughness + 0.08;
+      metalAccentMatRef.current.needsUpdate = true;
+    }
+
+    if (recordMatRef.current && customization.vinyl) {
+      const vinylCfg = VINYL_STYLES.find((v) => v.id === customization.vinyl) || VINYL_STYLES[0];
+      recordMatRef.current.color.setHex(vinylCfg.color);
+      recordMatRef.current.roughness = vinylCfg.roughness;
+      recordMatRef.current.metalness = vinylCfg.metalness;
+      recordMatRef.current.transparent = !!vinylCfg.transparent;
+      recordMatRef.current.opacity = vinylCfg.opacity ?? 1.0;
+      recordMatRef.current.needsUpdate = true;
+    }
+
+    if (underglowMatRef.current && customization.underglow) {
+      const ugCfg = UNDERGLOW_COLORS.find((u) => u.id === customization.underglow);
+      if (ugCfg) {
+        underglowMatRef.current.color.set(ugCfg.hex);
+      }
+    }
+  }, [customization]);
+
   // KHỞI TẠO SCENE THREE.JS
   useEffect(() => {
     const container = mountRef.current;
@@ -367,27 +427,31 @@ export default function Turntable3D({
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.25;
+    renderer.toneMappingExposure = 1.35;
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // HỆ THỐNG ÁNH SÁNG ĐÈN BÀN HỌC 2700K VÀNG ẤM (Warm Lamp Studio Lighting)
-    const ambientLight = new THREE.AmbientLight(0xffedd5, 0.65);
+    // HỆ THỐNG ÁNH SÁNG PHÒNG ĐÓN NẮNG TƯƠI SÁNG (Bright Warm Sunlit Studio Lighting)
+    const ambientLight = new THREE.AmbientLight(0xffedd5, 1.15);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xffecd2, 2.6);
-    keyLight.position.set(5.5, 10.5, 6.2);
+    const keyLight = new THREE.DirectionalLight(0xfff7ed, 3.2);
+    keyLight.position.set(5.5, 11.5, 6.5);
     scene.add(keyLight);
 
-    const rimLight = new THREE.DirectionalLight(0xfde68a, 1.6);
+    const fillLight = new THREE.DirectionalLight(0xdbeafe, 1.4);
+    fillLight.position.set(-6.5, 8.0, 5.0);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xfef3c7, 1.8);
     rimLight.position.set(-6.5, 7.5, -5.5);
     scene.add(rimLight);
 
-    const hornHighlight = new THREE.DirectionalLight(0xffd19a, 2.2);
-    hornHighlight.position.set(-2.5, 8.5, 7.5);
+    const hornHighlight = new THREE.DirectionalLight(0xffd19a, 2.6);
+    hornHighlight.position.set(-2.5, 9.5, 8.0);
     scene.add(hornHighlight);
 
-    const platterSpot = new THREE.PointLight(0xffb86c, 1.8, 14);
+    const platterSpot = new THREE.PointLight(0xffb86c, 2.0, 16);
     platterSpot.position.set(0, 4.5, 0.5);
     scene.add(platterSpot);
     platterSpotRef.current = platterSpot;
@@ -398,24 +462,31 @@ export default function Turntable3D({
     scene.add(turntableGroup);
     turntableGroupRef.current = turntableGroup;
 
-    // VẬT LIỆU CHÍNH (GỖ ÓC CHÓ ẤM & ĐỒNG THAU HOÀNG GIA)
+    // VẬT LIỆU CHÍNH TÙY BIẾN ĐỘNG (Gỗ óc chó 0x4a2c19, Đồng thau mờ 0xc8a265)
+    const initialCustom = customization || DEFAULT_TURNTABLE_STYLE;
+    const initialWood = WOOD_STYLES.find((w) => w.id === initialCustom.wood) || WOOD_STYLES[0];
+    const initialHorn = HORN_STYLES.find((h) => h.id === initialCustom.horn) || HORN_STYLES[0];
+
     const walnutWoodMat = new THREE.MeshStandardMaterial({
-      color: 0x422617,
-      roughness: 0.62,
-      metalness: 0.10
+      color: initialWood.color || 0x4a2c19,
+      roughness: initialWood.roughness,
+      metalness: initialWood.metalness
     });
+    woodMatRef.current = walnutWoodMat;
 
     const polishedBrassMat = new THREE.MeshStandardMaterial({
-      color: 0xd4af37,
-      metalness: 0.88,
-      roughness: 0.24
+      color: initialHorn.color || 0xc8a265,
+      metalness: initialHorn.metalness,
+      roughness: initialHorn.roughness
     });
+    metalMatRef.current = polishedBrassMat;
 
     const darkGoldMat = new THREE.MeshStandardMaterial({
-      color: 0xb8860b,
-      metalness: 0.82,
-      roughness: 0.32
+      color: initialHorn.darkColor || 0xc8a265,
+      metalness: Math.max(0.7, initialHorn.metalness - 0.08),
+      roughness: initialHorn.roughness + 0.08
     });
+    metalAccentMatRef.current = darkGoldMat;
 
     // ========================================================================
     // 1. BỆ GỖ BÁT GIÁC GIẬT CẤP (OCTAGONAL CABINET)
@@ -564,16 +635,20 @@ export default function Turntable3D({
     turntableGroup.add(recordGroup);
     recordGroupRef.current = recordGroup;
 
-    // Đĩa Shellac 78 RPM màu đen bóng
+    // Đĩa Than 78 RPM tùy biến chất liệu
+    const initialVinyl = VINYL_STYLES.find((v) => v.id === initialCustom.vinyl) || VINYL_STYLES[0];
     const grooveTexture = createGrooveTexture();
     const recordGeom = new THREE.CylinderGeometry(1.60, 1.60, 0.035, 64);
     const recordMat = new THREE.MeshStandardMaterial({
-      color: 0x090a0d,
-      metalness: 0.92,
-      roughness: 0.14,
+      color: initialVinyl.color,
+      metalness: initialVinyl.metalness,
+      roughness: initialVinyl.roughness,
+      transparent: !!initialVinyl.transparent,
+      opacity: initialVinyl.opacity ?? 1.0,
       bumpMap: grooveTexture,
       bumpScale: 0.032
     });
+    recordMatRef.current = recordMat;
     const recordMesh = new THREE.Mesh(recordGeom, recordMat);
     recordGroup.add(recordMesh);
 
@@ -622,11 +697,12 @@ export default function Turntable3D({
     shockwavesRef.current = shockwaves;
 
     // Hào quang gầm bệ máy
+    const initialUg = UNDERGLOW_COLORS.find((u) => u.id === initialCustom.underglow) || UNDERGLOW_COLORS[0];
     const underglowGeom = new THREE.TorusGeometry(2.55, 0.045, 16, 64);
     const underglowMat = new THREE.MeshBasicMaterial({
-      color: ambientColors?.hexPrimary || 0xf59e0b,
+      color: initialUg.hex,
       transparent: true,
-      opacity: 0.28,
+      opacity: 0.35,
       blending: THREE.AdditiveBlending
     });
     underglowMatRef.current = underglowMat;
@@ -832,12 +908,16 @@ export default function Turntable3D({
       const dist = Math.hypot(hit.x - diskCenter.x, hit.z - diskCenter.y);
       const angle = Math.atan2(hit.z - diskCenter.y, hit.x - diskCenter.x);
 
-      // Chạm vào mặt đĩa than để chà đĩa (Vinyl Scratching)
+      // Chạm vào mặt đĩa than để chà đĩa (Vinyl Scratching) & tua bài hát
       if (dist <= 1.70) {
         isScratchingRef.current = true;
         lastScratchAngleRef.current = angle;
         lastScratchTimeRef.current = performance.now();
         container.style.cursor = 'grabbing';
+
+        // Tua bài hát tới vị trí rãnh kim tiếp xúc (Tonearm Needle Seek)
+        const progress = Math.max(0, Math.min(1, (dist - 0.35) / 1.30));
+        onSeekRef.current?.(progress);
       }
     };
 
@@ -1125,6 +1205,11 @@ export default function Turntable3D({
       hornBellGeom.dispose();
       grooveTexture.dispose();
       defaultLabelTexture.dispose();
+      walnutWoodMat.dispose();
+      polishedBrassMat.dispose();
+      darkGoldMat.dispose();
+      recordMat.dispose();
+      underglowMat.dispose();
 
       if (currentCoverTextureRef.current) {
         currentCoverTextureRef.current.dispose();

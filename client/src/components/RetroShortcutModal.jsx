@@ -60,6 +60,11 @@ export default function RetroShortcutModal({ isOpen, onClose }) {
       desc: 'Chiêm ngưỡng mô hình 3D máy phát đĩa than cổ điển thùng bát giác 360°'
     },
     {
+      keys: ['C'],
+      label: 'Tùy Biến Máy Hát 3D (Customize)',
+      desc: 'Cá nhân hóa chất liệu vỏ gỗ, loa kèn, đĩa than và đèn gầm thời gian thực'
+    },
+    {
       keys: ['H', '?'],
       label: 'Mở bảng trợ giúp này',
       desc: 'Bật bảng tra cứu phím tắt retro CRT'

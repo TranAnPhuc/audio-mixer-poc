@@ -1,51 +1,51 @@
 /**
  * Cấu hình các cảnh không gian Lofi nghệ thuật (AuraLofi Atmospheric Scenes)
- * Lấy cảm hứng từ triết lý lofi.cafe: tĩnh lặng, không chia hộp, ánh sáng hoài niệm.
+ * Lấy cảm hứng từ triết lý lofi.cafe & LifeAt: tươi sáng, tĩnh lặng, không chia hộp, ánh sáng hoài niệm.
  * Cung cấp bộ màu gradient nền, ánh sáng Three.js và preset bộ trộn âm thanh môi trường 4 kênh.
  */
 
 export const LOFI_SCENES = [
   {
-    id: 'rainy-window',
-    name: 'Rainy Window',
-    nameVi: 'Cửa sổ mưa đêm',
-    description: 'Mưa đêm rơi tí tách bên ô cửa kính mờ, ánh đèn phố thị lấp lánh phản chiếu không gian tĩnh lặng.',
-    icon: '🌧️',
-    canvasEffect: 'rain',
+    id: 'sunny-loft',
+    name: 'Sunny Loft',
+    nameVi: 'Phòng học đón nắng sáng',
+    description: 'Nắng sớm chan hòa qua khung cửa sổ, không gian học tập sáng bừng năng lượng tích cực và thư thái.',
+    icon: '☀️',
+    canvasEffect: 'dust',
     theme: {
-      bgGradient: 'radial-gradient(ellipse at 50% 30%, #151c2e 0%, #0d121f 55%, #06080e 100%)',
-      primaryColor: '#38bdf8',
-      accentColor: '#818cf8',
-      glowColor: 'rgba(56, 189, 248, 0.25)',
-      lightingColor: '#93c5fd',
-      phosphorColor: 'cyan',
+      bgGradient: 'radial-gradient(ellipse at 50% 25%, #4b5d7a 0%, #2d3b50 50%, #161e2a 100%)',
+      primaryColor: '#f59e0b',
+      accentColor: '#38bdf8',
+      glowColor: 'rgba(245, 158, 11, 0.35)',
+      lightingColor: '#fffbeb',
+      phosphorColor: 'amber',
       ambientPreset: {
-        rain: 0.65,
-        fireplace: 0.20,
-        cafe: 0.0,
-        wind: 0.15
+        rain: 0.0,
+        cafe: 0.30,
+        fireplace: 0.15,
+        wind: 0.35
       }
     }
   },
   {
     id: 'cozy-cafe',
     name: 'Cozy Cafe',
-    nameVi: 'Quán cà phê đêm',
-    description: 'Góc quán quen ấm cúng, hương cà phê thoang thoảng cùng tiếng tách lách cách đêm muộn.',
+    nameVi: 'Quán cà phê đón nắng',
+    description: 'Góc quán quen ấm cúng chan hòa ánh sáng tự nhiên, hương cà phê thoang thoảng cùng tiếng nhạc êm đềm.',
     icon: '☕',
     canvasEffect: 'bokeh',
     theme: {
-      bgGradient: 'radial-gradient(ellipse at 50% 35%, #2a1b14 0%, #180f0b 55%, #0a0604 100%)',
-      primaryColor: '#f59e0b',
-      accentColor: '#d97706',
-      glowColor: 'rgba(245, 158, 11, 0.25)',
-      lightingColor: '#fed7aa',
+      bgGradient: 'radial-gradient(ellipse at 50% 30%, #5d4037 0%, #3e2723 50%, #1e130d 100%)',
+      primaryColor: '#fbbf24',
+      accentColor: '#f97316',
+      glowColor: 'rgba(251, 191, 36, 0.35)',
+      lightingColor: '#fef3c7',
       phosphorColor: 'amber',
       ambientPreset: {
         cafe: 0.60,
-        rain: 0.25,
-        fireplace: 0.0,
-        wind: 0.10
+        rain: 0.10,
+        fireplace: 0.10,
+        wind: 0.15
       }
     }
   },
@@ -57,11 +57,11 @@ export const LOFI_SCENES = [
     icon: '🌇',
     canvasEffect: 'dust',
     theme: {
-      bgGradient: 'radial-gradient(ellipse at 50% 30%, #351c2d 0%, #201124 50%, #0d0711 100%)',
+      bgGradient: 'radial-gradient(ellipse at 50% 30%, #68304b 0%, #3e1b30 50%, #1c0d1b 100%)',
       primaryColor: '#f97316',
       accentColor: '#c084fc',
-      glowColor: 'rgba(249, 115, 22, 0.25)',
-      lightingColor: '#fdba74',
+      glowColor: 'rgba(249, 115, 22, 0.35)',
+      lightingColor: '#fed7aa',
       phosphorColor: 'amber',
       ambientPreset: {
         wind: 0.35,
@@ -72,24 +72,24 @@ export const LOFI_SCENES = [
     }
   },
   {
-    id: 'zen-deck',
-    name: 'Zen Vinyl Deck',
-    nameVi: 'Mâm đĩa than Zen',
-    description: 'Không gian tối giản thuần khiết, ánh đèn vàng ấm 2700K tập trung trọn vẹn vào đĩa than đang quay.',
-    icon: '🧘',
-    canvasEffect: 'zen',
+    id: 'rainy-window',
+    name: 'Rainy Window',
+    nameVi: 'Cửa sổ mưa chiều',
+    description: 'Mưa rào mùa hạ tí tách bên ô cửa kính mờ, phản chiếu ánh sáng dịu êm thanh tịnh.',
+    icon: '🌧️',
+    canvasEffect: 'rain',
     theme: {
-      bgGradient: 'radial-gradient(ellipse at 50% 45%, #181412 0%, #0d0c0c 60%, #050505 100%)',
-      primaryColor: '#fbbf24',
-      accentColor: '#a3e635',
-      glowColor: 'rgba(251, 191, 36, 0.20)',
-      lightingColor: '#fef3c7',
-      phosphorColor: 'emerald',
+      bgGradient: 'radial-gradient(ellipse at 50% 30%, #334661 0%, #1d2a3c 55%, #101824 100%)',
+      primaryColor: '#38bdf8',
+      accentColor: '#818cf8',
+      glowColor: 'rgba(56, 189, 248, 0.35)',
+      lightingColor: '#bae6fd',
+      phosphorColor: 'cyan',
       ambientPreset: {
-        rain: 0.15,
-        fireplace: 0.20,
+        rain: 0.65,
+        fireplace: 0.15,
         cafe: 0.0,
-        wind: 0.10
+        wind: 0.20
       }
     }
   }
