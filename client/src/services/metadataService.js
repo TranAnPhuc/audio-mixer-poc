@@ -160,8 +160,22 @@ export function extractPaletteFromImage(imageUrl) {
   }
 
   return new Promise((resolve) => {
+    let resolved = false;
+    const safeResolve = (palette) => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timer);
+        resolve(palette);
+      }
+    };
+
+    // Timeout phòng vệ 3.5 giây nếu CDN bên thứ ba chậm hoặc chặn kết nối
+    const timer = setTimeout(() => {
+      safeResolve(DEFAULT_PALETTE);
+    }, 3500);
+
     const img = new Image();
-    img.crossOrigin = 'Anonymous';
+    img.crossOrigin = 'anonymous';
 
     img.onload = () => {
       try {
@@ -170,7 +184,7 @@ export function extractPaletteFromImage(imageUrl) {
         canvas.height = 64;
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          resolve(DEFAULT_PALETTE);
+          safeResolve(DEFAULT_PALETTE);
           return;
         }
 
@@ -220,7 +234,7 @@ export function extractPaletteFromImage(imageUrl) {
         const sortedColors = Object.values(colorBuckets).sort((a, b) => b.score - a.score);
 
         if (sortedColors.length === 0) {
-          resolve(DEFAULT_PALETTE);
+          safeResolve(DEFAULT_PALETTE);
           return;
         }
 
@@ -250,7 +264,7 @@ export function extractPaletteFromImage(imageUrl) {
         const hex1 = `#${toHex(r1)}${toHex(g1)}${toHex(b1)}`;
         const hex2 = `#${toHex(r2)}${toHex(g2)}${toHex(b2)}`;
 
-        resolve({
+        safeResolve({
           primaryColor: `rgb(${r1}, ${g1}, ${b1})`,
           secondaryColor: `rgb(${r2}, ${g2}, ${b2})`,
           glowColor: `rgba(${r1}, ${g1}, ${b1}, 0.28)`,
@@ -258,13 +272,13 @@ export function extractPaletteFromImage(imageUrl) {
           hexSecondary: hex2
         });
       } catch (err) {
-        console.warn('[metadataService] Lỗi trích xuất màu canvas:', err);
-        resolve(DEFAULT_PALETTE);
+        console.warn('[metadataService] Lỗi trích xuất màu canvas (CORS/Taint fallback):', err);
+        safeResolve(DEFAULT_PALETTE);
       }
     };
 
     img.onerror = () => {
-      resolve(DEFAULT_PALETTE);
+      safeResolve(DEFAULT_PALETTE);
     };
 
     img.src = imageUrl;

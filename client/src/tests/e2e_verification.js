@@ -11,6 +11,8 @@
  */
 
 import { parseAudioFileMetadata, extractEmbeddedLyrics, extractPaletteFromImage, DEFAULT_PALETTE } from '../services/metadataService.js';
+import { normalizeAudiusTrack } from '../services/audiusService.js';
+import { CAMERA_PRESETS, clampWaveGain } from '../utils/terrainConfig.js';
 import {
   getAudioContext,
   setVinylMuted,
@@ -479,6 +481,27 @@ async function main() {
     assert(Math.abs(history[1][0] - 4.2) < 0.001, `Dữ liệu hàng 1 sai sau khi dịch chuyển: ${history[1][0]}`);
   });
 
+  await runTest('CAMERA_PRESETS: Cung cấp đầy đủ 3 góc nhìn (isometric, frontal, topdown) với vector position và lookAt', () => {
+    assert(CAMERA_PRESETS.isometric, 'Thiếu preset isometric');
+    assert(CAMERA_PRESETS.frontal, 'Thiếu preset frontal');
+    assert(CAMERA_PRESETS.topdown, 'Thiếu preset topdown');
+
+    // Kiểm tra cấu trúc tọa độ 3D
+    ['isometric', 'frontal', 'topdown'].forEach((key) => {
+      const p = CAMERA_PRESETS[key];
+      assert(Array.isArray(p.position) && p.position.length === 3, `${key} position phải là mảng 3 phần tử`);
+      assert(Array.isArray(p.lookAt) && p.lookAt.length === 3, `${key} lookAt phải là mảng 3 phần tử`);
+      assert(typeof p.label === 'string' && p.label.length > 0, `${key} label không được rỗng`);
+    });
+  });
+
+  await runTest('clampWaveGain: Thuật toán điều chỉnh biên độ sóng giới hạn an toàn trong khoảng [0.4, 2.4]', () => {
+    assert(clampWaveGain(1.0) === 1.0, 'Default gain sai');
+    assert(clampWaveGain(0.1) === 0.4, 'Min clamping sai');
+    assert(clampWaveGain(5.0) === 2.4, 'Max clamping sai');
+    assert(clampWaveGain(1.234) === 1.2, 'Làm tròn 1 chữ số thập phân sai');
+  });
+
   // SUITE 6: Resource Integrity & Memory Leak Prevention
   console.log('\n\x1b[1m--- [Suite 6] Memory Leak & Resource Integrity ---\x1b[0m');
   await runTest('Blob URL Lifecycle: Tự động thu hồi ObjectURL khi đổi bài hát', () => {
@@ -521,6 +544,53 @@ async function main() {
 
     assert(geometryDisposed === true, 'Geometry không được giải phóng!');
     assert(contextLost === true, 'forceContextLoss chưa được gọi!');
+  });
+
+  // SUITE 7: Audius Protocol Integration & Track Normalization
+  console.log('\n\x1b[1m--- [Suite 7] Audius Open Music Protocol & Track Normalization ---\x1b[0m');
+  await runTest('normalizeAudiusTrack: Chuẩn hóa đầy đủ các trường id, title, artist, streamUrl, coverUrl và duration', () => {
+    const rawTrack = {
+      id: 'D7KyP',
+      title: 'Neon Nights',
+      duration: 214,
+      genre: 'Electronic',
+      user: {
+        name: 'CyberProducer',
+        handle: 'cyber_prod'
+      },
+      artwork: {
+        '150x150': 'https://creatornode.audius.co/ipfs/Qm150',
+        '480x480': 'https://creatornode.audius.co/ipfs/Qm480'
+      }
+    };
+
+    const track = normalizeAudiusTrack(rawTrack);
+    assert(track !== null, 'Track không được null');
+    assert(track.id === 'D7KyP', 'ID sai');
+    assert(track.title === 'Neon Nights', 'Title sai');
+    assert(track.artist === 'CyberProducer', 'Artist sai');
+    assert(track.album === 'Electronic Edition', 'Album sai');
+    assert(track.coverUrl === 'https://creatornode.audius.co/ipfs/Qm480', 'Artwork 480x480 ưu tiên sai');
+    assert(track.duration === 214, 'Duration sai');
+    assert(track.streamUrl === 'https://api.audius.co/v1/tracks/D7KyP/stream?app_name=AuraVinyl', 'Stream URL sai định dạng');
+  });
+
+  await runTest('normalizeAudiusTrack: Fallback an toàn khi metadata từ Audius bị thiếu trường', () => {
+    const sparseTrack = {
+      id: 'sparse123'
+    };
+
+    const track = normalizeAudiusTrack(sparseTrack);
+    assert(track !== null, 'Phải xử lý được track thiếu trường');
+    assert(track.title === 'Bản thu không tên', 'Title fallback sai');
+    assert(track.artist === 'Nghệ sĩ ẩn danh', 'Artist fallback sai');
+    assert(track.coverUrl === '', 'CoverUrl fallback sai');
+    assert(track.duration === 180, 'Duration fallback sai');
+    assert(track.streamUrl.includes('sparse123'), 'StreamUrl phải chứa ID');
+
+    // Trường hợp đầu vào null hoặc object không có id
+    assert(normalizeAudiusTrack(null) === null, 'Đầu vào null phải trả về null');
+    assert(normalizeAudiusTrack({}) === null, 'Track thiếu ID phải trả về null');
   });
 
   // TỔNG KẾT BÁO CÁO

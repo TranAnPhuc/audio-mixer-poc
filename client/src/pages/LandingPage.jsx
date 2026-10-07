@@ -10,11 +10,13 @@ import {
   Upload,
   Maximize2,
   Minimize2,
-  Radio
+  Radio,
+  Sparkles
 } from 'lucide-react';
 import { playHapticClick, playHoverBlip } from '../utils/soundEffects';
 import Turntable3D from '../components/Turntable3D';
 import AudioTerrain3D from '../components/AudioTerrain3D';
+import AudiusCratesDrawer from '../components/AudiusCratesDrawer';
 import {
   connectAudioElement,
   playNeedleDropEffect,
@@ -29,7 +31,8 @@ import ToastNotification from '../components/ToastNotification';
 
 /**
  * AuraVinyl — 3D Interactive Vinyl & Generative Audio Terrain Studio
- * Giao diện Dark Minimalist kết hợp mâm đĩa than 3D và sóng âm địa hình Joy Division 3D
+ * Giao diện Dark Minimalist kết hợp mâm đĩa than 3D, sóng âm địa hình Joy Division 3D
+ * và khay đĩa than trực tuyến Audius Open Protocol
  */
 export default function LandingPage() {
   // Trạng thái thông báo Toast Notification
@@ -49,10 +52,14 @@ export default function LandingPage() {
   const [ambientColors, setAmbientColors] = useState(DEFAULT_PALETTE);
   const [isZenMode, setIsZenMode] = useState(false);
 
+  // Trạng thái khay đĩa Audius
+  const [isCratesDrawerOpen, setIsCratesDrawerOpen] = useState(false);
+  const [currentOnlineTrackId, setCurrentOnlineTrackId] = useState(null);
+
   // Thông tin bài hát hiện tại
   const [trackInfo, setTrackInfo] = useState({
     title: 'Chưa có bản thu',
-    artist: 'Kéo thả file MP3 để phát đĩa than',
+    artist: 'Kéo thả file MP3 hoặc khám phá Audius',
     album: 'AuraVinyl Session',
     fileName: '',
     coverUrl: null
@@ -69,7 +76,7 @@ export default function LandingPage() {
   useEffect(() => {
     return () => {
       clearTimeout(needleDropTimerRef.current);
-      if (currentAudioUrlRef.current) {
+      if (currentAudioUrlRef.current && currentAudioUrlRef.current.startsWith('blob:')) {
         URL.revokeObjectURL(currentAudioUrlRef.current);
         currentAudioUrlRef.current = null;
       }
@@ -143,13 +150,14 @@ export default function LandingPage() {
     setIsPlaying(false);
   };
 
-  // Nạp tệp âm thanh và trích xuất thông tin
+  // Nạp tệp âm thanh máy cục bộ và trích xuất thông tin
   const processAudioFile = async (audioFile) => {
     playHapticClick();
     currentAudioFileRef.current = audioFile;
+    setCurrentOnlineTrackId(null);
 
     // Thu hồi Blob URL âm thanh trước đó (nếu có) để giải phóng RAM
-    if (currentAudioUrlRef.current) {
+    if (currentAudioUrlRef.current && currentAudioUrlRef.current.startsWith('blob:')) {
       URL.revokeObjectURL(currentAudioUrlRef.current);
     }
     const objectUrl = URL.createObjectURL(audioFile);
@@ -196,6 +204,56 @@ export default function LandingPage() {
     });
   };
 
+  // Phát bài hát trực tuyến từ khay đĩa Audius
+  const playOnlineTrack = async (track) => {
+    playHapticClick();
+    currentAudioFileRef.current = null;
+    setCurrentOnlineTrackId(track.id);
+
+    // Thu hồi Blob URL âm thanh cũ (nếu trước đó là file upload)
+    if (currentAudioUrlRef.current && currentAudioUrlRef.current.startsWith('blob:')) {
+      URL.revokeObjectURL(currentAudioUrlRef.current);
+    }
+    currentAudioUrlRef.current = track.streamUrl;
+
+    // Thu hồi Blob URL ảnh bìa cũ nếu có
+    if (currentCoverUrlRef.current && currentCoverUrlRef.current.startsWith('blob:')) {
+      URL.revokeObjectURL(currentCoverUrlRef.current);
+    }
+    currentCoverUrlRef.current = track.coverUrl;
+
+    setTrackInfo({
+      title: track.title,
+      artist: track.artist,
+      album: track.album || `${track.genre || 'Audius'} Edition`,
+      fileName: `audius-${track.id}.mp3`,
+      coverUrl: track.coverUrl
+    });
+
+    // Trích xuất bảng màu từ ảnh bìa online để đổi màu nền Ambient Aurora
+    if (track.coverUrl) {
+      const palette = await extractPaletteFromImage(track.coverUrl);
+      setAmbientColors(palette);
+    } else {
+      setAmbientColors(DEFAULT_PALETTE);
+    }
+
+    // Nạp stream URL vào thẻ <audio> và bắt đầu phát nhạc
+    if (audioRef.current) {
+      audioRef.current.src = track.streamUrl;
+      audioRef.current.load();
+      audioRef.current.onloadedmetadata = () => {
+        setDuration(audioRef.current.duration || track.duration || 0);
+      };
+      startPlayback();
+    }
+
+    showToast({
+      message: `Đang phát từ Audius: ${track.title} — ${track.artist}`,
+      type: 'success'
+    });
+  };
+
   // Xử lý tập hợp tệp được người dùng kéo thả hoặc chọn qua file dialog
   const handleIncomingFiles = async (filesList) => {
     if (!filesList || filesList.length === 0) return;
@@ -237,7 +295,7 @@ export default function LandingPage() {
   const togglePlay = () => {
     playHapticClick();
     if (!audioRef.current || !audioRef.current.src) {
-      fileInputRef.current?.click();
+      setIsCratesDrawerOpen(true);
       return;
     }
 
@@ -344,15 +402,18 @@ export default function LandingPage() {
         e.preventDefault();
         playHapticClick();
         setIsZenMode((prev) => !prev);
-      } else if (e.code === 'Escape' && isZenMode) {
-        e.preventDefault();
-        setIsZenMode(false);
+      } else if (e.code === 'Escape') {
+        if (isCratesDrawerOpen) {
+          setIsCratesDrawerOpen(false);
+        } else if (isZenMode) {
+          setIsZenMode(false);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, currentTime, duration, volume, isMuted, isZenMode]);
+  }, [isPlaying, currentTime, duration, volume, isMuted, isZenMode, isCratesDrawerOpen]);
 
   return (
     <div
@@ -370,7 +431,7 @@ export default function LandingPage() {
         preload="metadata"
       />
 
-      {/* Input Ẩn Để Chọn Tệp Âm Thanh */}
+      {/* Input Ẩn Để Chọn Tệp Âm Thanh Cục Bộ */}
       <input
         ref={fileInputRef}
         type="file"
@@ -412,7 +473,22 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Nút Mở Khay Đĩa Than Trực Tuyến Audius */}
+            <button
+              type="button"
+              onClick={() => {
+                playHapticClick();
+                setIsCratesDrawerOpen(true);
+              }}
+              onMouseEnter={playHoverBlip}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/10 to-amber-400/5 hover:from-amber-500/20 hover:to-amber-400/15 border border-amber-400/30 hover:border-amber-400/60 text-xs font-semibold text-amber-300 hover:text-white transition-all cursor-pointer shadow-sm shadow-amber-500/5"
+              title="Mở khay đĩa than trực tuyến Audius"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+              <span>Khám Phá Đĩa Than</span>
+            </button>
+
             <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.06] text-[11px] font-mono text-slate-400">
               <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-amber-400 animate-pulse' : 'bg-slate-600'}`} />
               <span>{isPlaying ? 'TURNTABLE SPINNING' : 'SYSTEM IDLE'}</span>
@@ -480,23 +556,38 @@ export default function LandingPage() {
             isZenMode={isZenMode}
           />
 
-          {/* Dropzone Hint & Nút Tải Tệp (Ẩn trong Zen Mode để giữ sự tinh khiết tối đa) */}
+          {/* Dropzone & Cụm Nút Tác Vụ (Ẩn trong Zen Mode để giữ sự tinh khiết tối đa) */}
           {!isZenMode && (
-            <div className="mt-6 text-center space-y-2 z-10">
-              <button
-                type="button"
-                onClick={() => {
-                  playHapticClick();
-                  fileInputRef.current?.click();
-                }}
-                onMouseEnter={playHoverBlip}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-amber-400/40 text-xs text-slate-300 hover:text-white transition-all cursor-pointer font-medium"
-              >
-                <Upload className="w-4 h-4 text-amber-400" />
-                <span>Thả tệp MP3 / WAV hoặc nhấp để tải</span>
-              </button>
+            <div className="mt-6 text-center space-y-2 z-10 flex flex-col items-center">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playHapticClick();
+                    fileInputRef.current?.click();
+                  }}
+                  onMouseEnter={playHoverBlip}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-amber-400/40 text-xs text-slate-300 hover:text-white transition-all cursor-pointer font-medium"
+                >
+                  <Upload className="w-4 h-4 text-amber-400" />
+                  <span>Tải tệp MP3 / WAV</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    playHapticClick();
+                    setIsCratesDrawerOpen(true);
+                  }}
+                  onMouseEnter={playHoverBlip}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-400/30 hover:border-amber-400/60 text-xs text-amber-300 hover:text-white transition-all cursor-pointer font-medium shadow-sm shadow-amber-500/10"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>Khám phá Audius</span>
+                </button>
+              </div>
               <p className="text-[11px] font-mono text-slate-500">
-                AUDIO METADATA & 3D TERRAIN DSP READY
+                AUDIO METADATA, AUDIUS OPEN PROTOCOL & 3D TERRAIN DSP
               </p>
             </div>
           )}
@@ -517,7 +608,7 @@ export default function LandingPage() {
           <div className="space-y-2 border-b border-white/[0.06] pb-5 shrink-0">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400/90 px-2 py-0.5 rounded bg-amber-400/10 border border-amber-400/20">
-                NOW PLAYING
+                {currentOnlineTrackId ? 'AUDIUS ONLINE STREAM' : 'NOW PLAYING'}
               </span>
               <span className="text-[10px] font-mono text-slate-500">
                 {formatTime(currentTime)} / {formatTime(duration)}
@@ -548,7 +639,9 @@ export default function LandingPage() {
               <span>3D SPECTRAL TERRAIN // 32 BANDS // 44.1 KHZ</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="hidden sm:inline">WATERFALL CASCADE // JOY DIVISION STYLE</span>
+              <span className="hidden sm:inline">
+                {currentOnlineTrackId ? 'AUDIUS CDN STREAM' : 'WATERFALL CASCADE'}
+              </span>
               <span className="text-slate-600 hidden sm:inline">•</span>
               <span>DSP 44.1 KHZ</span>
             </div>
@@ -677,7 +770,18 @@ export default function LandingPage() {
       </footer>
       )}
 
-      {/* TOAST NOTIFICATION CAO CẤP */}
+      {/* 4. KHAY ĐĨA THAN TRỰC TUYẾN AUDIUS (AUDIUS CRATES DRAWER) */}
+      <AudiusCratesDrawer
+        isOpen={isCratesDrawerOpen}
+        onClose={() => setIsCratesDrawerOpen(false)}
+        onSelectTrack={(track) => {
+          playOnlineTrack(track);
+          setIsCratesDrawerOpen(false);
+        }}
+        currentTrackId={currentOnlineTrackId}
+      />
+
+      {/* 5. TOAST NOTIFICATION CAO CẤP */}
       <ToastNotification toast={toast} onClose={() => setToast(null)} />
     </div>
   );

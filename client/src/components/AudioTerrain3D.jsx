@@ -1,6 +1,9 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
+import gsap from 'gsap';
 import { getFrequencyData, getAudioFrequencies } from '../utils/vinylAudioEngine';
+import { playHapticClick, playHoverBlip } from '../utils/soundEffects';
+import { CAMERA_PRESETS, clampWaveGain } from '../utils/terrainConfig';
 
 const NUM_LINES = 32;
 const POINTS_PER_LINE = 64;
@@ -9,26 +12,82 @@ const LINE_SPACING_Z = 0.38;
 
 /**
  * AudioTerrain3D — Sóng Âm Địa Hình Thác Nước 3D (Waterfall Waveform Terrain)
- * Lấy cảm hứng từ kiệt tác Unknown Pleasures (Joy Division) kết hợp Three.js Generative Art
+ * Tích hợp GSAP Camera Transitions mượt mà & điều chỉnh độ nhạy sóng waveGain
  */
 export default function AudioTerrain3D({ ambientColors, isPlaying }) {
   const containerRef = useRef(null);
   const mouseRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 });
 
+  // State điều khiển giao diện
+  const [currentPreset, setCurrentPreset] = useState('isometric');
+  const [waveGain, setWaveGain] = useState(1.0);
+
+  // Refs duy trì trạng thái cho Three.js render loop & GSAP
+  const cameraRef = useRef(null);
+  const currentLookAtRef = useRef(new THREE.Vector3(...CAMERA_PRESETS.isometric.lookAt));
+  const waveGainRef = useRef(1.0);
+
+  // Đồng bộ waveGainRef với state
+  useEffect(() => {
+    waveGainRef.current = waveGain;
+  }, [waveGain]);
+
+  // Chuyển đổi góc nhìn camera mượt mà bằng GSAP
+  const handlePresetChange = (presetKey) => {
+    if (presetKey === currentPreset) return;
+    playHapticClick();
+    setCurrentPreset(presetKey);
+
+    const targetConfig = CAMERA_PRESETS[presetKey];
+    if (!targetConfig || !cameraRef.current) return;
+
+    const camera = cameraRef.current;
+    const lookAt = currentLookAtRef.current;
+
+    // 1. Tween vị trí camera (camera.position) trong 1.0 giây
+    gsap.to(camera.position, {
+      x: targetConfig.position[0],
+      y: targetConfig.position[1],
+      z: targetConfig.position[2],
+      duration: 1.0,
+      ease: 'power2.inOut',
+      overwrite: 'auto'
+    });
+
+    // 2. Tween mục tiêu nhìn của camera (currentLookAt) đồng thời
+    gsap.to(lookAt, {
+      x: targetConfig.lookAt[0],
+      y: targetConfig.lookAt[1],
+      z: targetConfig.lookAt[2],
+      duration: 1.0,
+      ease: 'power2.inOut',
+      overwrite: 'auto'
+    });
+  };
+
+  // Điều chỉnh hệ số nhạy sóng (waveGain)
+  const handleGainChange = (delta) => {
+    playHapticClick();
+    setWaveGain((prev) => clampWaveGain(prev + delta));
+  };
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    // 1. Khởi tạo Scene & Camera
+    // 1. Khởi tạo Scene & Camera theo preset hiện tại
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x0a0a0f, 0.075);
 
     const width = container.clientWidth || 500;
     const height = container.clientHeight || 500;
 
+    const initialPreset = CAMERA_PRESETS[currentPreset] || CAMERA_PRESETS.isometric;
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    camera.position.set(0, 3.4, 7.8);
-    camera.lookAt(0, -0.2, -4.5);
+    camera.position.set(...initialPreset.position);
+    currentLookAtRef.current.set(...initialPreset.lookAt);
+    camera.lookAt(currentLookAtRef.current);
+    cameraRef.current = camera;
 
     // 2. Khởi tạo WebGLRenderer với khử răng cưa
     const renderer = new THREE.WebGLRenderer({
@@ -50,7 +109,6 @@ export default function AudioTerrain3D({ ambientColors, isPlaying }) {
     const envelope = new Float32Array(POINTS_PER_LINE);
     for (let i = 0; i < POINTS_PER_LINE; i++) {
       const normalizedX = (i / (POINTS_PER_LINE - 1)) * 2 - 1; // [-1, 1]
-      // Hàm cửa sổ dạng chuông: suy giảm về 0 ở hai biên
       envelope[i] = Math.pow(Math.cos((normalizedX * Math.PI) / 2), 2.2);
     }
 
@@ -101,7 +159,7 @@ export default function AudioTerrain3D({ ambientColors, isPlaying }) {
       terrainGroup.add(line);
     }
 
-    // 5. Thêm một số hạt bụi lơ lửng phía trên đỉnh núi sóng âm (Subtle ambient sparks)
+    // 5. Thêm các hạt bụi lơ lửng phía trên đỉnh núi sóng âm (Subtle ambient sparks)
     const particleCount = 45;
     const particleGeo = new THREE.BufferGeometry();
     const particlePos = new Float32Array(particleCount * 3);
@@ -168,9 +226,13 @@ export default function AudioTerrain3D({ ambientColors, isPlaying }) {
       terrainGroup.rotation.y = mouseRef.current.x;
       terrainGroup.rotation.x = -mouseRef.current.y * 0.6;
 
+      // Luôn cập nhật điểm nhìn camera theo vector currentLookAt (hỗ trợ chuyển đổi mượt bằng GSAP)
+      camera.lookAt(currentLookAtRef.current);
+
       // Đọc dữ liệu tần số âm thanh từ Web Audio Engine
       const freqData = getFrequencyData(32);
       const { bassEnergy } = getAudioFrequencies();
+      const currentGain = waveGainRef.current;
 
       // Tạo hàng sóng mới cho dòng đầu tiên (Row 0)
       const newRow = new Float32Array(POINTS_PER_LINE);
@@ -183,14 +245,13 @@ export default function AudioTerrain3D({ ambientColors, isPlaying }) {
           continue;
         }
 
-        // Lấy mẫu tần số tương ứng: trải 32 band ra 64 điểm (đối xứng từ tâm hoặc trải phổ)
-        // Áp dụng phân bố đối xứng qua tâm để tạo đỉnh núi hình tháp Unknown Pleasures
-        const centerDist = Math.abs((i / (POINTS_PER_LINE - 1)) - 0.5) * 2; // [0 ở giữa, 1 ở mép]
+        // Lấy mẫu tần số: đối xứng từ tâm để tạo đỉnh núi hình tháp Unknown Pleasures
+        const centerDist = Math.abs((i / (POINTS_PER_LINE - 1)) - 0.5) * 2;
         const freqIndex = Math.min(31, Math.floor((1 - centerDist) * 31));
         const rawAmp = freqData[freqIndex] || 0;
 
-        // Khuếch đại phi tuyến: các đỉnh nhô cao rõ nét khi có bass
-        const boostedAmp = Math.pow(rawAmp, 1.35) * (1.6 + bassEnergy * 1.8);
+        // Khuếch đại phi tuyến kết hợp hệ số waveGain
+        const boostedAmp = Math.pow(rawAmp, 1.35) * (1.6 + bassEnergy * 1.8) * currentGain;
         const noiseRipple = Math.sin(time * 0.005 + i * 0.4) * 0.04;
 
         newRow[i] = Math.max(0, (boostedAmp + noiseRipple) * envelope[i]);
@@ -238,6 +299,10 @@ export default function AudioTerrain3D({ ambientColors, isPlaying }) {
       container.removeEventListener('mousemove', handleMouseMove);
       container.removeEventListener('mouseleave', handleMouseLeave);
 
+      // Dọn dẹp các tween GSAP đang chạy nếu có
+      gsap.killTweensOf(camera.position);
+      gsap.killTweensOf(currentLookAtRef.current);
+
       // Giải phóng toàn bộ Geometries và Materials
       geometries.forEach((g) => g.dispose());
       materials.forEach((m) => m.dispose());
@@ -251,11 +316,66 @@ export default function AudioTerrain3D({ ambientColors, isPlaying }) {
       if (renderer.domElement && renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);
       }
+      cameraRef.current = null;
     };
   }, [ambientColors, isPlaying]);
 
   return (
     <div className="relative w-full h-full flex flex-col justify-between select-none overflow-hidden">
+      {/* CỤM ĐIỀU KHIỂN GIAO DIỆN GLASSMORPHISM (TOP-RIGHT FLOATING CONTROLS) */}
+      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 flex flex-wrap items-center gap-1.5 sm:gap-2 pointer-events-auto">
+        {/* 1. Các nút Camera Presets */}
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 shadow-lg text-[10px] sm:text-[11px] font-sans">
+          {Object.values(CAMERA_PRESETS).map((p) => {
+            const isActive = currentPreset === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => handlePresetChange(p.id)}
+                onMouseEnter={playHoverBlip}
+                className={`px-2 py-1 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1 ${
+                  isActive
+                    ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/20'
+                    : 'text-slate-400 hover:text-white hover:bg-white/10'
+                }`}
+                title={`Góc nhìn: ${p.label}`}
+              >
+                <span>{p.icon}</span>
+                <span>{p.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 2. Cụm nút điều chỉnh độ cao sóng Wave Gain */}
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 shadow-lg text-[10px] sm:text-[11px] font-mono text-slate-300">
+          <button
+            type="button"
+            onClick={() => handleGainChange(-0.2)}
+            onMouseEnter={playHoverBlip}
+            disabled={waveGain <= 0.4}
+            className="w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center hover:bg-white/10 disabled:opacity-30 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            title="Giảm biên độ sóng"
+          >
+            -
+          </button>
+          <span className="px-1 text-[10px] min-w-[26px] text-center font-bold text-amber-400">
+            {waveGain.toFixed(1)}x
+          </span>
+          <button
+            type="button"
+            onClick={() => handleGainChange(0.2)}
+            onMouseEnter={playHoverBlip}
+            disabled={waveGain >= 2.4}
+            className="w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center hover:bg-white/10 disabled:opacity-30 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            title="Tăng biên độ sóng"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
       {/* Khung Canvas Three.js cho địa hình sóng âm 3D */}
       <div
         ref={containerRef}
