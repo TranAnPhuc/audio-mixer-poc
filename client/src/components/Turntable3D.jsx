@@ -153,6 +153,7 @@ export default function Turntable3D({
   const platterSpotRef = useRef(null);
   const currentCoverTextureRef = useRef(null);
   const defaultLabelTextureRef = useRef(null);
+  const isDroppingInRef = useRef(false);
 
   // Tham chiếu hệ thống hạt xoắn ốc (Spiral Vortex Particles)
   const dustGeomRef = useRef(null);
@@ -642,17 +643,26 @@ export default function Turntable3D({
         spinSpeedRef.current = THREE.MathUtils.lerp(spinSpeedRef.current, 0, delta * 1.8);
       }
 
-      if (recordGroupRef.current && spinSpeedRef.current > 0.001) {
-        recordGroupRef.current.rotation.y += spinSpeedRef.current * delta;
-        // Mâm nhôm cũng xoay đồng bộ
-        platterMesh.rotation.y += spinSpeedRef.current * delta;
+      if (recordGroupRef.current) {
+        if (spinSpeedRef.current > 0.001) {
+          recordGroupRef.current.rotation.y += spinSpeedRef.current * delta;
+          // Mâm nhôm cũng xoay đồng bộ
+          platterMesh.rotation.y += spinSpeedRef.current * delta;
 
-        // Phản ứng thị giác màng đĩa: Rung màng đĩa vi mô và nhún nảy theo nhịp bass trống kick
-        const microBounce = Math.sin(now * 0.035) * (bassEnergy > 0.15 ? 0.0025 : 0.0006);
-        recordGroupRef.current.position.y = 0.17 + bassEnergy * 0.026 + microBounce;
+          // Phản ứng thị giác màng đĩa: Rung màng đĩa vi mô và nhún nảy theo nhịp bass trống kick (chỉ khi không đang bay vào mâm)
+          if (!isDroppingInRef.current) {
+            const microBounce = Math.sin(now * 0.035) * (bassEnergy > 0.15 ? 0.0025 : 0.0006);
+            recordGroupRef.current.position.y = 0.17 + bassEnergy * 0.026 + microBounce;
 
-        // Vi rung rãnh đĩa (micro wobble) theo chuyển động quay cơ học
-        recordGroupRef.current.rotation.z = Math.sin(recordGroupRef.current.rotation.y * 2) * 0.001 + (bassEnergy * 0.002 * Math.sin(now * 0.025));
+            // Vi rung rãnh đĩa (micro wobble) theo chuyển động quay cơ học
+            recordGroupRef.current.rotation.z = Math.sin(recordGroupRef.current.rotation.y * 2) * 0.001 + (bassEnergy * 0.002 * Math.sin(now * 0.025));
+          }
+        } else if (!isDroppingInRef.current) {
+          // Khi dừng nhạc: Đĩa hạ cánh êm dịu, không giật cục
+          recordGroupRef.current.position.y = THREE.MathUtils.lerp(recordGroupRef.current.position.y, 0.17, delta * 4);
+          recordGroupRef.current.rotation.z = THREE.MathUtils.lerp(recordGroupRef.current.rotation.z, 0, delta * 4);
+          recordGroupRef.current.rotation.x = THREE.MathUtils.lerp(recordGroupRef.current.rotation.x, 0, delta * 4);
+        }
       }
 
       // Cần kim bám sát tiến độ bài hát thời gian thực (Progress Tracking Tonearm)
@@ -918,6 +928,21 @@ export default function Turntable3D({
           duration: 0.3,
           ease: 'power2.inOut'
         });
+
+      // Khi dừng nhạc: Đĩa hạ cánh êm dịu về vị trí chuẩn phẳng
+      if (recordGroupRef.current) {
+        gsap.to(recordGroupRef.current.position, {
+          y: 0.17,
+          duration: 0.6,
+          ease: 'power2.out'
+        });
+        gsap.to(recordGroupRef.current.rotation, {
+          x: 0,
+          z: 0,
+          duration: 0.6,
+          ease: 'power2.out'
+        });
+      }
     }
   }, [isPlaying]);
 
@@ -927,6 +952,7 @@ export default function Turntable3D({
 
     // HIỆU ỨNG ĐĨA BAY VÀO MÂM (VINYL DROP-IN ANIMATION)
     if (recordGroupRef.current) {
+      isDroppingInRef.current = true;
       gsap.killTweensOf(recordGroupRef.current.position);
       gsap.killTweensOf(recordGroupRef.current.rotation);
       recordGroupRef.current.position.y = 1.8;
@@ -934,7 +960,10 @@ export default function Turntable3D({
       gsap.to(recordGroupRef.current.position, {
         y: 0.17,
         duration: 0.9,
-        ease: 'power2.out'
+        ease: 'power2.out',
+        onComplete: () => {
+          isDroppingInRef.current = false;
+        }
       });
       gsap.to(recordGroupRef.current.rotation, {
         x: 0,
