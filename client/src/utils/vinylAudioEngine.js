@@ -255,3 +255,40 @@ export function getRawByteFrequencyData() {
   analyserNode.getByteFrequencyData(frequencyData);
   return frequencyData;
 }
+
+/**
+ * 6. createAudioDestinationStream: Tạo MediaStreamAudioDestinationNode
+ * để cấp luồng audio stereo chất lượng phòng thu trực tiếp cho MediaRecorder
+ */
+export function createAudioDestinationStream() {
+  const ctx = getAudioContext();
+  if (!ctx || typeof ctx.createMediaStreamDestination !== 'function') return null;
+
+  try {
+    const dest = ctx.createMediaStreamDestination();
+    if (analyserNode) {
+      analyserNode.connect(dest);
+    }
+    return dest;
+  } catch (err) {
+    console.warn('[vinylAudioEngine] createAudioDestinationStream notice:', err);
+    return null;
+  }
+}
+
+/**
+ * 7. disconnectAudioDestinationStream: Ngắt kết nối và giải phóng MediaStreamDestinationNode
+ */
+export function disconnectAudioDestinationStream(dest) {
+  if (!dest) return;
+  try {
+    if (analyserNode) {
+      analyserNode.disconnect(dest);
+    }
+    if (dest.stream && typeof dest.stream.getTracks === 'function') {
+      dest.stream.getTracks().forEach((track) => track.stop());
+    }
+  } catch (err) {
+    console.warn('[vinylAudioEngine] disconnectAudioDestinationStream notice:', err);
+  }
+}

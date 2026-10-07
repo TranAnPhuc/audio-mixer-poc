@@ -259,3 +259,154 @@ export function playWarpLaunch() {
     sweepOsc.stop(now + DURATION);
   } catch (err) {}
 }
+
+/**
+ * 7. playHeavyMetalSwitch: Âm thanh công tắc kim loại cơ học ASMR (Heavy Toggle Switch Clack)
+ * Tiếng "tách - cạch" kim loại dứt khoát của công tắc cơ khí ampli Dieter Rams / Hi-Fi cổ điển
+ */
+export function playHeavyMetalSwitch() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    const now = ctx.currentTime;
+
+    // A. Xung lực cơ học va đập kim loại (Heavy Body Thud)
+    const thudOsc = ctx.createOscillator();
+    const thudGain = ctx.createGain();
+    thudOsc.type = 'sine';
+    thudOsc.frequency.setValueAtTime(140, now);
+    thudOsc.frequency.exponentialRampToValueAtTime(38, now + 0.045);
+
+    thudGain.gain.setValueAtTime(0.35, now);
+    thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+    thudOsc.connect(thudGain);
+    thudGain.connect(ctx.destination);
+    thudOsc.start(now);
+    thudOsc.stop(now + 0.055);
+
+    // B. Tiếng lách cách lò xo tiếp điểm kim loại (Metallic Contact Snap)
+    const snapOsc = ctx.createOscillator();
+    const snapGain = ctx.createGain();
+    snapOsc.type = 'triangle';
+    snapOsc.frequency.setValueAtTime(2400, now);
+    snapOsc.frequency.exponentialRampToValueAtTime(450, now + 0.028);
+
+    snapGain.gain.setValueAtTime(0.22, now);
+    snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+
+    snapOsc.connect(snapGain);
+    snapGain.connect(ctx.destination);
+    snapOsc.start(now);
+    snapOsc.stop(now + 0.035);
+  } catch (err) {}
+}
+
+/**
+ * 8. playNeedleScratch: Âm thanh rê kim rãnh nhựa đĩa than (Tactile Needle Rub)
+ * Âm học ma sát vi mô khi chà đĩa hoặc nhấc thả cần kim
+ */
+export function playNeedleScratch({ intensity = 1.0 } = {}) {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    const now = ctx.currentTime;
+    const dur = 0.08;
+    const bufferSize = Math.floor(ctx.sampleRate * dur);
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * 0.3;
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = noiseBuffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1800, now);
+    filter.frequency.exponentialRampToValueAtTime(800, now + dur);
+    filter.Q.setValueAtTime(1.8, now);
+
+    const gain = ctx.createGain();
+    const peakVol = Math.min(0.28, 0.15 * intensity);
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(peakVol, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    source.start(now);
+    source.stop(now + dur + 0.01);
+  } catch (err) {}
+}
+
+/**
+ * 9. playZenBellChime: Tiếng chuông đồng thiền định ngân nga êm dịu (Tibetan Singing Bowl / Zen Chime)
+ * Kích hoạt khi đồng hồ Pomodoro kết thúc phiên tập trung hoặc phiên nghỉ ngơi
+ * Tần số hòa âm 528Hz (Solfeggio frequency) ngân dài 2.8s
+ */
+export function playZenBellChime() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    const now = ctx.currentTime;
+    const dur = 2.8;
+
+    // A. Tần số cơ bản (Fundamental 528Hz)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(528, now);
+
+    gain1.gain.setValueAtTime(0.001, now);
+    gain1.gain.linearRampToValueAtTime(0.35, now + 0.04);
+    gain1.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + dur);
+
+    // B. Bội âm thứ nhất (First Harmonic 1056Hz) tạo độ sáng ngân nga
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1056, now);
+
+    gain2.gain.setValueAtTime(0.001, now);
+    gain2.gain.linearRampToValueAtTime(0.12, now + 0.03);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, now + dur * 0.7);
+
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now);
+    osc2.stop(now + dur * 0.75);
+
+    // C. Tiếng chạm chũm kim loại vi mô lúc gõ chuông (Chime Strike Ping)
+    const strikeOsc = ctx.createOscillator();
+    const strikeGain = ctx.createGain();
+    strikeOsc.type = 'triangle';
+    strikeOsc.frequency.setValueAtTime(2640, now);
+    strikeOsc.frequency.exponentialRampToValueAtTime(528, now + 0.08);
+
+    strikeGain.gain.setValueAtTime(0.15, now);
+    strikeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+    strikeOsc.connect(strikeGain);
+    strikeGain.connect(ctx.destination);
+    strikeOsc.start(now);
+    strikeOsc.stop(now + 0.085);
+  } catch (err) {}
+}
+
+

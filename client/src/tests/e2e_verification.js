@@ -22,8 +22,26 @@ import {
   connectAudioElement,
   getAudioFrequencies,
   getFrequencyData,
-  getRawByteFrequencyData
+  getRawByteFrequencyData,
+  createAudioDestinationStream,
+  disconnectAudioDestinationStream
 } from '../utils/vinylAudioEngine.js';
+import {
+  playHeavyMetalSwitch,
+  playNeedleScratch,
+  playZenBellChime
+} from '../utils/soundEffects.js';
+import {
+  ASPECT_RATIOS,
+  DURATION_OPTIONS,
+  getSupportedMimeType
+} from '../utils/videoRecorder.js';
+import {
+  AMBIENT_SOUND_KEYS,
+  setAmbientVolume,
+  getAmbientVolumes,
+  stopAllAmbientSounds
+} from '../utils/ambientSoundSynth.js';
 
 // Khởi tạo các mocks môi trường trình duyệt cho Node.js headless testing
 function setupBrowserMocks() {
@@ -228,10 +246,33 @@ function setupBrowserMocks() {
     createMediaElementSource(el) {
       return new MockAudioNode();
     }
+    createMediaStreamDestination() {
+      return {
+        stream: {
+          getTracks() { return [{ stop() {} }]; },
+          getAudioTracks() { return [{ stop() {} }]; }
+        }
+      };
+    }
     resume() {
       this.state = 'running';
       return Promise.resolve();
     }
+  }
+
+  if (typeof globalThis.MediaRecorder === 'undefined') {
+    globalThis.MediaRecorder = class {
+      static isTypeSupported(type) {
+        return type.includes('webm');
+      }
+      constructor(stream, options) {
+        this.stream = stream;
+        this.options = options;
+        this.state = 'inactive';
+      }
+      start() { this.state = 'recording'; }
+      stop() { this.state = 'inactive'; }
+    };
   }
 
   globalThis.AudioContext = MockAudioContext;
@@ -615,6 +656,79 @@ async function main() {
       assert(typeof track.streamUrl === 'string' && track.streamUrl.startsWith('http'), `Track index ${idx} streamUrl không hợp lệ: ${track.streamUrl}`);
       assert(track.origin === 'vietnam', `Track index ${idx} origin phải là 'vietnam'`);
     });
+  });
+
+  // SUITE 9: Tactile ASMR Mechanical Switches & Vinyl Scratching
+  console.log('\n\x1b[1m--- [Suite 9] Tactile ASMR Mechanical Switches & Vinyl Scratching ---\x1b[0m');
+  await runTest('playHeavyMetalSwitch: Khởi tạo xung âm thanh công tắc kim loại gạt nặng mà không ném lỗi', () => {
+    assert(typeof playHeavyMetalSwitch === 'function', 'playHeavyMetalSwitch phải là function');
+    // Gọi thực thi trong môi trường mock AudioContext
+    playHeavyMetalSwitch();
+  });
+
+  await runTest('playNeedleScratch: Sinh âm thanh cọ xát rãnh nhựa vi mô khi chà đĩa theo intensity', () => {
+    assert(typeof playNeedleScratch === 'function', 'playNeedleScratch phải là function');
+    // Kiểm tra gọi với nhiều mức intensity khác nhau
+    playNeedleScratch({ intensity: 0.2 });
+    playNeedleScratch({ intensity: 0.8 });
+    playNeedleScratch({ intensity: 1.5 }); // Kiểm tra clamp an toàn
+  });
+
+  // SUITE 10: Canvas Video Visualizer & Audio-to-Video Studio
+  console.log('\n\x1b[1m--- [Suite 10] Canvas Video Visualizer & Audio-to-Video Studio ---\x1b[0m');
+  await runTest('ASPECT_RATIOS: Cung cấp đầy đủ các chuẩn khung hình mạng xã hội (9:16, 16:9, 1:1)', () => {
+    assert(ASPECT_RATIOS.portrait, 'Thiếu cấu hình 9:16 Dọc');
+    assert(ASPECT_RATIOS.landscape, 'Thiếu cấu hình 16:9 Ngang');
+    assert(ASPECT_RATIOS.square, 'Thiếu cấu hình 1:1 Vuông');
+
+    assert(ASPECT_RATIOS.portrait.width === 720 && ASPECT_RATIOS.portrait.height === 1280, 'Kích thước 9:16 sai chuẩn TikTok/Reels');
+    assert(ASPECT_RATIOS.landscape.width === 1280 && ASPECT_RATIOS.landscape.height === 720, 'Kích thước 16:9 sai chuẩn YouTube');
+    assert(ASPECT_RATIOS.square.width === 1080 && ASPECT_RATIOS.square.height === 1080, 'Kích thước 1:1 sai chuẩn Instagram');
+  });
+
+  await runTest('DURATION_OPTIONS: Hỗ trợ đầy đủ các mốc thời lượng cắt xuất (15s, 30s, 60s, Trọn bài)', () => {
+    assert(Array.isArray(DURATION_OPTIONS) && DURATION_OPTIONS.length === 4, 'DURATION_OPTIONS phải có 4 tùy chọn');
+    const ids = DURATION_OPTIONS.map(d => d.id);
+    assert(ids.includes('15') && ids.includes('30') && ids.includes('60') && ids.includes('full'), 'Thiếu id thời lượng');
+  });
+
+  await runTest('getSupportedMimeType: Tự động phát hiện codec video tối ưu được trình duyệt hỗ trợ', () => {
+    const mime = getSupportedMimeType();
+    assert(typeof mime === 'string' && mime.includes('video/'), `Mime type không hợp lệ: ${mime}`);
+  });
+
+  await runTest('createAudioDestinationStream: Trích xuất MediaStream audio destination từ Web Audio Context', () => {
+    const dest = createAudioDestinationStream();
+    assert(dest !== null, 'createAudioDestinationStream không được trả về null');
+    assert(dest.stream !== undefined, 'dest phải chứa MediaStream');
+    disconnectAudioDestinationStream(dest);
+  });
+
+  // SUITE 11: AuraLofi Ambient Sound Synthesis & Focus Utilities
+  console.log('\n\x1b[1m--- [Suite 11] AuraLofi Ambient Sound Synthesis & Focus Utilities ---\x1b[0m');
+  await runTest('AMBIENT_SOUND_KEYS: Cung cấp đầy đủ 4 kênh âm thanh môi trường (rain, cafe, fireplace, wind)', () => {
+    assert(AMBIENT_SOUND_KEYS.rain === 'rain', 'Thiếu kênh rain');
+    assert(AMBIENT_SOUND_KEYS.cafe === 'cafe', 'Thiếu kênh cafe');
+    assert(AMBIENT_SOUND_KEYS.fireplace === 'fireplace', 'Thiếu kênh fireplace');
+    assert(AMBIENT_SOUND_KEYS.wind === 'wind', 'Thiếu kênh wind');
+  });
+
+  await runTest('setAmbientVolume & getAmbientVolumes: Điều khiển âm lượng độc lập và ngắt kết nối an toàn khi volume = 0', () => {
+    setAmbientVolume('rain', 0.65);
+    setAmbientVolume('fireplace', 0.40);
+    const vols = getAmbientVolumes();
+    assert(Math.abs(vols.rain - 0.65) < 0.001, 'Âm lượng rain sai');
+    assert(Math.abs(vols.fireplace - 0.40) < 0.001, 'Âm lượng fireplace sai');
+
+    // Tắt toàn bộ
+    stopAllAmbientSounds();
+    const stoppedVols = getAmbientVolumes();
+    assert(stoppedVols.rain === 0 && stoppedVols.fireplace === 0, 'Âm lượng phải về 0 sau khi dừng');
+  });
+
+  await runTest('playZenBellChime: Khởi tạo chuông thiền định Tây Tạng 528Hz Solfeggio mà không ném lỗi', () => {
+    assert(typeof playZenBellChime === 'function', 'playZenBellChime phải là function');
+    playZenBellChime();
   });
 
   // TỔNG KẾT BÁO CÁO

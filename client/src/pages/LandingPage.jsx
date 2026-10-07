@@ -10,13 +10,25 @@ import {
   Upload,
   Maximize2,
   Minimize2,
-  Radio,
-  Sparkles
+  Sparkles,
+  Film,
+  HelpCircle,
+  Box
 } from 'lucide-react';
-import { playHapticClick, playHoverBlip } from '../utils/soundEffects';
+import { playHapticClick, playHoverBlip, playHeavyMetalSwitch } from '../utils/soundEffects';
 import Turntable3D from '../components/Turntable3D';
-import AudioTerrain3D from '../components/AudioTerrain3D';
 import AudiusCratesDrawer from '../components/AudiusCratesDrawer';
+import ExportVideoModal from '../components/ExportVideoModal';
+import AmbientMixerDrawer from '../components/AmbientMixerDrawer';
+import PomodoroWidget from '../components/PomodoroWidget';
+import MinimalTodoWidget from '../components/MinimalTodoWidget';
+import AtmosphericBackground from '../components/AtmosphericBackground';
+import RetroCrtOsd from '../components/RetroCrtOsd';
+import RetroShortcutModal from '../components/RetroShortcutModal';
+import GramophoneViewerModal from '../components/GramophoneViewerModal';
+import { LOFI_SCENES, DEFAULT_SCENE, getNextScene, getSceneById } from '../data/lofiScenes';
+import { setAmbientVolume } from '../utils/ambientSoundSynth';
+import { VIETNAMESE_TRACKS } from '../data/vietnameseTracks';
 import {
   connectAudioElement,
   playNeedleDropEffect,
@@ -52,17 +64,49 @@ export default function LandingPage() {
   const [ambientColors, setAmbientColors] = useState(DEFAULT_PALETTE);
   const [isZenMode, setIsZenMode] = useState(false);
 
-  // Trạng thái khay đĩa Audius
+  // Trạng thái khay đĩa Audius & Modal Xuất Video
   const [isCratesDrawerOpen, setIsCratesDrawerOpen] = useState(false);
-  const [currentOnlineTrackId, setCurrentOnlineTrackId] = useState(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [currentOnlineTrackId, setCurrentOnlineTrackId] = useState('vn-diem-xua');
 
-  // Thông tin bài hát hiện tại
+  // Trạng thái AuraLofi Focus Widgets
+  const [isMixerOpen, setIsMixerOpen] = useState(false);
+  const [isPomodoroOpen, setIsPomodoroOpen] = useState(false);
+  const [isTodoOpen, setIsTodoOpen] = useState(false);
+
+  // Trạng thái AuraLofi Fullscreen Scene & Auto-Hide UI
+  const [currentScene, setCurrentScene] = useState(DEFAULT_SCENE);
+  const [isUiVisible, setIsUiVisible] = useState(true);
+  const [actionFeedback, setActionFeedback] = useState(null);
+  const [isShortcutModalOpen, setIsShortcutModalOpen] = useState(false);
+  const [isGramophoneModalOpen, setIsGramophoneModalOpen] = useState(false);
+
+  // Kích hoạt thông báo phím tắt transient trên Retro CRT OSD
+  const triggerActionFeedback = (text) => {
+    setActionFeedback({ text, timestamp: Date.now() });
+  };
+
+  // Chuyển đổi cảnh không gian Lofi nghệ thuật (vòng lặp 4 cảnh)
+  const handleCycleScene = () => {
+    playHapticClick();
+    const nextScene = getNextScene(currentScene?.id || 'rainy-window');
+    setCurrentScene(nextScene);
+    if (nextScene?.theme?.ambientPreset) {
+      Object.entries(nextScene.theme.ambientPreset).forEach(([key, val]) => {
+        setAmbientVolume(key, val);
+      });
+    }
+    triggerActionFeedback(`[SCENE: ${(nextScene.name || nextScene.id).toUpperCase()}]`);
+  };
+
+  // Mặc định nạp bản Lofi Study Beats êm dịu
+  const defaultLofiTrack = VIETNAMESE_TRACKS[1] || VIETNAMESE_TRACKS[0];
   const [trackInfo, setTrackInfo] = useState({
-    title: 'Chưa có bản thu',
-    artist: 'Kéo thả file MP3 hoặc khám phá Audius',
-    album: 'AuraVinyl Session',
-    fileName: '',
-    coverUrl: null
+    title: defaultLofiTrack?.title || 'Diễm Xưa (Lofi Instrumental)',
+    artist: defaultLofiTrack?.artist || 'Aura Chillhop Ensemble',
+    album: defaultLofiTrack?.album || 'Trịnh Ca Trong Mưa',
+    fileName: 'diem-xua-lofi.mp3',
+    coverUrl: defaultLofiTrack?.coverUrl || null
   });
 
   const fileInputRef = useRef(null);
@@ -291,9 +335,36 @@ export default function LandingPage() {
     setIsDragging(false);
   };
 
-  // Toggle Play / Pause
+  // Xử lý cào đĩa than bằng tay (Tactile Vinyl Scratching)
+  const handleScratch = ({ isScratching, playbackRate, deltaAngle }) => {
+    if (!audioRef.current) return;
+    if (isScratching) {
+      // Tua vị trí phát khi ngón tay chà xoay đĩa
+      if (audioRef.current.duration && Math.abs(deltaAngle) > 0.003) {
+        audioRef.current.currentTime = Math.min(
+          audioRef.current.duration,
+          Math.max(0, audioRef.current.currentTime + deltaAngle * 0.22)
+        );
+      }
+      // Điều chỉnh tốc độ phát âm thanh theo lực quay
+      const rate = Math.min(2.5, Math.max(0.2, Math.abs(playbackRate)));
+      audioRef.current.playbackRate = isNaN(rate) || rate === 0 ? 0.25 : rate;
+    } else {
+      // Buông tay: Khôi phục vận tốc phát 1.0x chuẩn
+      audioRef.current.playbackRate = 1.0;
+    }
+  };
+
+  // Kéo kim đĩa than để tua bài hát (Tonearm Scrubbing)
+  const handleSeekFromTurntable = (progress) => {
+    if (audioRef.current && duration) {
+      handleSeek(progress * duration);
+    }
+  };
+
+  // Toggle Play / Pause với âm học công tắc gạt kim loại nặng ASMR
   const togglePlay = () => {
-    playHapticClick();
+    playHeavyMetalSwitch();
     if (!audioRef.current || !audioRef.current.src) {
       setIsCratesDrawerOpen(true);
       return;
@@ -371,49 +442,153 @@ export default function LandingPage() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
   };
 
-  // Lắng nghe phím tắt toàn cục
+  // 1. Cơ chế Auto-Hide UI sau 3 giây không tương tác (3-Second Activity Timer)
+  useEffect(() => {
+    let timerId = null;
+
+    const resetTimer = () => {
+      setIsUiVisible(true);
+      if (timerId) clearTimeout(timerId);
+
+      // Nếu có bất kỳ modal, drawer nào đang mở hoặc đang kéo thả tệp, giữ UI hiển thị
+      if (
+        isCratesDrawerOpen ||
+        isMixerOpen ||
+        isPomodoroOpen ||
+        isTodoOpen ||
+        isExportModalOpen ||
+        isShortcutModalOpen ||
+        isDragging
+      ) {
+        return;
+      }
+
+      timerId = setTimeout(() => {
+        setIsUiVisible(false);
+      }, 3000);
+    };
+
+    resetTimer();
+
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart'];
+    activityEvents.forEach((evt) => {
+      window.addEventListener(evt, resetTimer, { passive: true });
+    });
+
+    return () => {
+      if (timerId) clearTimeout(timerId);
+      activityEvents.forEach((evt) => {
+        window.removeEventListener(evt, resetTimer);
+      });
+    };
+  }, [
+    isCratesDrawerOpen,
+    isMixerOpen,
+    isPomodoroOpen,
+    isTodoOpen,
+    isExportModalOpen,
+    isShortcutModalOpen,
+    isDragging
+  ]);
+
+  // 2. Lắng nghe phím tắt toàn cục chuẩn lofi.cafe (Keyboard-First Navigation)
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Bỏ qua nếu đang gõ trong input/textarea
-      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      // Bảo vệ nghiêm ngặt: Bỏ qua phím tắt nếu đang gõ trong input, textarea hoặc contentEditable
+      if (
+        ['INPUT', 'TEXTAREA'].includes(e.target.tagName?.toUpperCase()) ||
+        e.target.isContentEditable
+      ) {
+        return;
+      }
 
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
+        triggerActionFeedback(isPlaying ? '[❚❚ PAUSE]' : '[► PLAY]');
       } else if (e.code === 'ArrowLeft') {
         e.preventDefault();
         if (audioRef.current) {
           const newTime = Math.max(0, currentTime - 5);
           handleSeek(newTime);
+          triggerActionFeedback('[◄◄ -5s]');
         }
       } else if (e.code === 'ArrowRight') {
         e.preventDefault();
         if (audioRef.current && duration) {
           const newTime = Math.min(duration, currentTime + 5);
           handleSeek(newTime);
+          triggerActionFeedback('[►► +5s]');
         }
       } else if (e.code === 'ArrowUp') {
         e.preventDefault();
-        const newVol = Math.min(1, volume + 0.05);
+        const newVol = Math.min(1, Math.round((volume + 0.05) * 100) / 100);
         setVolume(newVol);
         if (audioRef.current) audioRef.current.volume = newVol;
         setIsMuted(false);
         setVinylMuted(false);
+        triggerActionFeedback(`[VOL: ${Math.round(newVol * 100)}%]`);
       } else if (e.code === 'ArrowDown') {
         e.preventDefault();
-        const newVol = Math.max(0, volume - 0.05);
+        const newVol = Math.max(0, Math.round((volume - 0.05) * 100) / 100);
         setVolume(newVol);
         if (audioRef.current) audioRef.current.volume = newVol;
-      } else if (e.key === 'm' || e.key === 'M') {
+        if (newVol === 0) {
+          setIsMuted(true);
+          setVinylMuted(true);
+        }
+        triggerActionFeedback(`[VOL: ${Math.round(newVol * 100)}%]`);
+      } else if (e.code === 'KeyG' || e.key === 'g' || e.key === 'G') {
+        e.preventDefault();
+        handleCycleScene();
+      } else if (e.code === 'KeyT' || e.key === 't' || e.key === 'T') {
+        e.preventDefault();
+        playHapticClick();
+        setIsPomodoroOpen((prev) => {
+          const next = !prev;
+          triggerActionFeedback(next ? '[POMODORO: ON]' : '[POMODORO: OFF]');
+          return next;
+        });
+      } else if (e.code === 'KeyM' || e.key === 'm' || e.key === 'M') {
         e.preventDefault();
         toggleMute();
+        triggerActionFeedback(isMuted ? '[UNMUTED]' : '[MUTED]');
+      } else if (
+        e.code === 'KeyH' ||
+        e.key === 'h' ||
+        e.key === 'H' ||
+        e.key === '?'
+      ) {
+        e.preventDefault();
+        playHapticClick();
+        setIsShortcutModalOpen(true);
       } else if (e.key === 'f' || e.key === 'F') {
         e.preventDefault();
         playHapticClick();
         setIsZenMode((prev) => !prev);
-      } else if (e.code === 'Escape') {
-        if (isCratesDrawerOpen) {
+      } else if (e.key === 'v' || e.key === 'V') {
+        e.preventDefault();
+        playHapticClick();
+        setIsGramophoneModalOpen((prev) => {
+          const next = !prev;
+          triggerActionFeedback(next ? '[3D GRAMOPHONE: OPEN]' : '[3D GRAMOPHONE: CLOSE]');
+          return next;
+        });
+      } else if (e.code === 'Escape' || e.key === 'Escape') {
+        if (isGramophoneModalOpen) {
+          setIsGramophoneModalOpen(false);
+        } else if (isShortcutModalOpen) {
+          setIsShortcutModalOpen(false);
+        } else if (isCratesDrawerOpen) {
           setIsCratesDrawerOpen(false);
+        } else if (isMixerOpen) {
+          setIsMixerOpen(false);
+        } else if (isPomodoroOpen) {
+          setIsPomodoroOpen(false);
+        } else if (isTodoOpen) {
+          setIsTodoOpen(false);
+        } else if (isExportModalOpen) {
+          setIsExportModalOpen(false);
         } else if (isZenMode) {
           setIsZenMode(false);
         }
@@ -422,19 +597,35 @@ export default function LandingPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, currentTime, duration, volume, isMuted, isZenMode, isCratesDrawerOpen]);
+  }, [
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    isMuted,
+    isZenMode,
+    isCratesDrawerOpen,
+    isMixerOpen,
+    isPomodoroOpen,
+    isTodoOpen,
+    isExportModalOpen,
+    isShortcutModalOpen,
+    currentScene
+  ]);
 
   return (
     <div
-      className={`min-h-screen bg-[#0e111a] text-slate-100 flex flex-col justify-between selection:bg-amber-500 selection:text-black overflow-x-hidden relative transition-colors duration-1000 ${
-        isZenMode ? 'cursor-auto' : ''
+      className={`min-h-screen bg-[#0a0c13] text-slate-100 flex flex-col justify-between selection:bg-amber-500 selection:text-black overflow-x-hidden relative transition-colors duration-1000 ${
+        !isUiVisible && !isZenMode ? 'cursor-none' : ''
       }`}
     >
       {/* Thẻ Audio Ẩn Điều Khiển Bằng Mã Nguồn */}
       <audio
         ref={audioRef}
+        src={defaultLofiTrack?.streamUrl}
         onTimeUpdate={handleTimeUpdate}
         onEnded={() => setIsPlaying(false)}
+        onLoadedMetadata={(e) => setDuration(e.target.duration || 188)}
         onError={(e) => console.error('Lỗi phần tử audio HTML5:', e)}
         crossOrigin="anonymous"
         preload="metadata"
@@ -453,36 +644,63 @@ export default function LandingPage() {
         }}
       />
 
-      {/* 1. LỚP NỀN ÁNH SÁNG AMBIENT AURORA KHUẾCH ĐẠI ĐỔI MÀU THEO BẢNG MÀU ALBUM */}
-      <div
-        className="fixed inset-0 pointer-events-none transition-all duration-1000 ease-out z-0"
-        style={{
-          background: `
-            radial-gradient(circle at 25% 35%, ${ambientColors.glowColor ? ambientColors.glowColor.replace('0.15', '0.48').replace('0.25', '0.52') : 'rgba(245, 158, 11, 0.48)'} 0%, transparent 72%),
-            radial-gradient(circle at 75% 65%, ${ambientColors.secondaryColor ? ambientColors.secondaryColor.replace('rgb', 'rgba').replace(')', ', 0.40)') : 'rgba(190, 24, 93, 0.40)'} 0%, transparent 75%),
-            radial-gradient(circle at 50% 50%, rgba(18, 22, 33, 0.65) 0%, #0e111a 100%)
-          `
-        }}
+      {/* 1. NỀN KHÔNG GIAN NGHỆ THUẬT TOÀN MÀN HÌNH (ATMOSPHERIC BACKGROUND CANVAS) */}
+      <AtmosphericBackground currentScene={currentScene} className="!z-0" />
+
+      {/* 2. ON-SCREEN DISPLAY (RETRO CRT HUD OSD) */}
+      <RetroCrtOsd
+        currentTrack={trackInfo}
+        radioStation="AURALOFI RADIO"
+        currentTime={currentTime}
+        duration={duration}
+        actionFeedback={actionFeedback}
+        currentScene={currentScene}
+        className={`${!isZenMode ? '!top-20' : '!top-4'} transition-opacity duration-700 ease-in-out ${
+          isUiVisible ? 'opacity-100' : 'opacity-30'
+        }`}
       />
 
-      {/* 2. TOP NAV: Minimalist Header (Ẩn trong Zen Mode) */}
+      {/* 3. MODAL HƯỚNG DẪN PHÍM TẮT RETRO CRT */}
+      <RetroShortcutModal
+        isOpen={isShortcutModalOpen}
+        onClose={() => setIsShortcutModalOpen(false)}
+      />
+
+      {/* 4. TOP NAV: Minimalist Header (Ẩn trong Zen Mode hoặc khi UI tự động ẩn) */}
       {!isZenMode && (
-        <header className="relative z-20 w-full h-16 border-b border-white/10 bg-[#131622]/80 backdrop-blur-xl px-6 sm:px-10 flex items-center justify-between transition-opacity duration-500">
+        <header
+          className={`relative z-20 w-full h-16 border-b border-white/10 bg-[#0c0e17]/80 backdrop-blur-xl px-4 sm:px-8 flex items-center justify-between transition-opacity duration-700 ease-in-out ${
+            isUiVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+        >
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-amber-200 flex items-center justify-center shadow-lg shadow-amber-500/25">
               <Disc3 className={`w-5 h-5 text-slate-950 ${isPlaying ? 'animate-[spin_3s_linear_infinite]' : ''}`} />
             </div>
             <div className="flex flex-col">
               <span className="font-extrabold text-sm sm:text-base tracking-wider bg-gradient-to-r from-amber-200 via-amber-400 to-amber-100 bg-clip-text text-transparent">
-                AuraVinyl
+                AuraLofi
               </span>
               <span className="text-[10px] font-mono tracking-widest text-slate-300 uppercase -mt-0.5 font-semibold">
-                3D TURNTABLE // SPECTRAL TERRAIN
+                3D AMBIENT STUDY & FOCUS SPACE
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Nút Đổi Cảnh Nền Nghệ Thuật */}
+            <button
+              type="button"
+              onClick={handleCycleScene}
+              onMouseEnter={playHoverBlip}
+              className="anodize-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 hover:border-amber-400/50 text-xs font-semibold text-amber-200 hover:text-white transition-all cursor-pointer shadow-sm"
+              title="Đổi cảnh không gian nghệ thuật (Phím G)"
+            >
+              <span>{currentScene?.icon || '🌧️'}</span>
+              <span className="hidden md:inline font-mono text-[11px]">{currentScene?.nameVi || currentScene?.name || 'Đổi Cảnh'}</span>
+              <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-black/50 border border-white/20 text-slate-300">G</kbd>
+            </button>
+
             {/* Nút Mở Khay Đĩa Than Trực Tuyến Audius & Nhạc Việt */}
             <button
               type="button"
@@ -491,16 +709,79 @@ export default function LandingPage() {
                 setIsCratesDrawerOpen(true);
               }}
               onMouseEnter={playHoverBlip}
-              className="anodize-btn inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-amber-400/30 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-400/40 border border-amber-400/50 hover:border-amber-300 text-xs font-bold text-amber-200 hover:text-white transition-all cursor-pointer shadow-md shadow-amber-500/15"
+              className="anodize-btn inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-amber-400/30 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-400/40 border border-amber-400/50 hover:border-amber-300 text-xs font-bold text-amber-200 hover:text-white transition-all cursor-pointer shadow-md shadow-amber-500/15"
               title="Mở khay đĩa than tuyển chọn"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-              <span>Khám Phá Đĩa Than</span>
+              <span className="hidden sm:inline">Khám Phá Đĩa Than</span>
+              <span className="sm:hidden">Đĩa Than</span>
+            </button>
+
+            {/* Nút Nạp Tệp Âm Thanh Cục Bộ */}
+            <button
+              type="button"
+              onClick={() => {
+                playHapticClick();
+                fileInputRef.current?.click();
+              }}
+              onMouseEnter={playHoverBlip}
+              className="anodize-btn hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 hover:border-amber-300 text-xs text-white transition-all cursor-pointer font-semibold shadow-sm"
+              title="Nạp tệp âm thanh từ máy (.mp3, .wav, .flac)"
+            >
+              <Upload className="w-3.5 h-3.5 text-amber-300" />
+              <span>Nạp Tệp</span>
+            </button>
+
+            {/* Nút Xem Mô Hình 3D Máy Hát Cổ Điển STL */}
+            <button
+              type="button"
+              onClick={() => {
+                playHapticClick();
+                setIsGramophoneModalOpen(true);
+              }}
+              onMouseEnter={playHoverBlip}
+              className="anodize-btn inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600/25 via-amber-400/35 to-amber-600/25 hover:from-amber-600/35 hover:to-amber-400/45 border border-amber-400/50 hover:border-amber-300 text-xs font-bold text-amber-200 hover:text-white transition-all cursor-pointer shadow-md shadow-amber-500/15"
+              title="Xem mô hình 3D máy phát đĩa than cổ điển STL (Phím V)"
+            >
+              <Box className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <span className="hidden sm:inline">Máy Hát 3D (STL)</span>
+              <span className="sm:hidden">3D STL</span>
+              <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-black/50 border border-white/20 text-slate-300">V</kbd>
+            </button>
+
+            {/* Nút Mở Modal Xuất Video Visualizer */}
+            <button
+              type="button"
+              onClick={() => {
+                playHapticClick();
+                setIsExportModalOpen(true);
+              }}
+              onMouseEnter={playHoverBlip}
+              className="anodize-btn inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-500/20 via-amber-400/25 to-rose-500/20 hover:from-rose-500/30 hover:to-amber-400/35 border border-amber-400/40 hover:border-amber-300 text-xs font-bold text-amber-200 hover:text-white transition-all cursor-pointer shadow-md shadow-rose-500/10"
+              title="Xuất video Visualizer 60 FPS (TikTok/Reels/YouTube)"
+            >
+              <Film className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <span className="hidden sm:inline">Xuất Video 60FPS</span>
+              <span className="sm:hidden">Xuất Video</span>
+            </button>
+
+            {/* Nút Hướng Dẫn Phím Tắt */}
+            <button
+              type="button"
+              onClick={() => {
+                playHapticClick();
+                setIsShortcutModalOpen(true);
+              }}
+              onMouseEnter={playHoverBlip}
+              className="p-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 hover:border-amber-400/60 text-slate-300 hover:text-amber-300 transition-all cursor-pointer"
+              title="Bảng tra cứu phím tắt (Phím H hoặc ?)"
+            >
+              <HelpCircle className="w-4 h-4" />
             </button>
 
             <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-black/60 border border-white/15 text-[11px] font-mono text-slate-200 font-semibold shadow-inner">
               <span className={`w-2 h-2 rounded-full transition-all duration-300 ${isPlaying ? 'led-indicator-active animate-pulse' : 'led-indicator-idle'}`} />
-              <span className="tracking-wider">{isPlaying ? '33⅓ RPM LOCKED' : 'SYSTEM STANDBY'}</span>
+              <span className="tracking-wider">{isPlaying ? '33⅓ RPM' : 'STANDBY'}</span>
             </div>
 
             {/* Nút Kích Hoạt Zen Mode Toàn Màn Hình */}
@@ -528,340 +809,343 @@ export default function LandingPage() {
             playHapticClick();
             setIsZenMode(false);
           }}
-          className="fixed top-6 right-6 z-50 p-2.5 rounded-2xl bg-black/40 hover:bg-black/70 border border-white/10 hover:border-amber-400/50 text-slate-400 hover:text-white transition-all backdrop-blur-md cursor-pointer group"
+          className={`fixed top-6 right-6 z-50 p-2.5 rounded-2xl bg-black/50 hover:bg-black/80 border border-white/15 hover:border-amber-400/50 text-slate-300 hover:text-white backdrop-blur-md cursor-pointer group transition-opacity duration-700 ease-in-out ${
+            isUiVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
           title="Thoát chế độ Zen Mode (Phím Esc hoặc F)"
         >
           <Minimize2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
         </button>
       )}
 
-      {/* MAIN CONTAINER: Audiophile Master Console Chassis */}
-      <main className={`relative z-10 flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 flex flex-col justify-center transition-all duration-700 ${
-        isZenMode ? 'max-w-none p-4 h-screen' : ''
-      }`}>
-        
-        {/* Khung máy Master Console kim loại phay xước titan than chì & 4 góc ốc vít kỹ thuật chìm */}
-        <div className={`relative w-full rounded-3xl transition-all duration-700 ${
-          isZenMode 
-            ? 'bg-transparent border-transparent' 
-            : 'console-chassis border border-white/15 shadow-2xl p-4 sm:p-6 lg:p-7 flex flex-col gap-5'
-        }`}>
-
-          {/* 4 ốc vít kỹ thuật chìm 4 góc khi ở Normal Mode */}
-          {!isZenMode && (
-            <>
-              <div className="screw-bolt absolute top-3 left-3" title="Chassis Hex Bolt" />
-              <div className="screw-bolt absolute top-3 right-3" title="Chassis Hex Bolt" />
-              <div className="screw-bolt absolute bottom-3 left-3" title="Chassis Hex Bolt" />
-              <div className="screw-bolt absolute bottom-3 right-3" title="Chassis Hex Bolt" />
-
-              {/* Dải Thước Đo Tần Số & Telemetry Khắc Chìm (Frequency Scale Etching) */}
-              <div className="w-full flex items-center justify-between px-6 pt-1 pb-2 border-b border-white/10 text-[10px] font-mono tracking-widest text-slate-200 select-none">
-                <div className="flex items-center gap-2">
-                  <span className="text-amber-300 font-extrabold tracking-widest">MASTER CONSOLE</span>
-                  <span className="text-slate-400">//</span>
-                  <span className="hidden sm:inline text-slate-300 font-medium">DISCRETE ANALOG STAGE</span>
-                </div>
-
-                <div className="hidden md:flex items-center gap-3 text-slate-300 font-semibold">
-                  <span>20Hz</span>
-                  <div className="w-10 h-[2px] frequency-ticks opacity-60" />
-                  <span>100Hz</span>
-                  <div className="w-14 h-[2px] frequency-ticks opacity-60" />
-                  <span>1kHz</span>
-                  <div className="w-14 h-[2px] frequency-ticks opacity-60" />
-                  <span>10kHz</span>
-                  <div className="w-10 h-[2px] frequency-ticks opacity-60" />
-                  <span>20kHz</span>
-                </div>
-
-                <div className="flex items-center gap-2 text-slate-200 font-medium">
-                  <span className="text-amber-300 font-bold">RPM: 33.333</span>
-                  <span className="text-slate-500 hidden sm:inline">|</span>
-                  <span className="hidden sm:inline text-slate-300">PITCH: ±0.0%</span>
-                  <span className="text-slate-500">|</span>
-                  <span className="text-amber-300 font-bold">DAC: 24-BIT / 96kHz</span>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Khối 2 cột: Cột Trái (Mâm đĩa 3D) và Cột Phải (AudioTerrain3D) */}
-          <div className="w-full flex flex-col lg:flex-row items-center gap-6 lg:gap-7 justify-center">
-            {/* CỘT TRÁI: Khu Vực Mâm Đĩa Than 3D & Dropzone */}
-            <section
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              className={`flex-1 w-full rounded-2xl transition-all duration-700 flex flex-col items-center justify-center relative overflow-hidden group ${
-                isZenMode
-                  ? 'h-[80vh] lg:h-[88vh] bg-transparent border-transparent'
-                  : `h-[520px] lg:h-[580px] bg-[#11131c]/80 border ${
-                      isDragging
-                        ? 'border-amber-400/80 bg-amber-500/[0.08] shadow-2xl shadow-amber-500/15'
-                        : 'border-white/10 hover:border-white/20'
-                    } p-5 sm:p-6`
-              }`}
-            >
-              {/* Mâm Đĩa Than 3D Tương Tác (Three.js WebGL Turntable) */}
-              <Turntable3D
-                isPlaying={isPlaying}
-                coverUrl={trackInfo?.coverUrl}
-                ambientColors={ambientColors}
-                currentTime={currentTime}
-                duration={duration}
-                isZenMode={isZenMode}
-              />
-
-              {/* Dropzone & Cụm Nút Nhôm Anodize */}
-              {!isZenMode && (
-                <div className="mt-5 text-center space-y-2 z-10 flex flex-col items-center">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        playHapticClick();
-                        fileInputRef.current?.click();
-                      }}
-                      onMouseEnter={playHoverBlip}
-                      className="anodize-btn inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-white/[0.10] via-white/[0.15] to-white/[0.08] hover:from-white/[0.18] hover:to-white/[0.12] border border-white/25 hover:border-amber-300 text-xs text-white transition-all cursor-pointer font-semibold shadow-md shadow-black/50"
-                    >
-                      <Upload className="w-3.5 h-3.5 text-amber-300" />
-                      <span>Nạp Tệp Cục Bộ</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        playHapticClick();
-                        setIsCratesDrawerOpen(true);
-                      }}
-                      onMouseEnter={playHoverBlip}
-                      className="anodize-btn inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/25 via-amber-400/35 to-amber-600/25 hover:from-amber-500/35 hover:to-amber-400/45 border border-amber-400/50 hover:border-amber-300 text-xs text-amber-200 hover:text-white transition-all cursor-pointer font-bold shadow-md shadow-amber-500/15"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                      <span>Khám Phá Đĩa Than</span>
-                    </button>
-                  </div>
-                  <p className="text-[11px] font-mono text-slate-300 tracking-wider uppercase font-semibold">
-                    DIRECT DRIVE // 0.025% WRMS // HIGH FIDELITY DSP
-                  </p>
-                </div>
-              )}
-            </section>
-
-            {/* CỘT PHẢI: Thông Tin Bài Hát & Sóng Âm Địa Hình Thác Nước 3D (AudioTerrain3D) */}
-            <section
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              className={`flex-1 w-full rounded-2xl transition-all duration-700 flex flex-col justify-between overflow-hidden ${
-                isZenMode
-                  ? 'h-[80vh] lg:h-[88vh] bg-transparent border-transparent p-4 sm:p-6'
-                  : 'h-[520px] lg:h-[580px] bg-[#11131c]/80 border border-white/10 hover:border-white/20 p-5 sm:p-6'
-              }`}
-            >
-              {/* 1. Header Thông Tin Bài Hát */}
-              <div className="space-y-2 border-b border-white/10 pb-4 shrink-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-amber-300 px-2.5 py-0.5 rounded bg-amber-400/20 border border-amber-400/40 font-extrabold shadow-sm">
-                    {currentOnlineTrackId ? 'ONLINE AUDIO STREAM' : 'NOW PLAYING'}
-                  </span>
-                  <span className="text-[11px] font-mono text-amber-300 font-extrabold px-2.5 py-0.5 rounded bg-black/70 border border-white/20 shadow-inner">
-                    {formatStudioTime(currentTime)} / {formatStudioTime(duration)}
-                  </span>
-                </div>
-                <h2 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white line-clamp-1 drop-shadow-md">
-                  {trackInfo.title}
-                </h2>
-                <p className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                  <span className="text-slate-100">{trackInfo.artist}</span>
-                  <span className="text-slate-400">•</span>
-                  <span className="text-xs text-slate-300 font-medium">{trackInfo.album}</span>
-                </p>
-              </div>
-
-              {/* 2. Sóng Âm Địa Hình Thác Nước 3D (AudioTerrain3D) */}
-              <div className="flex-1 w-full min-h-0 relative my-2 overflow-hidden flex items-center justify-center">
-                <AudioTerrain3D
-                  ambientColors={ambientColors}
-                  isPlaying={isPlaying}
-                />
-              </div>
-
-              {/* 3. Footer Thống Kê & Spec Kỹ Thuật */}
-              <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-300 shrink-0 select-none font-semibold">
-                <div className="flex items-center gap-2">
-                  <Radio className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                  <span>3D SPECTRAL TERRAIN // 32 BANDS // 44.1 KHZ</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="hidden sm:inline text-amber-300">
-                    {currentOnlineTrackId ? 'DIRECT CDN STREAM' : 'WATERFALL CASCADE'}
-                  </span>
-                  <span className="text-slate-500 hidden sm:inline">•</span>
-                  <span className="text-slate-200">DSP 44.1 KHZ</span>
-                </div>
-              </div>
-            </section>
-          </div>
-
+      {/* 5. MAIN CONTAINER: Fullscreen Seamless Turntable Centerpiece */}
+      <main
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        className="relative z-10 flex-1 w-full flex flex-col items-center justify-center p-3 sm:p-6 lg:p-8 overflow-hidden select-none"
+      >
+        <div className="w-full max-w-4xl flex-1 flex flex-col items-center justify-center min-h-[440px] sm:min-h-[520px] lg:min-h-[600px] relative">
+          {/* Mâm Đĩa Than 3D Gỗ Óc Chó & Đồng Thau Tương Tác Vật Lý */}
+          <Turntable3D
+            isPlaying={isPlaying}
+            coverUrl={trackInfo?.coverUrl}
+            albumCoverUrl={trackInfo?.coverUrl}
+            ambientColors={ambientColors}
+            currentTime={currentTime}
+            duration={duration}
+            isZenMode={isZenMode}
+            onScratch={handleScratch}
+            onSeek={handleSeekFromTurntable}
+          />
         </div>
-
       </main>
 
-      {/* 3. BOTTOM CONTROL BAR: Master Transport Deck (Ẩn trong Zen Mode) */}
-      {!isZenMode && (
-        <footer className="relative z-20 w-full h-24 border-t border-white/15 console-chassis px-4 sm:px-8 flex items-center justify-between gap-4 select-none">
-        
-        {/* Khối Trái: Mini Track Info */}
-        <div className="flex items-center gap-3 w-1/4 min-w-[140px] max-w-[240px]">
-          <div className="relative w-12 h-12 rounded-xl bg-black/70 border border-white/20 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-md">
-            {trackInfo.coverUrl ? (
-              <img
-                src={trackInfo.coverUrl}
-                alt={trackInfo.title}
-                className={`w-full h-full object-cover rounded-xl ${isPlaying ? 'animate-[spin_10s_linear_infinite]' : ''}`}
-              />
-            ) : (
-              <Disc3 className={`w-6 h-6 text-amber-400 ${isPlaying ? 'animate-[spin_4s_linear_infinite]' : ''}`} />
-            )}
-          </div>
-          <div className="min-w-0">
-            <h4 className="text-xs sm:text-sm font-bold text-white truncate tracking-tight">
-              {trackInfo.title}
-            </h4>
-            <p className="text-[11px] font-medium text-slate-300 truncate">
-              {trackInfo.artist}
-            </p>
-          </div>
+      {/* Lớp Overlay Kéo Thả Tệp Toàn Màn Hình */}
+      {isDragging && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md border-2 border-dashed border-amber-400 text-amber-300 font-mono text-base pointer-events-none animate-fadeIn">
+          <Upload className="w-12 h-12 mb-3 text-amber-400 animate-bounce" />
+          <span className="font-bold tracking-wider">THẢ TỆP ÂM THANH VÀO ĐÂY ĐỂ PHÁT</span>
+          <span className="text-xs text-slate-300 mt-1">Hỗ trợ .mp3, .wav, .flac, .ogg</span>
         </div>
+      )}
 
-        {/* Khối Giữa: Cụm Phím Cơ Học Master Transport & Scrubber Timeline */}
-        <div className="flex-1 max-w-xl flex flex-col items-center gap-2">
-          {/* Cụm Phím Điều Khiển Tactile Mechanical Switches */}
-          <div className="flex items-center gap-3.5">
-            <button
-              type="button"
-              onClick={() => {
-                playHapticClick();
-                if (audioRef.current) audioRef.current.currentTime = Math.max(0, currentTime - 10);
-              }}
-              onMouseEnter={playHoverBlip}
-              className="mechanical-key w-10 h-10 rounded-xl flex items-center justify-center text-slate-200 hover:text-white cursor-pointer"
-              title="Lùi 10 giây (Skip Back 10s)"
-            >
-              <SkipBack className="w-4 h-4 text-slate-200" />
-            </button>
-
-            {/* Nút Play / Pause Trung Tâm Audiophile Console */}
-            <button
-              type="button"
-              onClick={togglePlay}
-              onMouseEnter={playHoverBlip}
-              className="mechanical-key px-6 h-11 rounded-2xl flex items-center gap-3 text-white font-black tracking-wider text-xs cursor-pointer border border-amber-400/50 shadow-lg shadow-amber-500/20 group"
-              title={isPlaying ? 'Tạm dừng (Mâm đĩa đang quay)' : 'Phát đĩa than (Drop Needle)'}
-            >
-              <span className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${isPlaying ? 'led-indicator-active animate-pulse' : 'led-indicator-idle'}`} />
-              {isPlaying ? (
-                <>
-                  <Pause className="w-4 h-4 fill-amber-300 text-amber-300" />
-                  <span className="font-mono text-amber-300 text-xs uppercase tracking-widest font-black">PAUSE</span>
-                </>
+      {/* 6. BOTTOM CONTROL BAR: Master Transport Deck (Ẩn trong Zen Mode hoặc khi UI tự động ẩn) */}
+      {!isZenMode && (
+        <footer
+          className={`relative z-20 w-full h-24 border-t border-white/10 bg-[#0c0e17]/85 backdrop-blur-xl px-4 sm:px-8 flex items-center justify-between gap-4 select-none transition-opacity duration-700 ease-in-out ${
+            isUiVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          {/* Khối Trái: Mini Track Info */}
+          <div className="flex items-center gap-3 w-1/4 min-w-[140px] max-w-[240px]">
+            <div className="relative w-12 h-12 rounded-xl bg-black/70 border border-white/20 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-md">
+              {trackInfo.coverUrl ? (
+                <img
+                  src={trackInfo.coverUrl}
+                  alt={trackInfo.title}
+                  className={`w-full h-full object-cover rounded-xl ${isPlaying ? 'animate-[spin_10s_linear_infinite]' : ''}`}
+                />
               ) : (
-                <>
-                  <Play className="w-4 h-4 fill-amber-300 text-amber-300 ml-0.5" />
-                  <span className="font-mono text-amber-300 text-xs uppercase tracking-widest font-black">PLAY</span>
-                </>
+                <Disc3 className={`w-6 h-6 text-amber-400 ${isPlaying ? 'animate-[spin_4s_linear_infinite]' : ''}`} />
+              )}
+            </div>
+            <div className="min-w-0">
+              <h4 className="text-xs sm:text-sm font-bold text-white truncate tracking-tight">
+                {trackInfo.title}
+              </h4>
+              <p className="text-[11px] font-medium text-slate-300 truncate">
+                {trackInfo.artist}
+              </p>
+            </div>
+          </div>
+
+          {/* Khối Giữa: Cụm Phím Cơ Học Master Transport & Scrubber Timeline */}
+          <div className="flex-1 max-w-xl flex flex-col items-center gap-2">
+            {/* Cụm Phím Điều Khiển Tactile Mechanical Switches */}
+            <div className="flex items-center gap-3.5">
+              <button
+                type="button"
+                onClick={() => {
+                  playHapticClick();
+                  if (audioRef.current) audioRef.current.currentTime = Math.max(0, currentTime - 10);
+                }}
+                onMouseEnter={playHoverBlip}
+                className="mechanical-key w-10 h-10 rounded-xl flex items-center justify-center text-slate-200 hover:text-white cursor-pointer"
+                title="Lùi 10 giây (Skip Back 10s)"
+              >
+                <SkipBack className="w-4 h-4 text-slate-200" />
+              </button>
+
+              {/* Nút Play / Pause Trung Tâm Audiophile Console */}
+              <button
+                type="button"
+                onClick={togglePlay}
+                onMouseEnter={playHoverBlip}
+                className="mechanical-key px-6 h-11 rounded-2xl flex items-center gap-3 text-white font-black tracking-wider text-xs cursor-pointer border border-amber-400/50 shadow-lg shadow-amber-500/20 group"
+                title={isPlaying ? 'Tạm dừng (Mâm đĩa đang quay)' : 'Phát đĩa than (Drop Needle)'}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${isPlaying ? 'led-indicator-active animate-pulse' : 'led-indicator-idle'}`} />
+                {isPlaying ? (
+                  <>
+                    <Pause className="w-4 h-4 fill-amber-300 text-amber-300" />
+                    <span className="font-mono text-amber-300 text-xs uppercase tracking-widest font-black">PAUSE</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 fill-amber-300 text-amber-300 ml-0.5" />
+                    <span className="font-mono text-amber-300 text-xs uppercase tracking-widest font-black">PLAY</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  playHapticClick();
+                  if (audioRef.current && duration) {
+                    audioRef.current.currentTime = Math.min(duration, currentTime + 10);
+                  }
+                }}
+                onMouseEnter={playHoverBlip}
+                className="mechanical-key w-10 h-10 rounded-xl flex items-center justify-center text-slate-200 hover:text-white cursor-pointer"
+                title="Tiến 10 giây (Skip Forward 10s)"
+              >
+                <SkipForward className="w-4 h-4 text-slate-200" />
+              </button>
+            </div>
+
+            {/* Thanh Tiến Trình (Timeline Scrubber) với LED Studio Timer & Vạch Sóng */}
+            <div className="w-full flex items-center gap-3 text-xs font-mono">
+              <span className="px-2.5 py-0.5 rounded-lg bg-black/80 border border-white/20 text-amber-300 font-bold tracking-wider text-[11px] shadow-inner">
+                {formatStudioTime(currentTime)}
+              </span>
+              <div className="relative flex-1 flex items-center">
+                <input
+                  type="range"
+                  min="0"
+                  max={duration || 100}
+                  step="0.1"
+                  value={currentTime}
+                  onChange={handleSeek}
+                  className="w-full h-2 bg-white/20 rounded-full appearance-none cursor-pointer accent-amber-400 focus:outline-none relative z-10"
+                />
+              </div>
+              <span className="px-2.5 py-0.5 rounded-lg bg-black/80 border border-white/20 text-slate-200 font-semibold tracking-wider text-[11px] shadow-inner">
+                {formatStudioTime(duration)}
+              </span>
+            </div>
+          </div>
+
+          {/* Khối Phải: Âm Lượng Fader Cơ Khí */}
+          <div className="flex items-center justify-end gap-3 w-1/4 min-w-[120px]">
+            <button
+              type="button"
+              onClick={toggleMute}
+              onMouseEnter={playHoverBlip}
+              className="mechanical-key w-9 h-9 rounded-xl flex items-center justify-center text-slate-200 hover:text-white cursor-pointer"
+              title={isMuted ? 'Bật âm lượng' : 'Tắt tiếng (Mute)'}
+            >
+              {isMuted ? (
+                <VolumeX className="w-4 h-4 text-rose-400" />
+              ) : (
+                <Volume2 className="w-4 h-4 text-slate-200" />
               )}
             </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                playHapticClick();
-                if (audioRef.current && duration) {
-                  audioRef.current.currentTime = Math.min(duration, currentTime + 10);
-                }
-              }}
-              onMouseEnter={playHoverBlip}
-              className="mechanical-key w-10 h-10 rounded-xl flex items-center justify-center text-slate-200 hover:text-white cursor-pointer"
-              title="Tiến 10 giây (Skip Forward 10s)"
-            >
-              <SkipForward className="w-4 h-4 text-slate-200" />
-            </button>
-          </div>
-
-          {/* Thanh Tiến Trình (Timeline Scrubber) với LED Studio Timer & Vạch Sóng */}
-          <div className="w-full flex items-center gap-3 text-xs font-mono">
-            <span className="px-2.5 py-0.5 rounded-lg bg-black/80 border border-white/20 text-amber-300 font-bold tracking-wider text-[11px] shadow-inner">
-              {formatStudioTime(currentTime)}
-            </span>
-            <div className="relative flex-1 flex items-center">
+            
+            <div className="flex items-center gap-2">
               <input
                 type="range"
                 min="0"
-                max={duration || 100}
-                step="0.1"
-                value={currentTime}
-                onChange={handleSeek}
-                className="w-full h-2 bg-white/20 rounded-full appearance-none cursor-pointer accent-amber-400 focus:outline-none relative z-10"
+                max="1"
+                step="0.01"
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                className="w-16 sm:w-24 h-2 bg-white/20 rounded-full appearance-none cursor-pointer accent-amber-400 focus:outline-none"
               />
+              <span className="hidden sm:inline text-[10px] font-mono text-amber-300 font-bold w-8 text-right">
+                {Math.round((isMuted ? 0 : volume) * 100)}%
+              </span>
             </div>
-            <span className="px-2.5 py-0.5 rounded-lg bg-black/80 border border-white/20 text-slate-200 font-semibold tracking-wider text-[11px] shadow-inner">
-              {formatStudioTime(duration)}
-            </span>
           </div>
-        </div>
-
-        {/* Khối Phải: Âm Lượng Fader Cơ Khí */}
-        <div className="flex items-center justify-end gap-3 w-1/4 min-w-[120px]">
-          <button
-            type="button"
-            onClick={toggleMute}
-            onMouseEnter={playHoverBlip}
-            className="mechanical-key w-9 h-9 rounded-xl flex items-center justify-center text-slate-200 hover:text-white cursor-pointer"
-            title={isMuted ? 'Bật âm lượng' : 'Tắt tiếng (Mute)'}
-          >
-            {isMuted ? (
-              <VolumeX className="w-4 h-4 text-rose-400" />
-            ) : (
-              <Volume2 className="w-4 h-4 text-slate-200" />
-            )}
-          </button>
-          
-          <div className="flex items-center gap-2">
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={isMuted ? 0 : volume}
-              onChange={handleVolumeChange}
-              className="w-16 sm:w-24 h-2 bg-white/20 rounded-full appearance-none cursor-pointer accent-amber-400 focus:outline-none"
-            />
-            <span className="hidden sm:inline text-[10px] font-mono text-amber-300 font-bold w-8 text-right">
-              {Math.round((isMuted ? 0 : volume) * 100)}%
-            </span>
-          </div>
-        </div>
-
-      </footer>
+        </footer>
       )}
 
-      {/* 4. KHAY ĐĨA THAN TRỰC TUYẾN AUDIUS (AUDIUS CRATES DRAWER) */}
+      {/* 7. FLOATING FOCUS DOCK (AuraLofi Study Space Quick Navigation) */}
+      <div
+        className={`fixed bottom-28 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 sm:gap-2 p-1.5 rounded-2xl bg-[#0f121a]/90 backdrop-blur-2xl border border-white/15 shadow-2xl shadow-black/80 transition-opacity duration-700 ease-in-out ${
+          isUiVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        {/* Nút 1: Đổi Cảnh Nền Nghệ Thuật */}
+        <button
+          type="button"
+          onClick={handleCycleScene}
+          onMouseEnter={playHoverBlip}
+          className="px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border bg-white/[0.04] border-white/10 text-slate-300 hover:text-white hover:bg-white/10"
+          title="Đổi cảnh không gian nghệ thuật (Phím G)"
+        >
+          <span>{currentScene?.icon || '🌧️'}</span>
+          <span className="hidden sm:inline">Cảnh [G]</span>
+        </button>
+
+        {/* Nút 2: Bộ Trộn Âm Môi Trường */}
+        <button
+          type="button"
+          onClick={() => {
+            playHapticClick();
+            setIsMixerOpen((prev) => !prev);
+          }}
+          onMouseEnter={playHoverBlip}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
+            isMixerOpen
+              ? 'bg-amber-400/20 border-amber-400 text-amber-300 shadow-sm'
+              : 'bg-white/[0.04] border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
+          }`}
+          title="Pha trộn tiếng mưa, quán cà phê, lò sưởi, gió đêm"
+        >
+          <span>🎧</span>
+          <span className="hidden sm:inline">Trộn Âm</span>
+        </button>
+
+        {/* Nút 3: Đồng Hồ Pomodoro */}
+        <button
+          type="button"
+          onClick={() => {
+            playHapticClick();
+            setIsPomodoroOpen((prev) => !prev);
+          }}
+          onMouseEnter={playHoverBlip}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
+            isPomodoroOpen
+              ? 'bg-amber-400/20 border-amber-400 text-amber-300 shadow-sm'
+              : 'bg-white/[0.04] border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
+          }`}
+          title="Đồng hồ tập trung Pomodoro Solfeggio 528Hz (Phím T)"
+        >
+          <span>🍅</span>
+          <span className="hidden sm:inline">Pomodoro [T]</span>
+        </button>
+
+        {/* Nút 4: Ghi Chú To-Do */}
+        <button
+          type="button"
+          onClick={() => {
+            playHapticClick();
+            setIsTodoOpen((prev) => !prev);
+          }}
+          onMouseEnter={playHoverBlip}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
+            isTodoOpen
+              ? 'bg-amber-400/20 border-amber-400 text-amber-300 shadow-sm'
+              : 'bg-white/[0.04] border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
+          }`}
+          title="Sổ tay mục tiêu học tập và làm việc"
+        >
+          <span>📝</span>
+          <span className="hidden sm:inline">Ghi Chú</span>
+        </button>
+
+        {/* Nút 5: Phím Tắt */}
+        <button
+          type="button"
+          onClick={() => {
+            playHapticClick();
+            setIsShortcutModalOpen(true);
+          }}
+          onMouseEnter={playHoverBlip}
+          className="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border bg-white/[0.04] border-white/10 text-slate-300 hover:text-white hover:bg-white/10"
+          title="Bảng tra cứu phím tắt (Phím H hoặc ?)"
+        >
+          <span>⌨️</span>
+          <span className="hidden sm:inline">[H]</span>
+        </button>
+
+        {/* Nút 6: Chế Độ Zen Mode Toàn Màn Hình */}
+        <button
+          type="button"
+          onClick={() => {
+            playHapticClick();
+            setIsZenMode((prev) => !prev);
+          }}
+          onMouseEnter={playHoverBlip}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
+            isZenMode
+              ? 'bg-amber-400/20 border-amber-400 text-amber-300 shadow-sm'
+              : 'bg-white/[0.04] border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
+          }`}
+          title="Chế độ Zen Mode toàn màn hình (Phím F)"
+        >
+          <span>🪟</span>
+          <span className="hidden sm:inline">Zen [F]</span>
+        </button>
+      </div>
+
+      {/* 8. CÁC WIDGET AURALOFI TẬP TRUNG */}
+      <AmbientMixerDrawer
+        isOpen={isMixerOpen}
+        onClose={() => setIsMixerOpen(false)}
+      />
+
+      <PomodoroWidget
+        isOpen={isPomodoroOpen}
+        onClose={() => setIsPomodoroOpen(false)}
+      />
+
+      <MinimalTodoWidget
+        isOpen={isTodoOpen}
+        onClose={() => setIsTodoOpen(false)}
+      />
+
       <AudiusCratesDrawer
         isOpen={isCratesDrawerOpen}
         onClose={() => setIsCratesDrawerOpen(false)}
-        onSelectTrack={(track) => {
-          playOnlineTrack(track);
-          setIsCratesDrawerOpen(false);
-        }}
+        onSelectTrack={playOnlineTrack}
         currentTrackId={currentOnlineTrackId}
       />
 
-      {/* 5. TOAST NOTIFICATION CAO CẤP */}
-      <ToastNotification toast={toast} onClose={() => setToast(null)} />
+      <ExportVideoModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        trackInfo={trackInfo}
+        ambientColors={ambientColors}
+        audioRef={audioRef}
+        isPlaying={isPlaying}
+        onStartPlayback={startPlayback}
+      />
+
+      {/* 9. MODAL TRÌNH CHIẾU 3D MÁY PHÁT ĐĨA THAN CỔ ĐIỂN STL */}
+      <GramophoneViewerModal
+        isOpen={isGramophoneModalOpen}
+        onClose={() => setIsGramophoneModalOpen(false)}
+      />
+
+      {toast && (
+        <ToastNotification
+          toast={toast}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }
