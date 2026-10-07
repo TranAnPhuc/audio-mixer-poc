@@ -13,9 +13,11 @@ import {
 } from 'lucide-react';
 import { fetchTrendingTracks, searchAudiusTracks } from '../services/audiusService';
 import { playHapticClick, playHoverBlip } from '../utils/soundEffects';
+import { VIETNAMESE_TRACKS } from '../data/vietnameseTracks';
 
 const GENRE_TABS = [
-  { id: 'Trending', label: 'Thịnh Hành', icon: Flame },
+  { id: 'Vietnamese', label: '🇻🇳 Nhạc Việt', icon: Sparkles },
+  { id: 'Trending', label: '🔥 Thịnh Hành', icon: Flame },
   { id: 'Electronic', label: 'Electronic' },
   { id: 'Lo-Fi', label: 'Lo-Fi' },
   { id: 'Hip-Hop/Rap', label: 'Hip-Hop' },
@@ -26,7 +28,7 @@ const GENRE_TABS = [
 
 /**
  * Khay Đĩa Than Trực Tuyến Audius (Audius Crates Drawer)
- * Cho phép tìm kiếm và duyệt các bản thu thịnh hành trên mạng lưới Audius
+ * Tuyển tập nhạc Việt chọn lọc & khám phá âm nhạc trực tuyến Audius Open Protocol
  */
 export default function AudiusCratesDrawer({
   isOpen,
@@ -34,7 +36,7 @@ export default function AudiusCratesDrawer({
   onSelectTrack,
   currentTrackId
 }) {
-  const [activeGenre, setActiveGenre] = useState('Trending');
+  const [activeGenre, setActiveGenre] = useState('Vietnamese');
   const [searchQuery, setSearchQuery] = useState('');
   const [tracks, setTracks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -48,8 +50,28 @@ export default function AudiusCratesDrawer({
 
     try {
       let data = [];
-      if (query.trim()) {
-        data = await searchAudiusTracks(query, { limit: 20 });
+      const trimmed = query.trim().toLowerCase();
+
+      if (trimmed) {
+        // Tìm kiếm kết hợp: Ưu tiên nhạc Việt khớp từ khóa, sau đó đến Audius
+        const matchedVn = VIETNAMESE_TRACKS.filter(
+          (t) =>
+            t.title.toLowerCase().includes(trimmed) ||
+            t.artist.toLowerCase().includes(trimmed) ||
+            (t.genre && t.genre.toLowerCase().includes(trimmed))
+        );
+
+        let audiusData = [];
+        try {
+          audiusData = await searchAudiusTracks(query, { limit: 16 });
+        } catch (e) {
+          console.warn('[AudiusCratesDrawer] Lỗi tìm kiếm Audius:', e);
+        }
+
+        data = [...matchedVn, ...audiusData];
+      } else if (genre === 'Vietnamese') {
+        // Nạp kho Nhạc Việt tuyển chọn tức thì không phụ thuộc mạng ngoài
+        data = VIETNAMESE_TRACKS;
       } else {
         data = await fetchTrendingTracks({
           genre: genre === 'Trending' ? '' : genre,
@@ -119,24 +141,24 @@ export default function AudiusCratesDrawer({
 
       {/* 2. Khay trượt bên phải (Slide-Over Drawer) */}
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <aside className="w-screen max-w-md sm:max-w-lg bg-[#0e1017]/95 backdrop-blur-2xl border-l border-white/10 shadow-2xl flex flex-col justify-between">
+        <aside className="w-screen max-w-md sm:max-w-lg bg-[#141722]/98 backdrop-blur-2xl border-l border-white/20 shadow-2xl flex flex-col justify-between">
           
           {/* Header Khay Đĩa */}
-          <div className="p-6 border-b border-white/[0.08] space-y-4 shrink-0">
+          <div className="p-6 border-b border-white/10 space-y-4 shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-500/20">
                   <Disc3 className="w-5 h-5 animate-spin" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-white tracking-tight flex items-center gap-2">
-                    <span>Khay Đĩa Audius</span>
-                    <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/20">
-                      OPEN STREAM
+                  <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2">
+                    <span>Khay Đĩa Than Tuyển Chọn</span>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                      AUDIO STREAM
                     </span>
                   </h3>
-                  <p className="text-xs text-slate-400 font-sans">
-                    Mạng lưới âm nhạc trực tuyến phi tập trung
+                  <p className="text-xs text-slate-300 font-sans">
+                    Nhạc Việt chất lượng cao & Mạng lưới Audius Open Protocol
                   </p>
                 </div>
               </div>
@@ -147,7 +169,7 @@ export default function AudiusCratesDrawer({
                   playHapticClick();
                   onClose();
                 }}
-                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer border border-white/10"
                 title="Đóng khay đĩa"
               >
                 <X className="w-5 h-5" />
@@ -156,13 +178,13 @@ export default function AudiusCratesDrawer({
 
             {/* Thanh Tìm Kiếm Trực Tuyến */}
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-4 h-4 text-amber-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={handleSearchChange}
-                placeholder="Tìm bài hát, ca sĩ trên Audius..."
-                className="w-full h-10 pl-10 pr-4 bg-white/[0.04] border border-white/10 focus:border-amber-400/60 rounded-xl text-xs text-slate-200 placeholder-slate-500 outline-none focus:ring-1 focus:ring-amber-400/30 transition-all font-sans"
+                placeholder="Tìm bài hát, nghệ sĩ Việt Nam hoặc Audius..."
+                className="w-full h-10 pl-10 pr-4 bg-white/[0.07] border border-white/20 focus:border-amber-400 rounded-xl text-xs text-white placeholder-slate-400 outline-none focus:ring-1 focus:ring-amber-400 transition-all font-sans font-medium"
               />
               {searchQuery && (
                 <button
@@ -171,7 +193,7 @@ export default function AudiusCratesDrawer({
                     setSearchQuery('');
                     loadTracks(activeGenre);
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs p-1"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-white text-xs p-1"
                 >
                   ✕
                 </button>
@@ -193,10 +215,10 @@ export default function AudiusCratesDrawer({
                         setActiveGenre(tab.id);
                       }}
                       onMouseEnter={playHoverBlip}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer whitespace-nowrap text-xs ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer whitespace-nowrap text-xs border ${
                         isActive
-                          ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/20'
-                          : 'bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white border border-white/[0.06]'
+                          ? 'bg-gradient-to-r from-amber-400 to-amber-300 text-slate-950 font-bold border-amber-300 shadow-md shadow-amber-400/20'
+                          : 'bg-white/[0.05] hover:bg-white/[0.10] text-slate-200 hover:text-white border-white/10'
                       }`}
                     >
                       {Icon && <Icon className="w-3.5 h-3.5" />}
@@ -209,15 +231,15 @@ export default function AudiusCratesDrawer({
           </div>
 
           {/* Nội Dung: Lưới Danh Sách Đĩa Nhạc */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-3 scrollbar-thin scrollbar-thumb-white/10">
+          <div className="flex-1 overflow-y-auto p-6 space-y-3 scrollbar-thin scrollbar-thumb-white/15">
             {isLoading ? (
               // Trạng thái Skeleton Loading
               <div className="grid grid-cols-2 gap-3.5 animate-pulse">
                 {Array.from({ length: 6 }).map((_, idx) => (
-                  <div key={idx} className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2.5">
-                    <div className="w-full aspect-square rounded-xl bg-white/[0.05]" />
-                    <div className="h-3.5 bg-white/[0.05] rounded-md w-3/4" />
-                    <div className="h-2.5 bg-white/[0.03] rounded-md w-1/2" />
+                  <div key={idx} className="p-3 rounded-2xl bg-white/[0.04] border border-white/10 space-y-2.5">
+                    <div className="w-full aspect-square rounded-xl bg-white/[0.08]" />
+                    <div className="h-3.5 bg-white/[0.08] rounded-md w-3/4" />
+                    <div className="h-2.5 bg-white/[0.05] rounded-md w-1/2" />
                   </div>
                 ))}
               </div>
@@ -225,11 +247,11 @@ export default function AudiusCratesDrawer({
               // Trạng thái Lỗi kết nối
               <div className="h-64 flex flex-col items-center justify-center text-center p-6 space-y-3">
                 <Radio className="w-8 h-8 text-rose-400" />
-                <p className="text-xs text-slate-400 max-w-xs">{error}</p>
+                <p className="text-xs text-slate-300 max-w-xs">{error}</p>
                 <button
                   type="button"
                   onClick={() => loadTracks(activeGenre, searchQuery)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs text-white border border-white/10 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-xs text-white border border-white/20 cursor-pointer"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Thử lại</span>
@@ -238,8 +260,8 @@ export default function AudiusCratesDrawer({
             ) : tracks.length === 0 ? (
               // Trạng thái Trống
               <div className="h-64 flex flex-col items-center justify-center text-center p-6 space-y-2">
-                <Disc3 className="w-8 h-8 text-slate-600" />
-                <p className="text-xs text-slate-400">Không tìm thấy bản thu phù hợp.</p>
+                <Disc3 className="w-8 h-8 text-slate-500" />
+                <p className="text-xs text-slate-300">Không tìm thấy bản thu phù hợp.</p>
               </div>
             ) : (
               // Lưới Danh Sách Bài Hát
@@ -256,12 +278,12 @@ export default function AudiusCratesDrawer({
                       onMouseEnter={playHoverBlip}
                       className={`group relative p-3 rounded-2xl transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden border ${
                         isCurrent
-                          ? 'bg-amber-500/[0.08] border-amber-400/80 shadow-xl shadow-amber-500/10'
-                          : 'bg-white/[0.02] hover:bg-white/[0.05] border-white/[0.06] hover:border-amber-400/40 hover:-translate-y-1'
+                          ? 'bg-amber-500/[0.12] border-amber-400 shadow-xl shadow-amber-500/15'
+                          : 'bg-white/[0.04] hover:bg-white/[0.09] border-white/10 hover:border-amber-400/60 hover:-translate-y-1'
                       }`}
                     >
-                      {/* Bìa Đĩa Vuông (Aspect 1:1) với đĩa than nhô ra phía sau khi hover */}
-                      <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-black/40 shadow-md">
+                      {/* Bìa Đĩa Vuông (Aspect 1:1) */}
+                      <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-black/50 shadow-md">
                         {track.coverUrl ? (
                           <img
                             src={track.coverUrl}
@@ -271,19 +293,19 @@ export default function AudiusCratesDrawer({
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-black">
-                            <Disc3 className="w-8 h-8 text-slate-600" />
+                            <Disc3 className="w-8 h-8 text-slate-400" />
                           </div>
                         )}
 
                         {/* Nút Play Overlay khi hover */}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
-                          <div className="w-10 h-10 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-400/30 transform scale-90 group-hover:scale-100 transition-transform">
+                          <div className="w-10 h-10 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-400/40 transform scale-90 group-hover:scale-100 transition-transform">
                             <Play className="w-5 h-5 fill-current ml-0.5" />
                           </div>
                         </div>
 
                         {/* Badge Thời Lượng */}
-                        <span className="absolute bottom-2 right-2 text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-md text-slate-300 border border-white/10">
+                        <span className="absolute bottom-2 right-2 text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/75 backdrop-blur-md text-slate-200 border border-white/20">
                           {formatDuration(track.duration)}
                         </span>
 
@@ -301,15 +323,15 @@ export default function AudiusCratesDrawer({
                         <h4 className="text-xs font-bold text-white truncate group-hover:text-amber-300 transition-colors">
                           {track.title}
                         </h4>
-                        <p className="text-[11px] text-slate-400 truncate">
+                        <p className="text-[11px] font-medium text-slate-300 truncate">
                           {track.artist}
                         </p>
                       </div>
 
                       {/* Footer Badge Thể Loại */}
-                      <div className="mt-2 pt-2 border-t border-white/[0.04] flex items-center justify-between text-[10px] font-mono text-slate-500">
-                        <span className="truncate uppercase">{track.genre || 'Single'}</span>
-                        <Disc3 className="w-3 h-3 text-amber-400/60 shrink-0" />
+                      <div className="mt-2 pt-2 border-t border-white/[0.08] flex items-center justify-between text-[10px] font-mono text-slate-300">
+                        <span className="truncate uppercase text-amber-300/90 font-semibold">{track.genre || 'Single'}</span>
+                        <Disc3 className="w-3 h-3 text-amber-400/80 shrink-0" />
                       </div>
                     </div>
                   );
@@ -319,16 +341,16 @@ export default function AudiusCratesDrawer({
           </div>
 
           {/* Footer Khay Đĩa */}
-          <div className="p-4 border-t border-white/[0.08] flex items-center justify-between text-[11px] font-mono text-slate-500 shrink-0 bg-black/20">
+          <div className="p-4 border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-300 shrink-0 bg-black/30">
             <div className="flex items-center gap-1.5">
-              <Sparkles className="w-3 h-3 text-amber-400" />
-              <span>POWERED BY AUDIUS PROTOCOL</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span className="font-medium">VIETNAMESE CURATED & AUDIUS CDN</span>
             </div>
             <a
               href="https://audius.co"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-amber-300 transition-colors flex items-center gap-1"
+              className="hover:text-amber-300 transition-colors flex items-center gap-1 text-slate-400"
             >
               <span>AUDIUS.CO</span>
               <ExternalLink className="w-3 h-3" />

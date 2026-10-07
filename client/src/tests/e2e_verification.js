@@ -13,6 +13,7 @@
 import { parseAudioFileMetadata, extractEmbeddedLyrics, extractPaletteFromImage, DEFAULT_PALETTE } from '../services/metadataService.js';
 import { normalizeAudiusTrack } from '../services/audiusService.js';
 import { CAMERA_PRESETS, clampWaveGain } from '../utils/terrainConfig.js';
+import { VIETNAMESE_TRACKS } from '../data/vietnameseTracks.js';
 import {
   getAudioContext,
   setVinylMuted,
@@ -486,7 +487,11 @@ async function main() {
     assert(CAMERA_PRESETS.frontal, 'Thiếu preset frontal');
     assert(CAMERA_PRESETS.topdown, 'Thiếu preset topdown');
 
-    // Kiểm tra cấu trúc tọa độ 3D
+    // Kiểm tra cấu trúc tọa độ 3D và nhãn Audiophile Master Console
+    assert(CAMERA_PRESETS.isometric.label.includes('ISO 3D'), 'Label isometric phải chứa ISO 3D');
+    assert(CAMERA_PRESETS.frontal.label.includes('JOY DIVISION'), 'Label frontal phải chứa JOY DIVISION');
+    assert(CAMERA_PRESETS.topdown.label.includes('CONTOUR'), 'Label topdown phải chứa CONTOUR');
+
     ['isometric', 'frontal', 'topdown'].forEach((key) => {
       const p = CAMERA_PRESETS[key];
       assert(Array.isArray(p.position) && p.position.length === 3, `${key} position phải là mảng 3 phần tử`);
@@ -591,6 +596,25 @@ async function main() {
     // Trường hợp đầu vào null hoặc object không có id
     assert(normalizeAudiusTrack(null) === null, 'Đầu vào null phải trả về null');
     assert(normalizeAudiusTrack({}) === null, 'Track thiếu ID phải trả về null');
+  });
+
+  // SUITE 8: Curated Vietnamese Tracks Collection Integrity
+  console.log('\n\x1b[1m--- [Suite 8] Vietnamese Curated Vinyl Collection Integrity ---\x1b[0m');
+  await runTest('VIETNAMESE_TRACKS: Tuyển tập các bản ghi Việt Nam đáp ứng đầy đủ contract phát nhạc của AuraVinyl', () => {
+    assert(Array.isArray(VIETNAMESE_TRACKS), 'VIETNAMESE_TRACKS phải là một mảng');
+    assert(VIETNAMESE_TRACKS.length >= 6, `Cần ít nhất 6 bản thu tuyển chọn, hiện có: ${VIETNAMESE_TRACKS.length}`);
+
+    VIETNAMESE_TRACKS.forEach((track, idx) => {
+      assert(typeof track.id === 'string' && track.id.startsWith('vn-'), `Track index ${idx} id sai format: ${track.id}`);
+      assert(typeof track.title === 'string' && track.title.length > 0, `Track index ${idx} thiếu title`);
+      assert(typeof track.artist === 'string' && track.artist.length > 0, `Track index ${idx} thiếu artist`);
+      assert(typeof track.album === 'string' && track.album.length > 0, `Track index ${idx} thiếu album`);
+      assert(typeof track.genre === 'string' && track.genre.length > 0, `Track index ${idx} thiếu genre`);
+      assert(typeof track.duration === 'number' && track.duration > 30, `Track index ${idx} duration không hợp lệ: ${track.duration}`);
+      assert(typeof track.coverUrl === 'string' && track.coverUrl.startsWith('http'), `Track index ${idx} coverUrl không hợp lệ: ${track.coverUrl}`);
+      assert(typeof track.streamUrl === 'string' && track.streamUrl.startsWith('http'), `Track index ${idx} streamUrl không hợp lệ: ${track.streamUrl}`);
+      assert(track.origin === 'vietnam', `Track index ${idx} origin phải là 'vietnam'`);
+    });
   });
 
   // TỔNG KẾT BÁO CÁO

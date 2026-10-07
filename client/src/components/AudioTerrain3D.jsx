@@ -322,57 +322,74 @@ export default function AudioTerrain3D({ ambientColors, isPlaying }) {
 
   return (
     <div className="relative w-full h-full flex flex-col justify-between select-none overflow-hidden">
-      {/* CỤM ĐIỀU KHIỂN GIAO DIỆN GLASSMORPHISM (TOP-RIGHT FLOATING CONTROLS) */}
-      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 flex flex-wrap items-center gap-1.5 sm:gap-2 pointer-events-auto">
-        {/* 1. Các nút Camera Presets */}
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 shadow-lg text-[10px] sm:text-[11px] font-sans">
-          {Object.values(CAMERA_PRESETS).map((p) => {
-            const isActive = currentPreset === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => handlePresetChange(p.id)}
-                onMouseEnter={playHoverBlip}
-                className={`px-2 py-1 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1 ${
-                  isActive
-                    ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/20'
-                    : 'text-slate-400 hover:text-white hover:bg-white/10'
-                }`}
-                title={`Góc nhìn: ${p.label}`}
-              >
-                <span>{p.icon}</span>
-                <span>{p.label}</span>
-              </button>
-            );
-          })}
+      {/* CỤM ĐIỀU KHIỂN GIAO DIỆN BACKLIT KEYCAPS (AUDIOPHILE HARDWARE CONSOLE) */}
+      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 flex flex-col items-end gap-1.5 pointer-events-auto">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 p-1.5 rounded-2xl bg-[#0b0c11]/90 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/80">
+          
+          {/* 1. Các phím cơ Backlit Camera Keycaps */}
+          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-black/60 border border-white/[0.06]">
+            {Object.values(CAMERA_PRESETS).map((p) => {
+              const isActive = currentPreset === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handlePresetChange(p.id)}
+                  onMouseEnter={playHoverBlip}
+                  className={`relative px-2.5 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-mono tracking-wider transition-all cursor-pointer flex items-center gap-1.5 border ${
+                    isActive
+                      ? 'bg-gradient-to-b from-white/15 to-white/5 border-amber-400/80 text-amber-300 font-bold shadow-inner shadow-amber-400/20 translate-y-[0.5px]'
+                      : 'bg-gradient-to-b from-white/[0.04] to-black/40 border-white/[0.06] text-slate-400 hover:text-white hover:border-white/20'
+                  }`}
+                  title={`Góc nhìn máy quay: ${p.label}`}
+                >
+                  {/* Đèn LED chỉ thị vật lý (Backlit LED Dot) */}
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full transition-all ${
+                      isActive
+                        ? 'bg-amber-400 shadow-[0_0_6px_#f59e0b] animate-pulse'
+                        : 'bg-slate-700'
+                    }`}
+                  />
+                  <span>{p.icon}</span>
+                  <span>{p.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 2. Cụm nút vi chỉnh Gain cơ học */}
+          <div className="flex items-center gap-1 px-1.5 py-1 rounded-xl bg-black/60 border border-white/[0.06] text-[10px] font-mono text-slate-300">
+            <span className="text-[9px] tracking-wider text-slate-500 font-bold">GAIN:</span>
+            <button
+              type="button"
+              onClick={() => handleGainChange(-0.2)}
+              onMouseEnter={playHoverBlip}
+              disabled={waveGain <= 0.4}
+              className="w-5 h-5 rounded-md bg-white/[0.04] hover:bg-white/[0.1] active:scale-95 border border-white/[0.08] flex items-center justify-center disabled:opacity-30 text-slate-300 hover:text-white transition-all cursor-pointer font-bold"
+              title="Giảm biên độ sóng (-0.2x)"
+            >
+              -
+            </button>
+            <span className="px-1 text-[10px] min-w-[28px] text-center font-bold text-amber-400 tabular-nums">
+              {waveGain.toFixed(1)}x
+            </span>
+            <button
+              type="button"
+              onClick={() => handleGainChange(0.2)}
+              onMouseEnter={playHoverBlip}
+              disabled={waveGain >= 2.4}
+              className="w-5 h-5 rounded-md bg-white/[0.04] hover:bg-white/[0.1] active:scale-95 border border-white/[0.08] flex items-center justify-center disabled:opacity-30 text-slate-300 hover:text-white transition-all cursor-pointer font-bold"
+              title="Tăng biên độ sóng (+0.2x)"
+            >
+              +
+            </button>
+          </div>
         </div>
 
-        {/* 2. Cụm nút điều chỉnh độ cao sóng Wave Gain */}
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 shadow-lg text-[10px] sm:text-[11px] font-mono text-slate-300">
-          <button
-            type="button"
-            onClick={() => handleGainChange(-0.2)}
-            onMouseEnter={playHoverBlip}
-            disabled={waveGain <= 0.4}
-            className="w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center hover:bg-white/10 disabled:opacity-30 text-slate-300 hover:text-white transition-colors cursor-pointer"
-            title="Giảm biên độ sóng"
-          >
-            -
-          </button>
-          <span className="px-1 text-[10px] min-w-[26px] text-center font-bold text-amber-400">
-            {waveGain.toFixed(1)}x
-          </span>
-          <button
-            type="button"
-            onClick={() => handleGainChange(0.2)}
-            onMouseEnter={playHoverBlip}
-            disabled={waveGain >= 2.4}
-            className="w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center hover:bg-white/10 disabled:opacity-30 text-slate-300 hover:text-white transition-colors cursor-pointer"
-            title="Tăng biên độ sóng"
-          >
-            +
-          </button>
+        {/* 3. Dòng Telemetry kỹ thuật phòng thu */}
+        <div className="text-[8.5px] font-mono tracking-widest text-slate-500/80 px-2 select-none uppercase">
+          FFT RES: 512 PTS // REFRESH: 60 FPS // DAMPING: 0.05
         </div>
       </div>
 

@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-[#090a0f] text-slate-100 antialiased min-h-screen selection:bg-amber-500/30 selection:text-amber-200;
+    @apply bg-[#0e111a] text-slate-100 antialiased min-h-screen selection:bg-amber-500/40 selection:text-amber-100;
   }
 }
 
@@ -175,4 +175,111 @@
 .animate-aurora-breath {
   animation: aurora-breath 1.8s ease-in-out infinite;
   will-change: transform, opacity;
+}
+
+/* ==========================================================================
+   AUDIOPHILE MASTER CONSOLE HARDWARE STYLING (Teenage Engineering & Dieter Rams)
+   ========================================================================== */
+
+/* Khung kim loại phay xước titan than chì (Brushed Titanium Graphite Chassis) */
+.console-chassis {
+  background: 
+    linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, transparent 45%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0px, rgba(255, 255, 255, 0.018) 1px, transparent 1px, transparent 3px),
+    #151821;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.16),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.6),
+    0 20px 50px rgba(0, 0, 0, 0.6);
+}
+
+/* Ốc vít kỹ thuật chìm 4 góc (Recessed Technical Screw Bolt) */
+.screw-bolt {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #383d52 20%, #1e2230 90%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.7), 0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+.screw-bolt::after {
+  content: '+';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.65);
+  pointer-events: none;
+}
+
+/* Phím cơ khí Master Transport (Tactile Mechanical Switch Keycap) */
+.mechanical-key {
+  position: relative;
+  background: linear-gradient(180deg, #272c3d 0%, #1a1d29 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.85);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.22),
+    0 4px 8px rgba(0, 0, 0, 0.45);
+  transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mechanical-key:hover {
+  background: linear-gradient(180deg, #33394e 0%, #202433 100%);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.mechanical-key:active {
+  transform: translateY(1.5px);
+  border-bottom-width: 1px;
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.8),
+    0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Đèn LED chỉ thị trạng thái phần cứng (Physical Backlit LED Dot) */
+.led-indicator-active {
+  background: #f59e0b;
+  box-shadow: 0 0 10px #f59e0b, 0 0 20px rgba(245, 158, 11, 0.8);
+}
+
+.led-indicator-idle {
+  background: #475569;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Vạch chia thước đo tần số khắc chìm (Frequency Scale Micro-Ticks) */
+.frequency-ticks {
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.35) 0px,
+    rgba(255, 255, 255, 0.35) 1px,
+    transparent 1px,
+    transparent 12px
+  );
+}
+
+/* Viền nhôm Anodize quét sáng chạy vòng (Anodized Aluminum Shimmer) */
+@keyframes anodize-border-sweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.anodize-btn {
+  background-size: 200% 200%;
+  animation: anodize-border-sweep 6s ease infinite;
 }

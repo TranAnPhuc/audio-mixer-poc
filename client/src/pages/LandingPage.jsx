@@ -362,6 +362,15 @@ export default function LandingPage() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  // Format thời gian Studio Digital dạng mm:ss.ff (fractional seconds) cho Audiophile Master Console
+  const formatStudioTime = (secs) => {
+    if (isNaN(secs) || secs < 0) return '00:00.00';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    const ms = Math.floor((secs % 1) * 100);
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+  };
+
   // Lắng nghe phím tắt toàn cục
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -417,7 +426,7 @@ export default function LandingPage() {
 
   return (
     <div
-      className={`min-h-screen bg-[#0a0a0f] text-slate-100 flex flex-col justify-between selection:bg-amber-500 selection:text-black overflow-x-hidden relative transition-colors duration-1000 ${
+      className={`min-h-screen bg-[#0e111a] text-slate-100 flex flex-col justify-between selection:bg-amber-500 selection:text-black overflow-x-hidden relative transition-colors duration-1000 ${
         isZenMode ? 'cursor-auto' : ''
       }`}
     >
@@ -444,37 +453,37 @@ export default function LandingPage() {
         }}
       />
 
-      {/* 1. LỚP NỀN ÁNH SÁNG AMBIENT AURORA ĐỔI MÀU THEO BẢNG MÀU ALBUM */}
+      {/* 1. LỚP NỀN ÁNH SÁNG AMBIENT AURORA KHUẾCH ĐẠI ĐỔI MÀU THEO BẢNG MÀU ALBUM */}
       <div
         className="fixed inset-0 pointer-events-none transition-all duration-1000 ease-out z-0"
         style={{
           background: `
-            radial-gradient(circle at 25% 35%, ${ambientColors.glowColor || 'rgba(245, 158, 11, 0.15)'} 0%, transparent 60%),
-            radial-gradient(circle at 75% 65%, ${ambientColors.secondaryColor ? ambientColors.secondaryColor.replace('rgb', 'rgba').replace(')', ', 0.12)') : 'rgba(190, 24, 93, 0.12)'} 0%, transparent 65%),
-            radial-gradient(circle at 50% 50%, rgba(10, 10, 15, 0.85) 0%, #0a0a0f 100%)
+            radial-gradient(circle at 25% 35%, ${ambientColors.glowColor ? ambientColors.glowColor.replace('0.15', '0.48').replace('0.25', '0.52') : 'rgba(245, 158, 11, 0.48)'} 0%, transparent 72%),
+            radial-gradient(circle at 75% 65%, ${ambientColors.secondaryColor ? ambientColors.secondaryColor.replace('rgb', 'rgba').replace(')', ', 0.40)') : 'rgba(190, 24, 93, 0.40)'} 0%, transparent 75%),
+            radial-gradient(circle at 50% 50%, rgba(18, 22, 33, 0.65) 0%, #0e111a 100%)
           `
         }}
       />
 
       {/* 2. TOP NAV: Minimalist Header (Ẩn trong Zen Mode) */}
       {!isZenMode && (
-        <header className="relative z-20 w-full h-16 border-b border-white/[0.06] bg-[#0a0a0f]/60 backdrop-blur-xl px-6 sm:px-10 flex items-center justify-between transition-opacity duration-500">
+        <header className="relative z-20 w-full h-16 border-b border-white/10 bg-[#131622]/80 backdrop-blur-xl px-6 sm:px-10 flex items-center justify-between transition-opacity duration-500">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-amber-200 flex items-center justify-center shadow-lg shadow-amber-500/20">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-amber-200 flex items-center justify-center shadow-lg shadow-amber-500/25">
               <Disc3 className={`w-5 h-5 text-slate-950 ${isPlaying ? 'animate-[spin_3s_linear_infinite]' : ''}`} />
             </div>
             <div className="flex flex-col">
               <span className="font-extrabold text-sm sm:text-base tracking-wider bg-gradient-to-r from-amber-200 via-amber-400 to-amber-100 bg-clip-text text-transparent">
                 AuraVinyl
               </span>
-              <span className="text-[9px] font-mono tracking-widest text-slate-500 uppercase -mt-0.5">
+              <span className="text-[10px] font-mono tracking-widest text-slate-300 uppercase -mt-0.5 font-semibold">
                 3D TURNTABLE // SPECTRAL TERRAIN
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
-            {/* Nút Mở Khay Đĩa Than Trực Tuyến Audius */}
+            {/* Nút Mở Khay Đĩa Than Trực Tuyến Audius & Nhạc Việt */}
             <button
               type="button"
               onClick={() => {
@@ -482,16 +491,16 @@ export default function LandingPage() {
                 setIsCratesDrawerOpen(true);
               }}
               onMouseEnter={playHoverBlip}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/10 to-amber-400/5 hover:from-amber-500/20 hover:to-amber-400/15 border border-amber-400/30 hover:border-amber-400/60 text-xs font-semibold text-amber-300 hover:text-white transition-all cursor-pointer shadow-sm shadow-amber-500/5"
-              title="Mở khay đĩa than trực tuyến Audius"
+              className="anodize-btn inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-amber-400/30 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-400/40 border border-amber-400/50 hover:border-amber-300 text-xs font-bold text-amber-200 hover:text-white transition-all cursor-pointer shadow-md shadow-amber-500/15"
+              title="Mở khay đĩa than tuyển chọn"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
               <span>Khám Phá Đĩa Than</span>
             </button>
 
-            <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.06] text-[11px] font-mono text-slate-400">
-              <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-amber-400 animate-pulse' : 'bg-slate-600'}`} />
-              <span>{isPlaying ? 'TURNTABLE SPINNING' : 'SYSTEM IDLE'}</span>
+            <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-black/60 border border-white/15 text-[11px] font-mono text-slate-200 font-semibold shadow-inner">
+              <span className={`w-2 h-2 rounded-full transition-all duration-300 ${isPlaying ? 'led-indicator-active animate-pulse' : 'led-indicator-idle'}`} />
+              <span className="tracking-wider">{isPlaying ? '33⅓ RPM LOCKED' : 'SYSTEM STANDBY'}</span>
             </div>
 
             {/* Nút Kích Hoạt Zen Mode Toàn Màn Hình */}
@@ -502,7 +511,7 @@ export default function LandingPage() {
                 setIsZenMode(true);
               }}
               onMouseEnter={playHoverBlip}
-              className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-amber-400/40 text-slate-400 hover:text-amber-300 transition-all cursor-pointer"
+              className="p-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 hover:border-amber-400/60 text-slate-300 hover:text-amber-300 transition-all cursor-pointer"
               title="Chế độ Zen Mode toàn màn hình (Phím F)"
             >
               <Maximize2 className="w-4 h-4" />
@@ -526,137 +535,188 @@ export default function LandingPage() {
         </button>
       )}
 
-      {/* MAIN CONTAINER: 2 Cột Độc Lập (Mâm Đĩa Than 3D bên Trái, Sóng Âm Địa Hình bên Phải) */}
-      <main className={`relative z-10 flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row items-center gap-6 lg:gap-8 justify-center transition-all duration-700 ${
+      {/* MAIN CONTAINER: Audiophile Master Console Chassis */}
+      <main className={`relative z-10 flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 flex flex-col justify-center transition-all duration-700 ${
         isZenMode ? 'max-w-none p-4 h-screen' : ''
       }`}>
         
-        {/* CỘT TRÁI: Khu Vực Mâm Đĩa Than 3D & Dropzone */}
-        <section
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          className={`flex-1 w-full rounded-3xl transition-all duration-700 flex flex-col items-center justify-center relative overflow-hidden group ${
-            isZenMode
-              ? 'h-[80vh] lg:h-[88vh] bg-transparent border-transparent'
-              : `h-[540px] lg:h-[600px] bg-white/[0.02] border ${
-                  isDragging
-                    ? 'border-amber-400/60 bg-amber-500/[0.04] shadow-2xl shadow-amber-500/10'
-                    : 'border-white/[0.06] hover:border-white/[0.12]'
-                } p-6 sm:p-8`
-          }`}
-        >
-          {/* Mâm Đĩa Than 3D Tương Tác (Three.js WebGL Turntable) */}
-          <Turntable3D
-            isPlaying={isPlaying}
-            coverUrl={trackInfo?.coverUrl}
-            ambientColors={ambientColors}
-            currentTime={currentTime}
-            duration={duration}
-            isZenMode={isZenMode}
-          />
+        {/* Khung máy Master Console kim loại phay xước titan than chì & 4 góc ốc vít kỹ thuật chìm */}
+        <div className={`relative w-full rounded-3xl transition-all duration-700 ${
+          isZenMode 
+            ? 'bg-transparent border-transparent' 
+            : 'console-chassis border border-white/15 shadow-2xl p-4 sm:p-6 lg:p-7 flex flex-col gap-5'
+        }`}>
 
-          {/* Dropzone & Cụm Nút Tác Vụ (Ẩn trong Zen Mode để giữ sự tinh khiết tối đa) */}
+          {/* 4 ốc vít kỹ thuật chìm 4 góc khi ở Normal Mode */}
           {!isZenMode && (
-            <div className="mt-6 text-center space-y-2 z-10 flex flex-col items-center">
-              <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    playHapticClick();
-                    fileInputRef.current?.click();
-                  }}
-                  onMouseEnter={playHoverBlip}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-amber-400/40 text-xs text-slate-300 hover:text-white transition-all cursor-pointer font-medium"
-                >
-                  <Upload className="w-4 h-4 text-amber-400" />
-                  <span>Tải tệp MP3 / WAV</span>
-                </button>
+            <>
+              <div className="screw-bolt absolute top-3 left-3" title="Chassis Hex Bolt" />
+              <div className="screw-bolt absolute top-3 right-3" title="Chassis Hex Bolt" />
+              <div className="screw-bolt absolute bottom-3 left-3" title="Chassis Hex Bolt" />
+              <div className="screw-bolt absolute bottom-3 right-3" title="Chassis Hex Bolt" />
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    playHapticClick();
-                    setIsCratesDrawerOpen(true);
-                  }}
-                  onMouseEnter={playHoverBlip}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-400/30 hover:border-amber-400/60 text-xs text-amber-300 hover:text-white transition-all cursor-pointer font-medium shadow-sm shadow-amber-500/10"
-                >
-                  <Sparkles className="w-4 h-4 text-amber-400" />
-                  <span>Khám phá Audius</span>
-                </button>
+              {/* Dải Thước Đo Tần Số & Telemetry Khắc Chìm (Frequency Scale Etching) */}
+              <div className="w-full flex items-center justify-between px-6 pt-1 pb-2 border-b border-white/10 text-[10px] font-mono tracking-widest text-slate-200 select-none">
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-300 font-extrabold tracking-widest">MASTER CONSOLE</span>
+                  <span className="text-slate-400">//</span>
+                  <span className="hidden sm:inline text-slate-300 font-medium">DISCRETE ANALOG STAGE</span>
+                </div>
+
+                <div className="hidden md:flex items-center gap-3 text-slate-300 font-semibold">
+                  <span>20Hz</span>
+                  <div className="w-10 h-[2px] frequency-ticks opacity-60" />
+                  <span>100Hz</span>
+                  <div className="w-14 h-[2px] frequency-ticks opacity-60" />
+                  <span>1kHz</span>
+                  <div className="w-14 h-[2px] frequency-ticks opacity-60" />
+                  <span>10kHz</span>
+                  <div className="w-10 h-[2px] frequency-ticks opacity-60" />
+                  <span>20kHz</span>
+                </div>
+
+                <div className="flex items-center gap-2 text-slate-200 font-medium">
+                  <span className="text-amber-300 font-bold">RPM: 33.333</span>
+                  <span className="text-slate-500 hidden sm:inline">|</span>
+                  <span className="hidden sm:inline text-slate-300">PITCH: ±0.0%</span>
+                  <span className="text-slate-500">|</span>
+                  <span className="text-amber-300 font-bold">DAC: 24-BIT / 96kHz</span>
+                </div>
               </div>
-              <p className="text-[11px] font-mono text-slate-500">
-                AUDIO METADATA, AUDIUS OPEN PROTOCOL & 3D TERRAIN DSP
-              </p>
-            </div>
+            </>
           )}
-        </section>
 
-        {/* CỘT PHẢI: Thông Tin Bài Hát & Sóng Âm Địa Hình Thác Nước 3D (AudioTerrain3D) */}
-        <section
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          className={`flex-1 w-full rounded-3xl transition-all duration-700 flex flex-col justify-between overflow-hidden ${
-            isZenMode
-              ? 'h-[80vh] lg:h-[88vh] bg-transparent border-transparent p-4 sm:p-6'
-              : 'h-[540px] lg:h-[600px] bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.12] p-6 sm:p-8'
-          }`}
-        >
-          {/* 1. Header Thông Tin Bài Hát */}
-          <div className="space-y-2 border-b border-white/[0.06] pb-5 shrink-0">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400/90 px-2 py-0.5 rounded bg-amber-400/10 border border-amber-400/20">
-                {currentOnlineTrackId ? 'AUDIUS ONLINE STREAM' : 'NOW PLAYING'}
-              </span>
-              <span className="text-[10px] font-mono text-slate-500">
-                {formatTime(currentTime)} / {formatTime(duration)}
-              </span>
-            </div>
-            <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-white line-clamp-1">
-              {trackInfo.title}
-            </h2>
-            <p className="text-sm font-medium text-slate-400 flex items-center gap-2">
-              <span>{trackInfo.artist}</span>
-              <span className="text-slate-600">•</span>
-              <span className="text-xs text-slate-500 font-normal">{trackInfo.album}</span>
-            </p>
+          {/* Khối 2 cột: Cột Trái (Mâm đĩa 3D) và Cột Phải (AudioTerrain3D) */}
+          <div className="w-full flex flex-col lg:flex-row items-center gap-6 lg:gap-7 justify-center">
+            {/* CỘT TRÁI: Khu Vực Mâm Đĩa Than 3D & Dropzone */}
+            <section
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              className={`flex-1 w-full rounded-2xl transition-all duration-700 flex flex-col items-center justify-center relative overflow-hidden group ${
+                isZenMode
+                  ? 'h-[80vh] lg:h-[88vh] bg-transparent border-transparent'
+                  : `h-[520px] lg:h-[580px] bg-[#11131c]/80 border ${
+                      isDragging
+                        ? 'border-amber-400/80 bg-amber-500/[0.08] shadow-2xl shadow-amber-500/15'
+                        : 'border-white/10 hover:border-white/20'
+                    } p-5 sm:p-6`
+              }`}
+            >
+              {/* Mâm Đĩa Than 3D Tương Tác (Three.js WebGL Turntable) */}
+              <Turntable3D
+                isPlaying={isPlaying}
+                coverUrl={trackInfo?.coverUrl}
+                ambientColors={ambientColors}
+                currentTime={currentTime}
+                duration={duration}
+                isZenMode={isZenMode}
+              />
+
+              {/* Dropzone & Cụm Nút Nhôm Anodize */}
+              {!isZenMode && (
+                <div className="mt-5 text-center space-y-2 z-10 flex flex-col items-center">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playHapticClick();
+                        fileInputRef.current?.click();
+                      }}
+                      onMouseEnter={playHoverBlip}
+                      className="anodize-btn inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-white/[0.10] via-white/[0.15] to-white/[0.08] hover:from-white/[0.18] hover:to-white/[0.12] border border-white/25 hover:border-amber-300 text-xs text-white transition-all cursor-pointer font-semibold shadow-md shadow-black/50"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Nạp Tệp Cục Bộ</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playHapticClick();
+                        setIsCratesDrawerOpen(true);
+                      }}
+                      onMouseEnter={playHoverBlip}
+                      className="anodize-btn inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/25 via-amber-400/35 to-amber-600/25 hover:from-amber-500/35 hover:to-amber-400/45 border border-amber-400/50 hover:border-amber-300 text-xs text-amber-200 hover:text-white transition-all cursor-pointer font-bold shadow-md shadow-amber-500/15"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                      <span>Khám Phá Đĩa Than</span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] font-mono text-slate-300 tracking-wider uppercase font-semibold">
+                    DIRECT DRIVE // 0.025% WRMS // HIGH FIDELITY DSP
+                  </p>
+                </div>
+              )}
+            </section>
+
+            {/* CỘT PHẢI: Thông Tin Bài Hát & Sóng Âm Địa Hình Thác Nước 3D (AudioTerrain3D) */}
+            <section
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              className={`flex-1 w-full rounded-2xl transition-all duration-700 flex flex-col justify-between overflow-hidden ${
+                isZenMode
+                  ? 'h-[80vh] lg:h-[88vh] bg-transparent border-transparent p-4 sm:p-6'
+                  : 'h-[520px] lg:h-[580px] bg-[#11131c]/80 border border-white/10 hover:border-white/20 p-5 sm:p-6'
+              }`}
+            >
+              {/* 1. Header Thông Tin Bài Hát */}
+              <div className="space-y-2 border-b border-white/10 pb-4 shrink-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-amber-300 px-2.5 py-0.5 rounded bg-amber-400/20 border border-amber-400/40 font-extrabold shadow-sm">
+                    {currentOnlineTrackId ? 'ONLINE AUDIO STREAM' : 'NOW PLAYING'}
+                  </span>
+                  <span className="text-[11px] font-mono text-amber-300 font-extrabold px-2.5 py-0.5 rounded bg-black/70 border border-white/20 shadow-inner">
+                    {formatStudioTime(currentTime)} / {formatStudioTime(duration)}
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white line-clamp-1 drop-shadow-md">
+                  {trackInfo.title}
+                </h2>
+                <p className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                  <span className="text-slate-100">{trackInfo.artist}</span>
+                  <span className="text-slate-400">•</span>
+                  <span className="text-xs text-slate-300 font-medium">{trackInfo.album}</span>
+                </p>
+              </div>
+
+              {/* 2. Sóng Âm Địa Hình Thác Nước 3D (AudioTerrain3D) */}
+              <div className="flex-1 w-full min-h-0 relative my-2 overflow-hidden flex items-center justify-center">
+                <AudioTerrain3D
+                  ambientColors={ambientColors}
+                  isPlaying={isPlaying}
+                />
+              </div>
+
+              {/* 3. Footer Thống Kê & Spec Kỹ Thuật */}
+              <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-300 shrink-0 select-none font-semibold">
+                <div className="flex items-center gap-2">
+                  <Radio className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                  <span>3D SPECTRAL TERRAIN // 32 BANDS // 44.1 KHZ</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="hidden sm:inline text-amber-300">
+                    {currentOnlineTrackId ? 'DIRECT CDN STREAM' : 'WATERFALL CASCADE'}
+                  </span>
+                  <span className="text-slate-500 hidden sm:inline">•</span>
+                  <span className="text-slate-200">DSP 44.1 KHZ</span>
+                </div>
+              </div>
+            </section>
           </div>
 
-          {/* 2. Sóng Âm Địa Hình Thác Nước 3D (AudioTerrain3D) */}
-          <div className="flex-1 w-full min-h-0 relative my-2 overflow-hidden flex items-center justify-center">
-            <AudioTerrain3D
-              ambientColors={ambientColors}
-              isPlaying={isPlaying}
-            />
-          </div>
-
-          {/* 3. Footer Thống Kê & Spec Kỹ Thuật */}
-          <div className="pt-4 border-t border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-slate-500 shrink-0">
-            <div className="flex items-center gap-2">
-              <Radio className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-              <span>3D SPECTRAL TERRAIN // 32 BANDS // 44.1 KHZ</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="hidden sm:inline">
-                {currentOnlineTrackId ? 'AUDIUS CDN STREAM' : 'WATERFALL CASCADE'}
-              </span>
-              <span className="text-slate-600 hidden sm:inline">•</span>
-              <span>DSP 44.1 KHZ</span>
-            </div>
-          </div>
-        </section>
+        </div>
 
       </main>
 
-      {/* 3. BOTTOM CONTROL BAR: Thanh Điều Khiển Phát Nhạc Tinh Tế (Ẩn trong Zen Mode) */}
+      {/* 3. BOTTOM CONTROL BAR: Master Transport Deck (Ẩn trong Zen Mode) */}
       {!isZenMode && (
-        <footer className="relative z-20 w-full h-24 border-t border-white/[0.06] bg-[#090a0f]/95 backdrop-blur-2xl px-4 sm:px-8 flex items-center justify-between gap-4">
+        <footer className="relative z-20 w-full h-24 border-t border-white/15 console-chassis px-4 sm:px-8 flex items-center justify-between gap-4 select-none">
         
         {/* Khối Trái: Mini Track Info */}
         <div className="flex items-center gap-3 w-1/4 min-w-[140px] max-w-[240px]">
-          <div className="relative w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
+          <div className="relative w-12 h-12 rounded-xl bg-black/70 border border-white/20 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-md">
             {trackInfo.coverUrl ? (
               <img
                 src={trackInfo.coverUrl}
@@ -664,23 +724,23 @@ export default function LandingPage() {
                 className={`w-full h-full object-cover rounded-xl ${isPlaying ? 'animate-[spin_10s_linear_infinite]' : ''}`}
               />
             ) : (
-              <Disc3 className={`w-6 h-6 text-amber-400/80 ${isPlaying ? 'animate-[spin_4s_linear_infinite]' : ''}`} />
+              <Disc3 className={`w-6 h-6 text-amber-400 ${isPlaying ? 'animate-[spin_4s_linear_infinite]' : ''}`} />
             )}
           </div>
           <div className="min-w-0">
-            <h4 className="text-xs sm:text-sm font-semibold text-white truncate">
+            <h4 className="text-xs sm:text-sm font-bold text-white truncate tracking-tight">
               {trackInfo.title}
             </h4>
-            <p className="text-[11px] text-slate-400 truncate">
+            <p className="text-[11px] font-medium text-slate-300 truncate">
               {trackInfo.artist}
             </p>
           </div>
         </div>
 
-        {/* Khối Giữa: Nút Play/Pause & Scrubber Timeline */}
-        <div className="flex-1 max-w-xl flex flex-col items-center gap-1.5">
-          {/* Cụm Nút Playback */}
-          <div className="flex items-center gap-4">
+        {/* Khối Giữa: Cụm Phím Cơ Học Master Transport & Scrubber Timeline */}
+        <div className="flex-1 max-w-xl flex flex-col items-center gap-2">
+          {/* Cụm Phím Điều Khiển Tactile Mechanical Switches */}
+          <div className="flex items-center gap-3.5">
             <button
               type="button"
               onClick={() => {
@@ -688,24 +748,31 @@ export default function LandingPage() {
                 if (audioRef.current) audioRef.current.currentTime = Math.max(0, currentTime - 10);
               }}
               onMouseEnter={playHoverBlip}
-              className="text-slate-400 hover:text-white transition-colors p-1 cursor-pointer"
-              title="Lùi 10 giây"
+              className="mechanical-key w-10 h-10 rounded-xl flex items-center justify-center text-slate-200 hover:text-white cursor-pointer"
+              title="Lùi 10 giây (Skip Back 10s)"
             >
-              <SkipBack className="w-4 h-4" />
+              <SkipBack className="w-4 h-4 text-slate-200" />
             </button>
 
-            {/* Nút Play / Pause Trung Tâm */}
+            {/* Nút Play / Pause Trung Tâm Audiophile Console */}
             <button
               type="button"
               onClick={togglePlay}
               onMouseEnter={playHoverBlip}
-              className="w-11 h-11 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer font-bold"
-              title={isPlaying ? 'Tạm dừng' : 'Phát đĩa than'}
+              className="mechanical-key px-6 h-11 rounded-2xl flex items-center gap-3 text-white font-black tracking-wider text-xs cursor-pointer border border-amber-400/50 shadow-lg shadow-amber-500/20 group"
+              title={isPlaying ? 'Tạm dừng (Mâm đĩa đang quay)' : 'Phát đĩa than (Drop Needle)'}
             >
+              <span className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${isPlaying ? 'led-indicator-active animate-pulse' : 'led-indicator-idle'}`} />
               {isPlaying ? (
-                <Pause className="w-5 h-5 fill-current" />
+                <>
+                  <Pause className="w-4 h-4 fill-amber-300 text-amber-300" />
+                  <span className="font-mono text-amber-300 text-xs uppercase tracking-widest font-black">PAUSE</span>
+                </>
               ) : (
-                <Play className="w-5 h-5 fill-current ml-0.5" />
+                <>
+                  <Play className="w-4 h-4 fill-amber-300 text-amber-300 ml-0.5" />
+                  <span className="font-mono text-amber-300 text-xs uppercase tracking-widest font-black">PLAY</span>
+                </>
               )}
             </button>
 
@@ -718,53 +785,65 @@ export default function LandingPage() {
                 }
               }}
               onMouseEnter={playHoverBlip}
-              className="text-slate-400 hover:text-white transition-colors p-1 cursor-pointer"
-              title="Tiến 10 giây"
+              className="mechanical-key w-10 h-10 rounded-xl flex items-center justify-center text-slate-200 hover:text-white cursor-pointer"
+              title="Tiến 10 giây (Skip Forward 10s)"
             >
-              <SkipForward className="w-4 h-4" />
+              <SkipForward className="w-4 h-4 text-slate-200" />
             </button>
           </div>
 
-          {/* Thanh Tiến Trình (Timeline Scrubber) */}
-          <div className="w-full flex items-center gap-2.5 text-[10px] font-mono text-slate-400">
-            <span className="w-8 text-right">{formatTime(currentTime)}</span>
-            <input
-              type="range"
-              min="0"
-              max={duration || 100}
-              value={currentTime}
-              onChange={handleSeek}
-              className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-amber-400 focus:outline-none"
-            />
-            <span className="w-8">{formatTime(duration)}</span>
+          {/* Thanh Tiến Trình (Timeline Scrubber) với LED Studio Timer & Vạch Sóng */}
+          <div className="w-full flex items-center gap-3 text-xs font-mono">
+            <span className="px-2.5 py-0.5 rounded-lg bg-black/80 border border-white/20 text-amber-300 font-bold tracking-wider text-[11px] shadow-inner">
+              {formatStudioTime(currentTime)}
+            </span>
+            <div className="relative flex-1 flex items-center">
+              <input
+                type="range"
+                min="0"
+                max={duration || 100}
+                step="0.1"
+                value={currentTime}
+                onChange={handleSeek}
+                className="w-full h-2 bg-white/20 rounded-full appearance-none cursor-pointer accent-amber-400 focus:outline-none relative z-10"
+              />
+            </div>
+            <span className="px-2.5 py-0.5 rounded-lg bg-black/80 border border-white/20 text-slate-200 font-semibold tracking-wider text-[11px] shadow-inner">
+              {formatStudioTime(duration)}
+            </span>
           </div>
         </div>
 
-        {/* Khối Phải: Âm Lượng & Thao Tác Phụ */}
+        {/* Khối Phải: Âm Lượng Fader Cơ Khí */}
         <div className="flex items-center justify-end gap-3 w-1/4 min-w-[120px]">
           <button
             type="button"
             onClick={toggleMute}
             onMouseEnter={playHoverBlip}
-            className="text-slate-400 hover:text-white transition-colors p-1 cursor-pointer"
-            title={isMuted ? 'Bật âm lượng' : 'Tắt tiếng'}
+            className="mechanical-key w-9 h-9 rounded-xl flex items-center justify-center text-slate-200 hover:text-white cursor-pointer"
+            title={isMuted ? 'Bật âm lượng' : 'Tắt tiếng (Mute)'}
           >
             {isMuted ? (
               <VolumeX className="w-4 h-4 text-rose-400" />
             ) : (
-              <Volume2 className="w-4 h-4" />
+              <Volume2 className="w-4 h-4 text-slate-200" />
             )}
           </button>
           
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={isMuted ? 0 : volume}
-            onChange={handleVolumeChange}
-            className="w-16 sm:w-24 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-amber-400 focus:outline-none"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={isMuted ? 0 : volume}
+              onChange={handleVolumeChange}
+              className="w-16 sm:w-24 h-2 bg-white/20 rounded-full appearance-none cursor-pointer accent-amber-400 focus:outline-none"
+            />
+            <span className="hidden sm:inline text-[10px] font-mono text-amber-300 font-bold w-8 text-right">
+              {Math.round((isMuted ? 0 : volume) * 100)}%
+            </span>
+          </div>
         </div>
 
       </footer>

@@ -5,21 +5,21 @@
 export const CAMERA_PRESETS = {
   isometric: {
     id: 'isometric',
-    label: '3D Iso',
+    label: 'ISO 3D',
     icon: '📐',
     position: [0, 4.2, 7.0],
     lookAt: [0, 0, -2.2]
   },
   frontal: {
     id: 'frontal',
-    label: 'Trực Diện',
+    label: 'JOY DIVISION',
     icon: '📻',
     position: [0, 1.4, 8.2],
     lookAt: [0, 1.1, 0]
   },
   topdown: {
     id: 'topdown',
-    label: 'Trên Cao',
+    label: 'CONTOUR',
     icon: '🗺️',
     position: [0, 8.8, 0.8],
     lookAt: [0, 0, -2.5]
