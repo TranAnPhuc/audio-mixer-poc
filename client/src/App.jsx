@@ -14,11 +14,12 @@ export default function App() {
     <ThemeProvider>
       <BrowserRouter>
         <Routes>
-          {/* Tuyến đường Trang Giới Thiệu Kể Chuyện 3D (Storytelling Landing Page) */}
-          <Route path="/" element={<IntroLandingPage />} />
-
-          {/* Tuyến đường Trình Phát Mâm Đĩa Than & Focus Space (App Player) */}
+          {/* Tuyến đường Trực Tiếp: Trình Phát Đĩa Than & Focus Space Toàn Màn Hình */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/app" element={<LandingPage />} />
+
+          {/* Tuyến đường Phụ: Kể Chuyện & Thông Tin Thiết Kế */}
+          <Route path="/story" element={<IntroLandingPage />} />
 
           {/* Tuyến đường Phòng Thu Âm Nhạc (Studio Workspace) */}
           <Route path="/studio" element={<StudioPage />} />

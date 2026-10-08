@@ -16,7 +16,8 @@ import {
   HelpCircle,
   Box,
   Palette,
-  Layers
+  Layers,
+  BookOpen
 } from 'lucide-react';
 import { playHapticClick, playHoverBlip, playHeavyMetalSwitch } from '../utils/soundEffects';
 import Turntable3D from '../components/Turntable3D';
@@ -30,6 +31,7 @@ import RetroCrtOsd from '../components/RetroCrtOsd';
 import RetroShortcutModal from '../components/RetroShortcutModal';
 import GramophoneViewerModal from '../components/GramophoneViewerModal';
 import TurntableCustomizerDrawer from '../components/TurntableCustomizerDrawer';
+import LinerNotesDrawer from '../components/LinerNotesDrawer';
 import { getSavedTurntableStyle, saveTurntableStyle } from '../data/turntableStyles';
 import { LOFI_SCENES, DEFAULT_SCENE, getNextScene, getSceneById } from '../data/lofiScenes';
 import { setAmbientVolume } from '../utils/ambientSoundSynth';
@@ -84,6 +86,7 @@ export default function LandingPage() {
   const [isUiVisible, setIsUiVisible] = useState(true);
   const [actionFeedback, setActionFeedback] = useState(null);
   const [isShortcutModalOpen, setIsShortcutModalOpen] = useState(false);
+  const [isLinerNotesOpen, setIsLinerNotesOpen] = useState(false);
   const [isGramophoneModalOpen, setIsGramophoneModalOpen] = useState(false);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
@@ -472,6 +475,7 @@ export default function LandingPage() {
         isTodoOpen ||
         isExportModalOpen ||
         isShortcutModalOpen ||
+        isLinerNotesOpen ||
         isDragging
       ) {
         return;
@@ -503,6 +507,7 @@ export default function LandingPage() {
     isExportModalOpen,
     isShortcutModalOpen,
     isCustomizerOpen,
+    isLinerNotesOpen,
     isDragging
   ]);
 
@@ -597,8 +602,18 @@ export default function LandingPage() {
           triggerActionFeedback(next ? '[TÙY BIẾN 3D: MỞ]' : '[TÙY BIẾN 3D: ĐÓNG]');
           return next;
         });
+      } else if (e.code === 'KeyL' || e.key === 'l' || e.key === 'L') {
+        e.preventDefault();
+        playHapticClick();
+        setIsLinerNotesOpen((prev) => {
+          const next = !prev;
+          triggerActionFeedback(next ? '[LINER NOTES: MỞ]' : '[LINER NOTES: ĐÓNG]');
+          return next;
+        });
       } else if (e.code === 'Escape' || e.key === 'Escape') {
-        if (isToolsMenuOpen) {
+        if (isLinerNotesOpen) {
+          setIsLinerNotesOpen(false);
+        } else if (isToolsMenuOpen) {
           setIsToolsMenuOpen(false);
         } else if (isCustomizerOpen) {
           setIsCustomizerOpen(false);
@@ -639,6 +654,7 @@ export default function LandingPage() {
     isShortcutModalOpen,
     isGramophoneModalOpen,
     isCustomizerOpen,
+    isLinerNotesOpen,
     currentScene
   ]);
 
@@ -1164,7 +1180,26 @@ export default function LandingPage() {
           <span className="hidden sm:inline">Tùy Biến [C]</span>
         </button>
 
-        {/* Nút 5: Phím Tắt */}
+        {/* Nút: Bìa đĩa than & Tuyển tập Trịnh Công Sơn (Liner Notes) */}
+        <button
+          type="button"
+          onClick={() => {
+            playHapticClick();
+            setIsLinerNotesOpen((prev) => !prev);
+          }}
+          onMouseEnter={playHoverBlip}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
+            isLinerNotesOpen
+              ? 'bg-amber-400/20 border-amber-400 text-amber-300 shadow-sm'
+              : 'bg-white/[0.04] border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
+          }`}
+          title="Bìa đĩa than & Tuyển tập nhạc Trịnh Công Sơn (Phím L)"
+        >
+          <BookOpen className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Liner Notes [L]</span>
+        </button>
+
+        {/* Nút 6: Phím Tắt */}
         <button
           type="button"
           onClick={() => {
@@ -1179,7 +1214,7 @@ export default function LandingPage() {
           <span className="hidden sm:inline">[H]</span>
         </button>
 
-        {/* Nút 6: Chế Độ Zen Mode Toàn Màn Hình */}
+        {/* Nút 7: Chế Độ Zen Mode Toàn Màn Hình */}
         <button
           type="button"
           onClick={() => {
@@ -1244,6 +1279,14 @@ export default function LandingPage() {
         onClose={() => setIsCustomizerOpen(false)}
         customization={customization}
         onChangeCustomization={handleChangeCustomization}
+      />
+
+      {/* 11. DRAWER BÌA ĐĨA THAN & LINER NOTES TRỊNH CÔNG SƠN */}
+      <LinerNotesDrawer
+        isOpen={isLinerNotesOpen}
+        onClose={() => setIsLinerNotesOpen(false)}
+        onSelectTrack={playOnlineTrack}
+        currentTrackId={currentOnlineTrackId}
       />
 
       {toast && (

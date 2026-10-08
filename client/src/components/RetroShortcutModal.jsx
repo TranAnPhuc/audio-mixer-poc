@@ -65,6 +65,11 @@ export default function RetroShortcutModal({ isOpen, onClose }) {
       desc: 'Cá nhân hóa chất liệu vỏ gỗ, loa kèn, đĩa than và đèn gầm thời gian thực'
     },
     {
+      keys: ['L'],
+      label: 'Liner Notes (Bìa đĩa & Di sản)',
+      desc: 'Mở cuốn sổ tay bìa đĩa than và tuyển tập tác phẩm Trịnh Công Sơn'
+    },
+    {
       keys: ['H', '?'],
       label: 'Mở bảng trợ giúp này',
       desc: 'Bật bảng tra cứu phím tắt retro CRT'

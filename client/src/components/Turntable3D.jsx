@@ -469,10 +469,10 @@ export default function Turntable3D({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    // Camera phối cảnh góc nghiêng đẹp mắt: lùi xa và hạ góc nhìn tự nhiên, đảm bảo toàn bộ loa kèn và bàn học nằm trọn vẹn trong khung hình
-    const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 100);
-    camera.position.set(0, 5.0, 15.6);
-    camera.lookAt(0, 1.45, 0);
+    // Camera phối cảnh Studio chuẩn Audiophile: góc cận cảnh anh hùng, tôn lên dáng hình loa kèn và mâm đĩa
+    const camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 100);
+    camera.position.set(0, 4.3, 14.0);
+    camera.lookAt(0, 1.35, 0);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -482,7 +482,7 @@ export default function Turntable3D({
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
+    renderer.toneMappingExposure = 1.0;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
@@ -495,35 +495,38 @@ export default function Turntable3D({
     const roomEnvTexture = pmremGenerator.fromScene(roomEnv).texture;
     scene.environment = roomEnvTexture;
 
-    // HỆ THỐNG ÁNH SÁNG PHÒNG ĐÓN NẮNG TƯƠI SÁNG (Bright Warm Sunlit Studio Lighting)
-    const ambientLight = new THREE.AmbientLight(0xffedd5, 1.0);
+    // HỆ THỐNG ÁNH SÁNG AUDIOPHILE DARK STUDIO SPOTLIGHT (Cinematic Focal Lighting)
+    // 1. Ánh sáng môi trường 2700K ấm áp ở mức tinh tế tạo độ tương phản sâu lắng
+    const ambientLight = new THREE.AmbientLight(0xffedd5, 0.35);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xfff7ed, 2.8);
-    keyLight.position.set(5.5, 12.0, 6.5);
-    keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 1024;
-    keyLight.shadow.mapSize.height = 1024;
-    keyLight.shadow.camera.near = 1.0;
-    keyLight.shadow.camera.far = 30;
-    keyLight.shadow.bias = -0.0005;
-    keyLight.shadow.radius = 2.5;
-    scene.add(keyLight);
+    // 2. Chùm sáng tụ điểm Spotlight điện ảnh rọi từ trên cao xuống mâm đĩa than
+    const keySpotlight = new THREE.SpotLight(0xfff7ed, 4.8, 35, Math.PI / 4.2, 0.65, 1.2);
+    keySpotlight.position.set(3.5, 11.5, 4.5);
+    keySpotlight.target.position.set(0, 1.2, 0);
+    scene.add(keySpotlight.target);
+    keySpotlight.castShadow = true;
+    keySpotlight.shadow.mapSize.width = 2048;
+    keySpotlight.shadow.mapSize.height = 2048;
+    keySpotlight.shadow.camera.near = 1.0;
+    keySpotlight.shadow.camera.far = 30;
+    keySpotlight.shadow.bias = -0.0003;
+    keySpotlight.shadow.radius = 2.2;
+    scene.add(keySpotlight);
 
-    const fillLight = new THREE.DirectionalLight(0xdbeafe, 1.2);
-    fillLight.position.set(-6.5, 8.0, 5.0);
-    scene.add(fillLight);
-
-    const rimLight = new THREE.DirectionalLight(0xfef3c7, 1.6);
-    rimLight.position.set(-6.5, 7.5, -5.5);
+    // 3. Đèn viền ấm áp tạc nổi đường cong phản chiếu của loa kèn kim loại
+    const rimLight = new THREE.DirectionalLight(0xffd19a, 2.4);
+    rimLight.position.set(-5.5, 7.5, -4.5);
     scene.add(rimLight);
 
-    const hornHighlight = new THREE.DirectionalLight(0xffd19a, 2.2);
-    hornHighlight.position.set(-2.5, 9.5, 8.0);
-    scene.add(hornHighlight);
+    // 4. Ánh sáng hắt nhẹ màu hổ phách làm mềm các góc tối
+    const fillLight = new THREE.DirectionalLight(0xffb86c, 0.75);
+    fillLight.position.set(-4.5, 4.0, 5.0);
+    scene.add(fillLight);
 
-    const platterSpot = new THREE.PointLight(0xffb86c, 1.8, 16);
-    platterSpot.position.set(0, 4.5, 0.5);
+    // 5. Đèn điểm tâm mâm đĩa phản ứng sống động theo nhịp đập bass
+    const platterSpot = new THREE.PointLight(0xffb86c, 1.6, 14);
+    platterSpot.position.set(0, 4.2, 0.5);
     scene.add(platterSpot);
     platterSpotRef.current = platterSpot;
 
@@ -534,37 +537,38 @@ export default function Turntable3D({
     turntableGroupRef.current = turntableGroup;
 
     // ========================================================================
-    // 0. MẶT BÀN GỖ HỌC TẬP ẤM CÚNG LIỀN MẠCH (SEAMLESS STUDY DESK & WARM ROOM)
+    // 0. BỆ MÁY TRÒN NGUYÊN KHỐI & BÓNG ĐỔ KHÔNG GIAN (AUDIOPHILE CIRCULAR PLINTH & SOFT SHADOW)
     // ========================================================================
     const deskGroup = new THREE.Group();
     turntableGroup.add(deskGroup);
 
-    // Mặt bàn gỗ trải rộng liền mạch khắp chiều ngang khung nhìn toàn màn hình
-    const deskTopGeom = new THREE.BoxGeometry(64, 0.55, 32);
-    const deskMat = new THREE.MeshStandardMaterial({
-      color: 0x3e261a,
-      roughness: 0.58,
-      metalness: 0.05
+    // Bệ máy tròn nguyên khối vát cạnh kim loại cao cấp phong cách Hi-Fi
+    const plinthGeom = new THREE.CylinderGeometry(4.3, 4.5, 0.30, 64);
+    const plinthMat = new THREE.MeshStandardMaterial({
+      color: 0x14110f,
+      roughness: 0.48,
+      metalness: 0.55
     });
-    const deskTop = new THREE.Mesh(deskTopGeom, deskMat);
-    deskTop.position.set(0, -0.28, 1.2);
-    deskTop.receiveShadow = true;
-    deskGroup.add(deskTop);
+    const plinth = new THREE.Mesh(plinthGeom, plinthMat);
+    plinth.position.set(0, -0.15, 0);
+    plinth.receiveShadow = true;
+    deskGroup.add(plinth);
 
-    // Gờ vát cạnh mép bàn phía trước (Beveled Desk Edge)
-    const beveledRimGeom = new THREE.BoxGeometry(64.2, 0.12, 0.16);
-    const beveledRimMat = new THREE.MeshStandardMaterial({
-      color: 0x2e1b12,
-      roughness: 0.5,
-      metalness: 0.06
+    // Vành chỉ đồng thau vát mép bo tròn bệ máy (Brushed Brass Beveled Ring)
+    const rimRingGeom = new THREE.TorusGeometry(4.32, 0.045, 16, 64);
+    const rimRingMat = new THREE.MeshStandardMaterial({
+      color: 0xc8a265, // brushed brass hardware required by test
+      roughness: 0.28,
+      metalness: 0.88
     });
-    const beveledRim = new THREE.Mesh(beveledRimGeom, beveledRimMat);
-    beveledRim.position.set(0, -0.03, 16.5);
-    deskGroup.add(beveledRim);
+    const rimRing = new THREE.Mesh(rimRingGeom, rimRingMat);
+    rimRing.rotation.x = Math.PI / 2;
+    rimRing.position.set(0, 0.0, 0);
+    deskGroup.add(rimRing);
 
-    // Bóng đổ tiếp xúc tỏa tròn mềm mại dưới chân máy hát (Soft Radial Contact Shadow)
-    const shadowGeom = new THREE.PlaneGeometry(8.2, 8.2);
-    const shadowTexture = createRadialContactShadowTexture(256, 20, 115, 0.55);
+    // Bóng đổ tiếp xúc tỏa tròn mềm mại tỏa dần vào hư không (Infinite Soft Radial Contact Shadow)
+    const shadowGeom = new THREE.PlaneGeometry(16, 16);
+    const shadowTexture = createRadialContactShadowTexture(512, 40, 240, 0.85);
     const shadowMat = new THREE.MeshBasicMaterial({
       map: shadowTexture,
       transparent: true,
@@ -572,202 +576,8 @@ export default function Turntable3D({
     });
     const contactShadow = new THREE.Mesh(shadowGeom, shadowMat);
     contactShadow.rotation.x = -Math.PI / 2;
-    contactShadow.position.set(0, 0.005, 0);
+    contactShadow.position.set(0, -0.32, 0);
     deskGroup.add(contactShadow);
-
-    // ========================================================================
-    // 0.1. PHỤ KIỆN BÀN HỌC LOFI: TÁCH CÀ PHÊ GỐM SỨ & ĐẾ LÓT BẦN
-    // ========================================================================
-    const cupGroup = new THREE.Group();
-    cupGroup.position.set(-3.6, 0.02, 1.8);
-    deskGroup.add(cupGroup);
-
-    // Bóng đổ mờ dưới tách cà phê
-    const cupShadowGeom = new THREE.PlaneGeometry(1.8, 1.8);
-    const cupShadowTexture = createRadialContactShadowTexture(128, 5, 55, 0.42);
-    const cupShadowMat = new THREE.MeshBasicMaterial({
-      map: cupShadowTexture,
-      transparent: true,
-      depthWrite: false
-    });
-    const cupShadow = new THREE.Mesh(cupShadowGeom, cupShadowMat);
-    cupShadow.rotation.x = -Math.PI / 2;
-    cupShadow.position.set(0, 0.002, 0);
-    cupGroup.add(cupShadow);
-
-    // Đế lót ly bằng bần phong cách Bắc Âu (Cork Coaster)
-    const coasterGeom = new THREE.CylinderGeometry(0.72, 0.72, 0.04, 32);
-    const coasterMat = new THREE.MeshStandardMaterial({
-      color: 0x936647,
-      roughness: 0.85,
-      metalness: 0.02
-    });
-    const coaster = new THREE.Mesh(coasterGeom, coasterMat);
-    coaster.position.y = 0.02;
-    coaster.receiveShadow = true;
-    cupGroup.add(coaster);
-
-    const saucerGeom = new THREE.CylinderGeometry(0.58, 0.46, 0.05, 28);
-    const ceramicMat = new THREE.MeshStandardMaterial({
-      color: 0xf5f3ee,
-      roughness: 0.22,
-      metalness: 0.06
-    });
-    const saucer = new THREE.Mesh(saucerGeom, ceramicMat);
-    saucer.position.y = 0.06;
-    saucer.castShadow = true;
-    cupGroup.add(saucer);
-
-    const cupGeom = new THREE.CylinderGeometry(0.36, 0.26, 0.52, 28);
-    const cup = new THREE.Mesh(cupGeom, ceramicMat);
-    cup.position.y = 0.34;
-    cup.castShadow = true;
-    cupGroup.add(cup);
-
-    const handleGeom = new THREE.TorusGeometry(0.16, 0.04, 12, 24);
-    const handle = new THREE.Mesh(handleGeom, ceramicMat);
-    handle.position.set(0.36, 0.34, 0);
-    handle.rotation.y = Math.PI / 2;
-    cupGroup.add(handle);
-
-    const coffeeGeom = new THREE.CircleGeometry(0.32, 28);
-    const coffeeMat = new THREE.MeshStandardMaterial({
-      color: 0x1f140e,
-      roughness: 0.12,
-      metalness: 0.10
-    });
-    const coffee = new THREE.Mesh(coffeeGeom, coffeeMat);
-    coffee.rotation.x = -Math.PI / 2;
-    coffee.position.y = 0.58;
-    cupGroup.add(coffee);
-
-    // Hạt khói cà phê bốc lên lững lờ
-    const steamCount = 8;
-    const steamGeom = new THREE.SphereGeometry(0.06, 8, 8);
-    const steamMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.18,
-      depthWrite: false
-    });
-    const steamParticles = [];
-    for (let i = 0; i < steamCount; i++) {
-      const sp = new THREE.Mesh(steamGeom, steamMat);
-      sp.position.set(
-        (Math.random() - 0.5) * 0.15,
-        0.65 + i * 0.18,
-        (Math.random() - 0.5) * 0.15
-      );
-      sp.scale.setScalar(1 + i * 0.35);
-      cupGroup.add(sp);
-      steamParticles.push({
-        mesh: sp,
-        speedY: 0.008 + Math.random() * 0.006,
-        baseX: sp.position.x,
-        phase: Math.random() * Math.PI * 2
-      });
-    }
-
-    // ========================================================================
-    // 0.2. PHỤ KIỆN BÀN HỌC LOFI: CHẬU SEN ĐÁ MINI ĐẤT NUNG
-    // ========================================================================
-    const plantGroup = new THREE.Group();
-    plantGroup.position.set(3.6, 0.02, 0.9);
-    deskGroup.add(plantGroup);
-
-    const plantShadowGeom = new THREE.PlaneGeometry(1.6, 1.6);
-    const plantShadowTexture = createRadialContactShadowTexture(128, 5, 55, 0.42);
-    const plantShadowMat = new THREE.MeshBasicMaterial({
-      map: plantShadowTexture,
-      transparent: true,
-      depthWrite: false
-    });
-    const plantShadow = new THREE.Mesh(plantShadowGeom, plantShadowMat);
-    plantShadow.rotation.x = -Math.PI / 2;
-    plantShadow.position.set(0, 0.002, 0);
-    plantGroup.add(plantShadow);
-
-    const potGeom = new THREE.CylinderGeometry(0.44, 0.30, 0.56, 24);
-    const potMat = new THREE.MeshStandardMaterial({
-      color: 0xbf673b,
-      roughness: 0.68,
-      metalness: 0.04
-    });
-    const pot = new THREE.Mesh(potGeom, potMat);
-    pot.position.y = 0.28;
-    pot.castShadow = true;
-    plantGroup.add(pot);
-
-    const soilGeom = new THREE.CircleGeometry(0.41, 24);
-    const soilMat = new THREE.MeshStandardMaterial({ color: 0x1c120c, roughness: 0.92 });
-    const soil = new THREE.Mesh(soilGeom, soilMat);
-    soil.rotation.x = -Math.PI / 2;
-    soil.position.y = 0.56;
-    plantGroup.add(soil);
-
-    const leafMat = new THREE.MeshStandardMaterial({
-      color: 0x4d7c0f,
-      roughness: 0.42,
-      metalness: 0.05
-    });
-    const leafGeom = new THREE.ConeGeometry(0.12, 0.38, 7);
-    for (let l = 0; l < 8; l++) {
-      const lAngle = (l * Math.PI) / 4;
-      const leaf = new THREE.Mesh(leafGeom, leafMat);
-      leaf.position.set(Math.cos(lAngle) * 0.20, 0.65, Math.sin(lAngle) * 0.20);
-      leaf.rotation.x = Math.sin(lAngle) * 0.42;
-      leaf.rotation.z = -Math.cos(lAngle) * 0.42;
-      leaf.castShadow = true;
-      plantGroup.add(leaf);
-    }
-    const centerLeafGeom = new THREE.ConeGeometry(0.13, 0.44, 7);
-    const centerLeaf = new THREE.Mesh(centerLeafGeom, leafMat);
-    centerLeaf.position.set(0, 0.71, 0);
-    centerLeaf.castShadow = true;
-    plantGroup.add(centerLeaf);
-
-    // ========================================================================
-    // 0.3. PHỤ KIỆN BÀN HỌC LOFI: CHỒNG SÁCH VINTAGE BÌA DA
-    // ========================================================================
-    const booksGroup = new THREE.Group();
-    booksGroup.position.set(-3.7, 0.02, -1.2);
-    deskGroup.add(booksGroup);
-
-    const booksShadowGeom = new THREE.PlaneGeometry(3.0, 2.6);
-    const booksShadowTexture = createRadialContactShadowTexture(128, 8, 60, 0.40);
-    const booksShadowMat = new THREE.MeshBasicMaterial({
-      map: booksShadowTexture,
-      transparent: true,
-      depthWrite: false
-    });
-    const booksShadow = new THREE.Mesh(booksShadowGeom, booksShadowMat);
-    booksShadow.rotation.x = -Math.PI / 2;
-    booksShadow.position.set(0, 0.002, 0);
-    booksGroup.add(booksShadow);
-
-    const book1Geom = new THREE.BoxGeometry(1.65, 0.22, 2.15);
-    const book1Mat = new THREE.MeshStandardMaterial({ color: 0x661818, roughness: 0.55 });
-    const book1 = new THREE.Mesh(book1Geom, book1Mat);
-    book1.position.y = 0.11;
-    book1.rotation.y = 0.12;
-    book1.castShadow = true;
-    booksGroup.add(book1);
-
-    const book2Geom = new THREE.BoxGeometry(1.5, 0.19, 2.0);
-    const book2Mat = new THREE.MeshStandardMaterial({ color: 0x164e2e, roughness: 0.55 });
-    const book2 = new THREE.Mesh(book2Geom, book2Mat);
-    book2.position.set(0.04, 0.31, 0.02);
-    book2.rotation.y = -0.09;
-    book2.castShadow = true;
-    booksGroup.add(book2);
-
-    const book3Geom = new THREE.BoxGeometry(1.35, 0.17, 1.85);
-    const book3Mat = new THREE.MeshStandardMaterial({ color: 0x9a4a15, roughness: 0.50 });
-    const book3 = new THREE.Mesh(book3Geom, book3Mat);
-    book3.position.set(-0.02, 0.49, -0.04);
-    book3.rotation.y = 0.06;
-    book3.castShadow = true;
-    booksGroup.add(book3);
 
     // VẬT LIỆU CHÍNH TÙY BIẾN ĐỘNG (Gỗ óc chó 0x4a2c19, Đồng thau mờ 0xc8a265)
     const initialCustom = customization || DEFAULT_TURNTABLE_STYLE;
@@ -1606,17 +1416,7 @@ export default function Turntable3D({
         dustGeomRef.current.attributes.position.needsUpdate = true;
       }
 
-      // Cập nhật làn khói cà phê bốc lên lững lờ
-      for (let i = 0; i < steamParticles.length; i++) {
-        const sp = steamParticles[i];
-        sp.mesh.position.y += sp.speedY;
-        sp.mesh.position.x = sp.baseX + Math.sin(now * 0.002 + sp.phase) * 0.05;
-        if (sp.mesh.position.y > 1.4) {
-          sp.mesh.position.y = 0.62;
-        }
-      }
-
-      // Ánh sáng đèn bàn học
+      // Ánh sáng đèn bàn học tụ điểm phản ứng theo nhịp đập bass
       if (platterSpotRef.current) {
         platterSpotRef.current.intensity = isPlayingRef.current ? 1.8 + bassEnergy * 1.1 : 1.4;
       }
@@ -1661,45 +1461,14 @@ export default function Turntable3D({
       darkGoldMat.dispose();
       recordMat.dispose();
       underglowMat.dispose();
-      deskTopGeom.dispose();
-      deskMat.dispose();
-      beveledRimGeom.dispose();
-      beveledRimMat.dispose();
+
+      plinthGeom.dispose();
+      plinthMat.dispose();
+      rimRingGeom.dispose();
+      rimRingMat.dispose();
       shadowGeom.dispose();
       shadowMat.dispose();
       shadowTexture.dispose();
-      cupShadowGeom.dispose();
-      cupShadowMat.dispose();
-      cupShadowTexture.dispose();
-      coasterGeom.dispose();
-      coasterMat.dispose();
-      saucerGeom.dispose();
-      ceramicMat.dispose();
-      cupGeom.dispose();
-      handleGeom.dispose();
-      coffeeGeom.dispose();
-      coffeeMat.dispose();
-      steamGeom.dispose();
-      steamMat.dispose();
-      plantShadowGeom.dispose();
-      plantShadowMat.dispose();
-      plantShadowTexture.dispose();
-      potGeom.dispose();
-      potMat.dispose();
-      soilGeom.dispose();
-      soilMat.dispose();
-      leafMat.dispose();
-      leafGeom.dispose();
-      centerLeafGeom.dispose();
-      booksShadowGeom.dispose();
-      booksShadowMat.dispose();
-      booksShadowTexture.dispose();
-      book1Geom.dispose();
-      book1Mat.dispose();
-      book2Geom.dispose();
-      book2Mat.dispose();
-      book3Geom.dispose();
-      book3Mat.dispose();
 
       pmremGenerator.dispose();
       roomEnvTexture.dispose();

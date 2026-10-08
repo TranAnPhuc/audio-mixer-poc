@@ -409,4 +409,54 @@ export function playZenBellChime() {
   } catch (err) {}
 }
 
+/**
+ * 10. playPaperRustleASMR: Tiếng sột soạt ma sát giấy bao bìa đĩa than (Kraft Paper Sleeve ASMR)
+ * Mô phỏng âm thanh rút đĩa than ra khỏi bao giấy Kraft / túi chống tĩnh điện (Polyethylene inner sleeve)
+ * Tạo bằng White/Pink noise qua bộ lọc Highpass (2400Hz - 4800Hz) với decay hàm mũ trong 140ms
+ */
+export function playPaperRustleASMR() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    const now = ctx.currentTime;
+    const duration = 0.14; // 140ms
+    const sampleRate = ctx.sampleRate || 44100;
+    const numSamples = Math.floor(sampleRate * duration);
+    if (!ctx.createBuffer) return;
+
+    const buffer = ctx.createBuffer(1, numSamples, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    // Sinh noise dạng hạt giấy ma sát (Friction texture)
+    for (let i = 0; i < numSamples; i++) {
+      const envelope = Math.sin((i / numSamples) * Math.PI); // Nở đều ở giữa
+      data[i] = (Math.random() * 2 - 1) * envelope;
+    }
+
+    const noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = buffer;
+
+    // Bộ lọc Bandpass tạo độ xào xạc của sợi cellulose giấy
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(3200, now);
+    filter.frequency.exponentialRampToValueAtTime(4600, now + duration);
+    filter.Q.setValueAtTime(1.8, now);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.18, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    noiseSource.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    noiseSource.start(now);
+    noiseSource.stop(now + duration);
+  } catch (err) {}
+}
+
 

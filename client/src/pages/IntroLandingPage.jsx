@@ -2,26 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { animate, stagger } from 'animejs';
-import {
-  Disc3,
-  Sparkles,
-  ArrowRight,
-  Headphones,
-  Sliders,
-  Palette,
-  Clock,
-  Film,
-  Flame,
-  CloudRain,
-  Coffee,
-  Wind,
-  Bell,
-  Compass,
-  CheckCircle2,
-  Heart,
-  ChevronDown
-} from 'lucide-react';
 import {
   setAmbientVolume,
   getAmbientVolumes
@@ -30,18 +10,18 @@ import { playNeedleDropEffect } from '../utils/vinylAudioEngine';
 import { playHapticClick, playZenBellChime } from '../utils/soundEffects';
 
 /**
- * Sinh Texture bóng đổ tròn mờ tự nhiên cho đĩa than 3D Hero
+ * Sinh Texture bóng đổ tròn mờ tự nhiên dưới đáy thùng máy
  */
-function createHeroContactShadowTexture() {
+function createTurntableContactShadowTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
   const gradient = ctx.createRadialGradient(128, 128, 20, 128, 128, 120);
-  gradient.addColorStop(0, 'rgba(8, 6, 4, 0.85)');
-  gradient.addColorStop(0.35, 'rgba(8, 6, 4, 0.45)');
-  gradient.addColorStop(0.7, 'rgba(8, 6, 4, 0.15)');
-  gradient.addColorStop(1, 'rgba(8, 6, 4, 0)');
+  gradient.addColorStop(0, 'rgba(30, 22, 16, 0.85)');
+  gradient.addColorStop(0.35, 'rgba(40, 28, 18, 0.40)');
+  gradient.addColorStop(0.7, 'rgba(40, 28, 18, 0.14)');
+  gradient.addColorStop(1, 'rgba(40, 28, 18, 0)');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 256, 256);
 
@@ -51,8 +31,7 @@ function createHeroContactShadowTexture() {
 }
 
 /**
- * Sinh Texture vân gỗ óc chó chân thực bằng thuật toán Canvas Procedural
- * Tạo các thớ sợi gỗ tự nhiên (Grain lines), mắt gỗ (Knots) và lớp dầu bóng Satin
+ * Sinh Texture gỗ gụ / gỗ óc chó hoàng gia (Royal Mahogany Wood) với vân gỗ ánh hổ phách
  */
 function createProceduralWoodTexture() {
   const canvas = document.createElement('canvas');
@@ -60,37 +39,37 @@ function createProceduralWoodTexture() {
   canvas.height = 512;
   const ctx = canvas.getContext('2d');
 
-  // Nền gỗ óc chó ấm áp tự nhiên (Deep Walnut Base)
-  ctx.fillStyle = '#422413';
+  // Nền gỗ gụ đỏ sẫm sang trọng
+  ctx.fillStyle = '#3a180d';
   ctx.fillRect(0, 0, 512, 512);
 
-  // Dải thớ sợi gỗ tự nhiên uốn lượn
-  for (let i = 0; i < 160; i++) {
+  // Các thớ vân gỗ uốn lượn tự nhiên
+  for (let i = 0; i < 180; i++) {
     const x = Math.random() * 512;
-    const width = 1.5 + Math.random() * 6.5;
-    const alpha = 0.04 + Math.random() * 0.08;
-    ctx.strokeStyle = Math.random() > 0.5 ? `rgba(26, 12, 6, ${alpha})` : `rgba(88, 52, 28, ${alpha})`;
+    const width = 1.2 + Math.random() * 5.8;
+    const alpha = 0.05 + Math.random() * 0.09;
+    ctx.strokeStyle = Math.random() > 0.5 ? `rgba(20, 8, 4, ${alpha})` : `rgba(92, 42, 22, ${alpha})`;
     ctx.lineWidth = width;
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    const cp1x = x + (Math.random() - 0.5) * 40;
-    const cp2x = x + (Math.random() - 0.5) * 40;
-    const endx = x + (Math.random() - 0.5) * 50;
+    const cp1x = x + (Math.random() - 0.5) * 45;
+    const cp2x = x + (Math.random() - 0.5) * 45;
+    const endx = x + (Math.random() - 0.5) * 55;
     ctx.bezierCurveTo(cp1x, 170, cp2x, 340, endx, 512);
     ctx.stroke();
   }
 
-  // 2 Mắt gỗ chìm tinh tế (Subtle Wood Knots)
+  // Mắt gỗ quý tộc
   const knots = [
-    { x: 170, y: 210, rx: 22, ry: 48 },
-    { x: 375, y: 380, rx: 18, ry: 40 }
+    { x: 160, y: 190, rx: 20, ry: 45 },
+    { x: 380, y: 360, rx: 18, ry: 42 }
   ];
   knots.forEach((k) => {
-    for (let r = 4; r < k.ry; r += 3.5) {
+    for (let r = 4; r < k.ry; r += 3.2) {
       ctx.beginPath();
-      ctx.ellipse(k.x, k.y, (r * k.rx) / k.ry, r, 0.15, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(24, 11, 5, 0.08)';
-      ctx.lineWidth = 2.2;
+      ctx.ellipse(k.x, k.y, (r * k.rx) / k.ry, r, 0.12, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(18, 7, 3, 0.09)';
+      ctx.lineWidth = 2.0;
       ctx.stroke();
     }
   });
@@ -104,23 +83,32 @@ function createProceduralWoodTexture() {
 }
 
 /**
- * Sinh Texture rãnh vi mô đĩa than Vinyl bằng thuật toán Canvas
+ * Sinh Texture đĩa than đa rãnh hoàng gia (Royal Bordeaux Label & Gold Lettering)
  */
-function createHeroGrooveTexture() {
+function createVinylGrooveTexture() {
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
+  canvas.width = 1024;
+  canvas.height = 1024;
   const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = '#0f0f13';
-  ctx.fillRect(0, 0, 512, 512);
+  ctx.fillStyle = '#08080a';
+  ctx.fillRect(0, 0, 1024, 1024);
 
-  const cx = 256;
-  const cy = 256;
+  const cx = 512;
+  const cy = 512;
 
-  // Vẽ 65 rãnh đĩa đồng tâm vi mô
-  for (let r = 70; r < 246; r += 2.5) {
-    const alpha = 0.08 + Math.sin(r * 0.4) * 0.05;
+  // Rãnh dẫn vào (Lead-in Groove)
+  for (let r = 480; r < 496; r += 3) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+  }
+
+  // Track 1
+  for (let r = 380; r < 478; r += 2.2) {
+    const alpha = 0.09 + Math.sin(r * 0.3) * 0.05;
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
@@ -128,21 +116,89 @@ function createHeroGrooveTexture() {
     ctx.stroke();
   }
 
-  // Nhãn tâm đĩa than cổ điển màu rượu vang đỏ
+  // Dải rãnh chết ngăn cách Track 1 & 2
   ctx.beginPath();
-  ctx.arc(cx, cy, 66, 0, Math.PI * 2);
-  ctx.fillStyle = '#6b1724';
+  ctx.arc(cx, cy, 376, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Track 2
+  for (let r = 270; r < 372; r += 2.2) {
+    const alpha = 0.09 + Math.sin(r * 0.35) * 0.05;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
+
+  // Dải rãnh chết ngăn cách Track 2 & 3
+  ctx.beginPath();
+  ctx.arc(cx, cy, 266, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Track 3
+  for (let r = 160; r < 262; r += 2.2) {
+    const alpha = 0.09 + Math.sin(r * 0.4) * 0.05;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
+
+  // Rãnh thoát kim (Run-out spiral)
+  for (let r = 142; r < 158; r += 4) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  }
+
+  // Tem nhãn tâm đĩa than màu đỏ rượu Bordeaux hoàng gia viền vàng lá
+  ctx.beginPath();
+  ctx.arc(cx, cy, 138, 0, Math.PI * 2);
+  ctx.fillStyle = '#58111e';
   ctx.fill();
 
   ctx.beginPath();
-  ctx.arc(cx, cy, 64, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 134, 0, Math.PI * 2);
   ctx.strokeStyle = '#d4af37';
-  ctx.lineWidth = 1.8;
+  ctx.lineWidth = 3.5;
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(cx, cy, 7, 0, Math.PI * 2);
-  ctx.fillStyle = '#0a0a0c';
+  ctx.arc(cx, cy, 96, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.45)';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  // Biểu tượng đĩa than tối giản & Chữ nhãn đĩa
+  ctx.fillStyle = '#d4af37';
+  ctx.textAlign = 'center';
+  ctx.font = '22px serif';
+  ctx.fillText('◎', cx, cy - 44);
+
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'bold 16px serif';
+  ctx.fillText('AURA LOFI', cx, cy - 20);
+
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText('33⅓ RPM • ANALOG STEREO', cx, cy - 4);
+
+  ctx.fillStyle = '#d4af37';
+  ctx.font = 'italic 11px serif';
+  ctx.fillText('Tuyển Tập Đĩa Than Trịnh Công Sơn', cx, cy + 28);
+
+  // Lỗ trục quay Spindle trung tâm
+  ctx.beginPath();
+  ctx.arc(cx, cy, 15, 0, Math.PI * 2);
+  ctx.fillStyle = '#050507';
   ctx.fill();
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -151,7 +207,7 @@ function createHeroGrooveTexture() {
 }
 
 /**
- * Sinh Texture biển đồng khắc tên cỗ máy cổ điển (Vintage Engraved Brass Plaque)
+ * Sinh Texture biển đồng khắc tên hoàng gia (Royal Brass Plaque)
  */
 function createBrassNameplateTexture() {
   const canvas = document.createElement('canvas');
@@ -159,22 +215,22 @@ function createBrassNameplateTexture() {
   canvas.height = 160;
   const ctx = canvas.getContext('2d');
 
-  // Nền đồng xước nhẹ
   const grad = ctx.createLinearGradient(0, 0, 512, 160);
-  grad.addColorStop(0, '#c8a265');
-  grad.addColorStop(0.5, '#e0c58e');
-  grad.addColorStop(1, '#a88144');
+  grad.addColorStop(0, '#c5a059');
+  grad.addColorStop(0.3, '#f3deb1');
+  grad.addColorStop(0.7, '#c5a059');
+  grad.addColorStop(1, '#977535');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 512, 160);
 
-  // Viền chỉ đen đôi
-  ctx.strokeStyle = '#3e2c14';
-  ctx.lineWidth = 5;
-  ctx.strokeRect(10, 10, 492, 140);
+  // Đường viền hoa văn kép chạm khắc
+  ctx.strokeStyle = '#2d1c08';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(8, 8, 496, 144);
   ctx.lineWidth = 1.5;
-  ctx.strokeRect(16, 16, 480, 128);
+  ctx.strokeRect(15, 15, 482, 130);
 
-  // 4 Ốc vít ở 4 góc
+  // 4 Ốc vít đồng chạm khắc
   const screwCoords = [
     [24, 24],
     [488, 24],
@@ -183,22 +239,28 @@ function createBrassNameplateTexture() {
   ];
   screwCoords.forEach(([sx, sy]) => {
     ctx.beginPath();
-    ctx.arc(sx, sy, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#2a1a08';
+    ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#221404';
     ctx.fill();
+    ctx.strokeStyle = '#dfc288';
+    ctx.lineWidth = 1;
+    ctx.stroke();
   });
 
-  // Chữ khắc đen chìm
-  ctx.fillStyle = '#221508';
+  // Chữ khắc cơ khí tinh xảo
+  ctx.fillStyle = '#1c1004';
   ctx.textAlign = 'center';
-  ctx.font = 'bold 32px serif';
-  ctx.fillText('AURA LOFI • 1926', 256, 68);
+  ctx.font = '20px serif';
+  ctx.fillText('◎', 256, 40);
 
-  ctx.font = 'bold 18px sans-serif';
-  ctx.fillText('AUDIOPHILE GRAMOPHONE', 256, 102);
+  ctx.font = 'bold 21px serif';
+  ctx.fillText('AURALOFI HI-FI SYSTEM', 256, 73);
 
-  ctx.font = 'italic 14px serif';
-  ctx.fillText('Handcrafted Precision Plinth', 256, 128);
+  ctx.font = 'bold 14px sans-serif';
+  ctx.fillText('ANALOG STEREO • MASTER RECORDING', 256, 102);
+
+  ctx.font = 'italic 12px serif';
+  ctx.fillText('Handcrafted Walnut Plinth & Acoustic Fluted Horn', 256, 128);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
@@ -206,131 +268,141 @@ function createBrassNameplateTexture() {
 }
 
 /**
- * Mốc tọa độ Camera điện ảnh (Cinematic Camera Keyframes) theo từng chặng cuộn trang (Scrollytelling)
+ * Định nghĩa 6 chương hồi kiến trúc đĩa than (Editorial Chapters)
  */
-const CAMERA_KEYFRAMES = [
-  // 0. Hero: Toàn cảnh điện ảnh mở màn (Cinematic Hero 3/4)
-  {
-    progress: 0.0,
-    camPos: new THREE.Vector3(0, 3.6, 11.2),
-    lookAt: new THREE.Vector3(0, 1.2, 0),
-    groupRotY: 0.35,
-    groupRotX: 0.02
-  },
-  // 1. Chương 1 (Xúc giác Hoài niệm): Cận cảnh Macro cụm cần kim, tạ đối trọng & rãnh đĩa than
-  {
-    progress: 0.25,
-    camPos: new THREE.Vector3(2.1, 2.7, 4.4),
-    lookAt: new THREE.Vector3(0.85, 1.65, 0.3),
-    groupRotY: 0.12,
-    groupRotX: 0.06
-  },
-  // 2. Chương 2 (Liệu pháp Âm học): Trực diện loa kèn đồng thau hoa muống biển
-  {
-    progress: 0.52,
-    camPos: new THREE.Vector3(-2.8, 4.3, 5.8),
-    lookAt: new THREE.Vector3(-0.7, 2.4, 0.4),
-    groupRotY: 0.82,
-    groupRotX: -0.04
-  },
-  // 3. Chương 3 (Di sản & Giá trị): Góc nhìn cao nghệ thuật thư thái (Zen Elevation)
-  {
-    progress: 0.76,
-    camPos: new THREE.Vector3(0.0, 6.8, 7.8),
-    lookAt: new THREE.Vector3(0.0, 1.1, 0.0),
-    groupRotY: 1.45,
-    groupRotX: 0.08
-  },
-  // 4. Chương 4 (Lời mời gọi CTA): Toàn cảnh điện ảnh mở rộng, ánh sáng hội tụ
-  {
-    progress: 1.0,
-    camPos: new THREE.Vector3(0.0, 3.2, 10.4),
-    lookAt: new THREE.Vector3(0.0, 1.3, 0.0),
-    groupRotY: 0.42,
-    groupRotX: 0.02
-  }
+const CHAPTERS = [
+  { id: 'I', name: 'Hero', label: 'I • Khởi Đầu', target: '#hero', min: 0.0, max: 0.12 },
+  { id: 'II', name: 'Prologue', label: 'II • Khoảng Lặng', target: '#intro-section', min: 0.12, max: 0.28 },
+  { id: 'III', name: 'The Deck', label: 'III • Mâm Đĩa 3D', target: '#deck', min: 0.28, max: 0.48 },
+  { id: 'IV', name: 'Acoustics', label: 'IV • Âm Thanh Mộc', target: '#acoustics', min: 0.48, max: 0.68 },
+  { id: 'V', name: 'Capabilities', label: 'V • Tương Tác', target: '#capabilities', min: 0.68, max: 0.88 },
+  { id: 'VI', name: 'Heritage', label: 'VI • Di Sản Nhạc Việt', target: '#heritage', min: 0.88, max: 1.0 }
 ];
-
-/**
- * Nội suy trơn mượt giữa các keyframe máy quay điện ảnh (Smoothstep Interpolation)
- */
-function interpolateCinematicCamera(progress, outPos, outLook, outRot) {
-  const p = Math.max(0, Math.min(1, progress));
-
-  let prev = CAMERA_KEYFRAMES[0];
-  let next = CAMERA_KEYFRAMES[1];
-
-  for (let i = 0; i < CAMERA_KEYFRAMES.length - 1; i++) {
-    if (p >= CAMERA_KEYFRAMES[i].progress && p <= CAMERA_KEYFRAMES[i + 1].progress) {
-      prev = CAMERA_KEYFRAMES[i];
-      next = CAMERA_KEYFRAMES[i + 1];
-      break;
-    }
-  }
-
-  const range = next.progress - prev.progress;
-  const rawT = range === 0 ? 0 : (p - prev.progress) / range;
-  const t = rawT * rawT * (3 - 2 * rawT);
-
-  outPos.lerpVectors(prev.camPos, next.camPos, t);
-  outLook.lerpVectors(prev.lookAt, next.lookAt, t);
-  outRot.y = prev.groupRotY + (next.groupRotY - prev.groupRotY) * t;
-  outRot.x = prev.groupRotX + (next.groupRotX - prev.groupRotX) * t;
-}
 
 export default function IntroLandingPage() {
   const navigate = useNavigate();
   const canvasMountRef = useRef(null);
 
-  // Trạng thái nghe thử âm thanh môi trường tương tác
-  const [activeAmbient, setActiveAmbient] = useState(null);
-  const [isPlayingVinylPreview, setIsPlayingVinylPreview] = useState(false);
-  const [isTransitioningToApp, setIsTransitioningToApp] = useState(false);
-  const [currentChapter, setCurrentChapter] = useState(0);
+  // Trạng thái Preloader & Scrollytelling
+  const [loaderProgress, setLoaderProgress] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Kích hoạt animation lối vào (Entrance Animation) của Anime.js
+  // Thước đo chương hồi hoàng gia (Royal Chronometer Rail)
+  const [scrollProgressRatio, setScrollProgressRatio] = useState(0);
+  const [hoveredChapter, setHoveredChapter] = useState(null);
+
+  // Con trỏ chuột nam châm mạ vàng có quán tính vật lý (Magnetic Brass Cursor)
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const cursorDotRef = useRef(null);
+  const cursorRingRef = useRef(null);
+
+  // Trạng thái tương tác âm thanh & tabs phong cách drone.riotters.com
+  const [activeAmbientTab, setActiveAmbientTab] = useState('rain');
+  const [isAmbientPlaying, setIsAmbientPlaying] = useState(false);
+  const [activeCapability, setActiveCapability] = useState('Tactile');
+  const [activeHotspot, setActiveHotspot] = useState(null);
+
+  // 3D Projected Screen HUD Pins
+  const pin1Ref = useRef(null);
+  const pin2Ref = useRef(null);
+  const pin3Ref = useRef(null);
+  const pin4Ref = useRef(null);
+  const [active3DPin, setActive3DPin] = useState(null);
+
+  // Lắng nghe cuộn trang cập nhật tiến trình thước đo Chronometer
   useEffect(() => {
-    animate('.anime-entrance-badge', {
-      opacity: [0, 1],
-      translateY: [-24, 0],
-      duration: 1000,
-      ease: 'outQuad'
-    });
-
-    animate('.anime-entrance-title', {
-      opacity: [0, 1],
-      translateY: [40, 0],
-      duration: 1200,
-      delay: 200,
-      ease: 'outCubic'
-    });
-
-    animate('.anime-entrance-desc', {
-      opacity: [0, 1],
-      translateY: [30, 0],
-      duration: 1200,
-      delay: 400,
-      ease: 'outCubic'
-    });
-
-    animate('.anime-entrance-cta', {
-      opacity: [0, 1],
-      scale: [0.92, 1],
-      duration: 1000,
-      delay: 600,
-      ease: 'outBack'
-    });
-
-    animate('.anime-stat-pill', {
-      opacity: [0, 1],
-      translateY: [25, 0],
-      delay: stagger(120, { start: 700 }),
-      duration: 900,
-      ease: 'outCubic'
-    });
+    const onScroll = () => {
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const ratio = docHeight > 0 ? Math.max(0, Math.min(1, window.scrollY / docHeight)) : 0;
+      setScrollProgressRatio(ratio);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Khởi tạo Sân khấu 3D Three.js Điện ảnh Toàn màn hình & Mâm Đĩa Than Siêu Chi Tiết
+  // Vòng lặp quán tính vật lý lò xo cho con trỏ chuột mạ vàng (Spring Lerp Cursor)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) {
+      setIsTouchDevice(true);
+      return;
+    }
+
+    let mouseX = -100;
+    let mouseY = -100;
+    let ringX = -100;
+    let ringY = -100;
+    let rafId;
+
+    const onMouseMove = (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      if (cursorDotRef.current) {
+        cursorDotRef.current.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0)`;
+      }
+    };
+
+    const renderCursor = () => {
+      ringX += (mouseX - ringX) * 0.18;
+      ringY += (mouseY - ringY) * 0.18;
+      if (cursorRingRef.current) {
+        cursorRingRef.current.style.transform = `translate3d(${ringX}px, ${ringY}px, 0)`;
+      }
+      rafId = requestAnimationFrame(renderCursor);
+    };
+
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+    rafId = requestAnimationFrame(renderCursor);
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
+
+  // Tham chiếu trạng thái âm thanh để ánh xạ vào đèn rọi kim Three.js
+  const isPlayingRef = useRef(isAmbientPlaying);
+  useEffect(() => {
+    isPlayingRef.current = isAmbientPlaying;
+  }, [isAmbientPlaying]);
+
+  // Preloader đếm số từ 0 đến 100%
+  useEffect(() => {
+    let current = 0;
+    const interval = setInterval(() => {
+      current += Math.floor(Math.random() * 15) + 6;
+      if (current >= 100) {
+        current = 100;
+        setLoaderProgress(100);
+        clearInterval(interval);
+        setTimeout(() => setIsLoaded(true), 350);
+      } else {
+        setLoaderProgress(current);
+      }
+    }, 45);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Xử lý nghe thử âm thanh môi trường procedural
+  const toggleAmbientSound = (key) => {
+    playHapticClick();
+    setActiveAmbientTab(key);
+    if (isAmbientPlaying && activeAmbientTab === key) {
+      setAmbientVolume(key, 0);
+      setIsAmbientPlaying(false);
+    } else {
+      if (isAmbientPlaying) {
+        setAmbientVolume(activeAmbientTab, 0);
+      }
+      setAmbientVolume(key, 0.7);
+      setIsAmbientPlaying(true);
+    }
+  };
+
+  // =========================================================================
+  // KHỞI TẠO THREE.JS: MÂM ĐĨA THAN HOÀNG GIA CHÂN THỰC 99% - KHỚP NỐI LIỀN MẠCH
+  // =========================================================================
   useEffect(() => {
     const container = canvasMountRef.current;
     if (!container) return;
@@ -338,12 +410,14 @@ export default function IntroLandingPage() {
     let width = window.innerWidth;
     let height = window.innerHeight;
 
-    const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x07090e, 0.035);
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
-    camera.position.set(0, 3.6, 11.2);
-    camera.lookAt(0, 1.2, 0);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xfaf8f5); // Màu nền trắng ngọc trai ngà quý tộc
+    scene.fog = new THREE.FogExp2(0xfaf8f5, 0.022);
+
+    const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 100);
+    camera.position.set(0, 3.0, 10.4);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -351,9 +425,9 @@ export default function IntroLandingPage() {
       powerPreference: 'high-performance'
     });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.25;
+    renderer.toneMappingExposure = 1.22;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
@@ -365,457 +439,535 @@ export default function IntroLandingPage() {
     const roomEnvTexture = pmremGenerator.fromScene(roomEnv).texture;
     scene.environment = roomEnvTexture;
 
-    // Ánh sáng điện ảnh ấm áp (Amber 2700K)
-    const ambientLight = new THREE.AmbientLight(0xffedd5, 1.15);
+    // Chiếu sáng Cung Đình Hoàng Gia: Ánh sáng ấm 2800K + Ánh sáng phản quang dịu
+    const ambientLight = new THREE.AmbientLight(0xfff5eb, 1.45);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xffedd5, 3.4);
-    keyLight.position.set(5.5, 11.0, 6.5);
+    const keyLight = new THREE.DirectionalLight(0xffecd2, 3.6);
+    keyLight.position.set(7, 14, 9);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.width = 1024;
     keyLight.shadow.mapSize.height = 1024;
+    keyLight.shadow.bias = -0.0001;
     scene.add(keyLight);
 
-    const rimLight = new THREE.DirectionalLight(0xfef3c7, 1.9);
-    rimLight.position.set(-6.5, 7.5, -5.5);
+    const fillLight = new THREE.DirectionalLight(0xe2e8f0, 1.6);
+    fillLight.position.set(-9, 7, -7);
+    scene.add(fillLight);
+
+    // Đèn viền phản chiếu ánh kim hoàng gia (Royal Golden Rim Light)
+    const rimLight = new THREE.DirectionalLight(0xffe8c2, 2.4);
+    rimLight.position.set(-6, 8, -8);
     scene.add(rimLight);
 
-    const accentWarmGlow = new THREE.PointLight(0xf59e0b, 2.2, 12);
-    accentWarmGlow.position.set(0, 3.2, 1.5);
-    scene.add(accentWarmGlow);
+    const royalGoldLight = new THREE.PointLight(0xd4af37, 2.8, 12);
+    royalGoldLight.position.set(0, 4.5, 3.5);
+    scene.add(royalGoldLight);
 
-    // Group chính chứa mâm đĩa than
-    const gramophoneGroup = new THREE.Group();
-    scene.add(gramophoneGroup);
+    const deskWarmSpot = new THREE.SpotLight(0xffd19a, 3.6, 15, Math.PI / 4, 0.4);
+    deskWarmSpot.position.set(0, 6.5, 4.5);
+    deskWarmSpot.target.position.set(0, 1.2, 0);
+    scene.add(deskWarmSpot);
+    scene.add(deskWarmSpot.target);
 
-    // ========================================================
-    // TẠO TEXTURES & VẬT LIỆU PBR CHÂN THỰC
-    // ========================================================
-    const shadowTexture = createHeroContactShadowTexture();
+    // =========================================================================
+    // DỰNG CỖ MÂM ĐĨA THAN HOÀNG GIA (ROYAL IMPERIAL PHONOGRAPH)
+    // =========================================================================
+    const turntableGroup = new THREE.Group();
+    scene.add(turntableGroup);
+
+    // Textures & PBR Materials
+    const shadowTexture = createTurntableContactShadowTexture();
     const woodTexture = createProceduralWoodTexture();
-    const grooveTexture = createHeroGrooveTexture();
+    const grooveTexture = createVinylGrooveTexture();
     const nameplateTexture = createBrassNameplateTexture();
 
-    // 1. Gỗ óc chó PBR cao cấp có vân chìm tự nhiên
-    const walnutMat = new THREE.MeshStandardMaterial({
+    // Gỗ gụ hoàng gia phủ lớp vecni bóng gương sâu (Clearcoat Lacquer)
+    const royalMahoganyMat = new THREE.MeshPhysicalMaterial({
       map: woodTexture,
       bumpMap: woodTexture,
-      bumpScale: 0.015,
-      color: 0x4a2c19, // Walnut wood tone
-      roughness: 0.42,
-      metalness: 0.06
+      bumpScale: 0.02,
+      color: 0x421b10,
+      roughness: 0.28,
+      metalness: 0.05,
+      clearcoat: 0.95,
+      clearcoatRoughness: 0.12,
+      reflectivity: 0.65
     });
 
-    // 2. Đồng thau phay xước sáng bóng (Brushed Brass)
-    const brassMat = new THREE.MeshStandardMaterial({
-      color: 0xc8a265, // Brushed brass
-      metalness: 0.92,
-      roughness: 0.18
-    });
-
-    // 3. Vàng đồng đúc đậm (Cast Gold Accent)
-    const darkGoldMat = new THREE.MeshStandardMaterial({
-      color: 0xb8860b,
-      metalness: 0.86,
-      roughness: 0.25
-    });
-
-    // 4. Nhôm phay xước mặt máy (Brushed Metal Faceplate)
-    const metalPlateMat = new THREE.MeshStandardMaterial({
+    // Vàng đồng hoàng gia đánh bóng thủ công với ánh kim satin
+    const royalGoldMat = new THREE.MeshPhysicalMaterial({
       color: 0xd4af37,
+      metalness: 0.94,
+      roughness: 0.15,
+      clearcoat: 0.70,
+      clearcoatRoughness: 0.14
+    });
+
+    // Vàng đồng cổ chạm khắc chi tiết
+    const antiqueGoldMat = new THREE.MeshPhysicalMaterial({
+      color: 0xb58c38,
+      metalness: 0.90,
+      roughness: 0.22,
+      clearcoat: 0.50,
+      clearcoatRoughness: 0.20
+    });
+
+    const brushedSubChassisMat = new THREE.MeshStandardMaterial({
+      color: 0xe5c98c,
       metalness: 0.88,
       roughness: 0.22
     });
 
-    // 5. Cao su chống rung màu đen (Damped Black Rubber)
-    const rubberMat = new THREE.MeshStandardMaterial({
-      color: 0x16161a,
-      roughness: 0.85,
-      metalness: 0.05
+    // Thảm nhung đỏ Bordeaux hoàng gia với hiệu ứng ánh lông óng ả (Velvet Sheen)
+    const bordeauxVelvetMat = new THREE.MeshPhysicalMaterial({
+      color: 0x5a111e,
+      roughness: 0.88,
+      metalness: 0.04,
+      sheen: 0.85,
+      sheenColor: new THREE.Color(0xd4af37),
+      sheenRoughness: 0.45
     });
 
-    // 6. Đĩa than Vinyl có vi rãnh âm thanh
-    const vinylMat = new THREE.MeshStandardMaterial({
+    // Kim loại Chrome siêu bóng
+    const chromeMat = new THREE.MeshPhysicalMaterial({
+      color: 0xf8fafc,
+      metalness: 0.98,
+      roughness: 0.05,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.04
+    });
+
+    // Nhựa đĩa than Vinyl với rãnh vi mô và lớp bóng bề mặt PVC ép nhiệt
+    const vinylMat = new THREE.MeshPhysicalMaterial({
       map: grooveTexture,
       bumpMap: grooveTexture,
-      bumpScale: 0.025,
-      color: 0x111116,
-      roughness: 0.30,
-      metalness: 0.28
+      bumpScale: 0.035,
+      color: 0x0c0c10,
+      roughness: 0.22,
+      metalness: 0.35,
+      clearcoat: 0.85,
+      clearcoatRoughness: 0.18
     });
 
-    // ========================================================
-    // A. THÙNG MÁY GỖ ÓC CHÓ BÁT GIÁC GIẬT CẤP (PRECISION PLINTH)
-    // ========================================================
-    // 1. Chân đế đáy bát giác rộng
-    const basePlinthGeom = new THREE.CylinderGeometry(2.40, 2.50, 0.22, 8);
+    // 1. Thùng máy gỗ gụ bát giác hoàng gia giật cấp với 8 góc vát
+    const basePlinthGeom = new THREE.CylinderGeometry(2.48, 2.56, 0.24, 8);
     basePlinthGeom.rotateY(Math.PI / 8);
-    const basePlinth = new THREE.Mesh(basePlinthGeom, walnutMat);
-    basePlinth.position.y = 0.11;
+    const basePlinth = new THREE.Mesh(basePlinthGeom, royalMahoganyMat);
+    basePlinth.position.y = 0.12;
     basePlinth.castShadow = true;
     basePlinth.receiveShadow = true;
-    gramophoneGroup.add(basePlinth);
+    turntableGroup.add(basePlinth);
 
-    // 8 Chân đế cách ly chống rung (Audiophile Isolation Feet)
+    // 8 Chân đế đúc đồng chạm trổ kiểu chân sư tử hoàng gia (Royal Fluted Feet)
     for (let i = 0; i < 8; i++) {
       const angle = (i * Math.PI) / 4 + Math.PI / 8;
       const footGroup = new THREE.Group();
-      footGroup.position.set(Math.cos(angle) * 2.26, 0.04, Math.sin(angle) * 2.26);
+      footGroup.position.set(Math.cos(angle) * 2.32, 0.04, Math.sin(angle) * 2.32);
 
-      const footRubberGeom = new THREE.CylinderGeometry(0.18, 0.20, 0.06, 16);
-      const footRubber = new THREE.Mesh(footRubberGeom, rubberMat);
-      footGroup.add(footRubber);
+      const footBase = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.24, 0.06, 24), antiqueGoldMat);
+      footGroup.add(footBase);
 
-      const footBrassGeom = new THREE.CylinderGeometry(0.15, 0.17, 0.06, 16);
-      const footBrass = new THREE.Mesh(footBrassGeom, darkGoldMat);
-      footBrass.position.y = 0.06;
-      footGroup.add(footBrass);
+      const footMiddle = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.04, 16, 24), royalGoldMat);
+      footMiddle.position.y = 0.06;
+      footMiddle.rotation.x = Math.PI / 2;
+      footGroup.add(footMiddle);
 
-      gramophoneGroup.add(footGroup);
+      const footCup = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.06, 24), royalGoldMat);
+      footCup.position.y = 0.10;
+      footGroup.add(footCup);
+
+      turntableGroup.add(footGroup);
     }
 
-    // 2. Thân thùng gỗ chính hình bát giác
-    const bodyGeom = new THREE.CylinderGeometry(2.08, 2.08, 1.15, 8);
+    // Thân thùng gỗ gụ chính
+    const bodyGeom = new THREE.CylinderGeometry(2.16, 2.16, 1.24, 8);
     bodyGeom.rotateY(Math.PI / 8);
-    const body = new THREE.Mesh(bodyGeom, walnutMat);
-    body.position.y = 0.79;
+    const body = new THREE.Mesh(bodyGeom, royalMahoganyMat);
+    body.position.y = 0.84;
     body.castShadow = true;
     body.receiveShadow = true;
-    gramophoneGroup.add(body);
+    turntableGroup.add(body);
 
-    // 3. Nắp mặt trên giật cấp vát viền
-    const topDeckGeom = new THREE.CylinderGeometry(2.40, 2.34, 0.18, 8);
-    topDeckGeom.rotateY(Math.PI / 8);
-    const topDeck = new THREE.Mesh(topDeckGeom, walnutMat);
-    topDeck.position.y = 1.45;
-    topDeck.castShadow = true;
-    topDeck.receiveShadow = true;
-    gramophoneGroup.add(topDeck);
-
-    // Tấm kim loại phay xước gắn chìm trên mặt máy (Brushed Metal Plinth Inset)
-    const insetPlateGeom = new THREE.CylinderGeometry(2.25, 2.25, 0.02, 8);
-    insetPlateGeom.rotateY(Math.PI / 8);
-    const insetPlate = new THREE.Mesh(insetPlateGeom, metalPlateMat);
-    insetPlate.position.y = 1.55;
-    gramophoneGroup.add(insetPlate);
-
-    // 8 Con ốc vít nhỏ bằng đồng ở 8 góc mặt máy
+    // 8 Cột trụ đồng chạm trổ bảo vệ các góc máy (Royal Corner Filigree Pillars)
     for (let i = 0; i < 8; i++) {
       const angle = (i * Math.PI) / 4 + Math.PI / 8;
-      const screwGeom = new THREE.CylinderGeometry(0.035, 0.035, 0.025, 12);
-      const screw = new THREE.Mesh(screwGeom, darkGoldMat);
-      screw.position.set(Math.cos(angle) * 2.15, 1.56, Math.sin(angle) * 2.15);
-      gramophoneGroup.add(screw);
+      const colGroup = new THREE.Group();
+      colGroup.position.set(Math.cos(angle) * 2.12, 0.84, Math.sin(angle) * 2.12);
+
+      const colShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.20, 16), royalGoldMat);
+      colShaft.castShadow = true;
+      colGroup.add(colShaft);
+
+      const colCap = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.09, 0.08, 16), antiqueGoldMat);
+      colCap.position.y = 0.60;
+      colGroup.add(colCap);
+
+      const colBase = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.08, 16), antiqueGoldMat);
+      colBase.position.y = -0.60;
+      colGroup.add(colBase);
+
+      turntableGroup.add(colGroup);
     }
 
-    // Biển đồng khắc tên máy cổ điển ở mặt trước thùng gỗ (Vintage Plaque)
-    const plaqueGeom = new THREE.PlaneGeometry(0.85, 0.30);
+    // Biển đồng chạm khắc hoàng gia ở mặt trước
+    const plaqueGeom = new THREE.PlaneGeometry(0.96, 0.33);
     const plaqueMat = new THREE.MeshStandardMaterial({
       map: nameplateTexture,
-      roughness: 0.35,
-      metalness: 0.82
+      roughness: 0.28,
+      metalness: 0.88
     });
     const plaque = new THREE.Mesh(plaqueGeom, plaqueMat);
-    plaque.position.set(0, 0.85, 1.95);
-    gramophoneGroup.add(plaque);
+    plaque.position.set(0, 0.90, 2.03);
+    turntableGroup.add(plaque);
 
-    // 8 Cột trụ đồng chạm trổ bảo vệ các góc
+    // Nắp mặt trên giật cấp & Tấm nhôm đồng phay xước âm mặt máy
+    const topDeckGeom = new THREE.CylinderGeometry(2.48, 2.42, 0.18, 8);
+    topDeckGeom.rotateY(Math.PI / 8);
+    const topDeck = new THREE.Mesh(topDeckGeom, royalMahoganyMat);
+    topDeck.position.y = 1.54;
+    topDeck.castShadow = true;
+    topDeck.receiveShadow = true;
+    turntableGroup.add(topDeck);
+
+    const subChassisPlate = new THREE.Mesh(
+      new THREE.CylinderGeometry(2.32, 2.32, 0.025, 8),
+      brushedSubChassisMat
+    );
+    subChassisPlate.rotateY(Math.PI / 8);
+    subChassisPlate.position.y = 1.64;
+    turntableGroup.add(subChassisPlate);
+
+    // 8 Đinh ốc hoa văn hoàng gia chìm mặt máy
     for (let i = 0; i < 8; i++) {
       const angle = (i * Math.PI) / 4 + Math.PI / 8;
-      const colGeom = new THREE.CylinderGeometry(0.08, 0.08, 1.10, 16);
-      const col = new THREE.Mesh(colGeom, darkGoldMat);
-      col.position.set(Math.cos(angle) * 2.04, 0.79, Math.sin(angle) * 2.04);
-      col.castShadow = true;
-      gramophoneGroup.add(col);
+      const screw = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.03, 16), antiqueGoldMat);
+      screw.position.set(Math.cos(angle) * 2.22, 1.655, Math.sin(angle) * 2.22);
+      turntableGroup.add(screw);
     }
 
-    // ========================================================
-    // B. MÂM ĐĨA QUAY, THẢM LÓT & CỤC CHẶN KIM LOẠI NẶNG (CLAMP)
-    // ========================================================
-    // Mâm xoay đồng thau đúc nguyên khối (Heavy Platter)
-    const platterGeom = new THREE.CylinderGeometry(2.05, 2.05, 0.09, 64);
-    const platter = new THREE.Mesh(platterGeom, darkGoldMat);
-    platter.position.y = 1.60;
-    platter.castShadow = true;
-    gramophoneGroup.add(platter);
+    // 2. Mâm xoay đồng thau & Thảm nhung đỏ Bordeaux hoàng gia
+    const platterGroup = new THREE.Group();
+    platterGroup.position.y = 1.68;
+    turntableGroup.add(platterGroup);
 
-    // Thảm lót cao su chống trượt (Rubber Slipmat)
-    const slipmatGeom = new THREE.CylinderGeometry(2.02, 2.02, 0.02, 64);
-    const slipmat = new THREE.Mesh(slipmatGeom, rubberMat);
-    slipmat.position.y = 1.65;
-    gramophoneGroup.add(slipmat);
+    const platterRim = new THREE.Mesh(new THREE.CylinderGeometry(2.10, 2.10, 0.12, 64), royalGoldMat);
+    platterRim.castShadow = true;
+    platterGroup.add(platterRim);
 
-    // Group Đĩa Than Xoay Độc Lập
+    // 4 Hàng mắt phản quang Strobe Dots vi mô đo vận tốc
+    const strobeGeometry = new THREE.CylinderGeometry(0.016, 0.016, 0.025, 8);
+    strobeGeometry.rotateZ(Math.PI / 2);
+    const strobeRows = [
+      { y: 0.035, count: 48 },
+      { y: 0.012, count: 42 },
+      { y: -0.012, count: 36 },
+      { y: -0.035, count: 30 }
+    ];
+    strobeRows.forEach((row) => {
+      for (let s = 0; s < row.count; s++) {
+        const theta = (s / row.count) * Math.PI * 2;
+        const dot = new THREE.Mesh(strobeGeometry, chromeMat);
+        dot.position.set(Math.cos(theta) * 2.105, row.y, Math.sin(theta) * 2.105);
+        dot.rotation.y = -theta;
+        platterGroup.add(dot);
+      }
+    });
+
+    // Thảm nhung đỏ rượu Bordeaux hoàng gia (Royal Velvet Slipmat)
+    const velvetMat = new THREE.Mesh(new THREE.CylinderGeometry(2.05, 2.05, 0.02, 64), bordeauxVelvetMat);
+    velvetMat.position.y = 0.07;
+    platterGroup.add(velvetMat);
+
+    // Đĩa Vinyl xoay
     const vinylGroup = new THREE.Group();
-    vinylGroup.position.set(0, 1.67, 0);
-    gramophoneGroup.add(vinylGroup);
+    vinylGroup.position.set(0, 0.09, 0);
+    platterGroup.add(vinylGroup);
 
-    const vinylDiscGeom = new THREE.CylinderGeometry(1.98, 1.98, 0.035, 64);
-    const vinylDisc = new THREE.Mesh(vinylDiscGeom, vinylMat);
+    const vinylDisc = new THREE.Mesh(new THREE.CylinderGeometry(1.98, 1.98, 0.032, 64), vinylMat);
+    vinylDisc.castShadow = true;
     vinylGroup.add(vinylDisc);
 
-    // Trục chính mạ crom (Spindle Pin)
-    const spindleGeom = new THREE.CylinderGeometry(0.045, 0.045, 0.38, 20);
-    const spindle = new THREE.Mesh(spindleGeom, brassMat);
+    // Trục Spindle trung tâm
+    const spindle = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.38, 24), chromeMat);
     spindle.position.y = 0.16;
     vinylGroup.add(spindle);
 
-    // CỤC CHẶN ĐĨA KIM LOẠI NẶNG (HEAVY AUDIOPHILE RECORD WEIGHT CLAMP)
+    // Cục chặn đĩa hoàng gia có bọt thủy cân bằng (Royal Record Clamp Stabilizer)
     const clampGroup = new THREE.Group();
     clampGroup.position.set(0, 0.03, 0);
     vinylGroup.add(clampGroup);
 
-    // Đế clamp
-    const clampBaseGeom = new THREE.CylinderGeometry(0.42, 0.46, 0.12, 32);
-    const clampBase = new THREE.Mesh(clampBaseGeom, brassMat);
+    const clampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 0.12, 32), royalGoldMat);
     clampBase.position.y = 0.06;
     clampGroup.add(clampBase);
 
-    // Thân eo có rãnh khía kim cương để cầm nắm (Knurled Grip)
-    const clampGripGeom = new THREE.CylinderGeometry(0.32, 0.32, 0.10, 32);
-    const clampGrip = new THREE.Mesh(clampGripGeom, darkGoldMat);
-    clampGrip.position.y = 0.17;
+    const clampGrip = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.11, 32), antiqueGoldMat);
+    clampGrip.position.y = 0.175;
     clampGroup.add(clampGrip);
 
-    // Núm đỉnh clamp
-    const clampCapGeom = new THREE.CylinderGeometry(0.38, 0.34, 0.08, 32);
-    const clampCap = new THREE.Mesh(clampCapGeom, brassMat);
-    clampCap.position.y = 0.26;
+    const clampCap = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.34, 0.08, 32), royalGoldMat);
+    clampCap.position.y = 0.27;
     clampGroup.add(clampCap);
 
-    // Mắt bọt thủy cân bằng giọt nước (Bubble Level)
-    const bubbleGeom = new THREE.CircleGeometry(0.12, 24);
-    const bubbleMat = new THREE.MeshStandardMaterial({
-      color: 0x10b981,
-      roughness: 0.1,
-      metalness: 0.8
-    });
-    const bubble = new THREE.Mesh(bubbleGeom, bubbleMat);
-    bubble.rotation.x = -Math.PI / 2;
-    bubble.position.y = 0.301;
-    clampGroup.add(bubble);
+    const bubbleLevel = new THREE.Mesh(
+      new THREE.CircleGeometry(0.12, 24),
+      new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.1, metalness: 0.85 })
+    );
+    bubbleLevel.rotation.x = -Math.PI / 2;
+    bubbleLevel.position.y = 0.311;
+    clampGroup.add(bubbleLevel);
 
-    // ========================================================
-    // C. CÁC NÚT CƠ KHÍ ĐIỀU KHIỂN & ĐÈN RỌI KIM TRÊN MẶT MÁY
-    // ========================================================
-    // 1. Nút Bật/Tắt (Start/Stop Button Bezel)
+    const bubbleDot = new THREE.Mesh(
+      new THREE.CircleGeometry(0.028, 16),
+      new THREE.MeshBasicMaterial({ color: 0xffffff })
+    );
+    bubbleDot.rotation.x = -Math.PI / 2;
+    bubbleDot.position.set(0.02, 0.312, 0.015);
+    clampGroup.add(bubbleDot);
+
+    // 3. Nút bấm & Cần trượt hoàng gia (Start/Stop, Pitch Control, Đèn rọi kim)
     const startBtnGroup = new THREE.Group();
-    startBtnGroup.position.set(-1.45, 1.56, 1.35);
-
-    const btnBezelGeom = new THREE.CylinderGeometry(0.20, 0.22, 0.04, 24);
-    const btnBezel = new THREE.Mesh(btnBezelGeom, darkGoldMat);
+    startBtnGroup.position.set(-1.48, 1.65, 1.40);
+    const btnBezel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.24, 0.05, 24), antiqueGoldMat);
     startBtnGroup.add(btnBezel);
-
-    const btnCapGeom = new THREE.CylinderGeometry(0.16, 0.16, 0.06, 24);
-    const btnCap = new THREE.Mesh(btnCapGeom, brassMat);
-    btnCap.position.y = 0.03;
+    const btnCap = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.07, 24), royalGoldMat);
+    btnCap.position.y = 0.035;
     startBtnGroup.add(btnCap);
-    gramophoneGroup.add(startBtnGroup);
+    turntableGroup.add(startBtnGroup);
 
-    // 2. Cần gạt tốc độ (Speed Selector 33 / 45 / 78 RPM)
-    const speedSwitchGroup = new THREE.Group();
-    speedSwitchGroup.position.set(-1.45, 1.56, 0.75);
+    [-0.08, 0.08].forEach((offset) => {
+      const speedBtn = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 16), royalGoldMat);
+      speedBtn.position.set(-1.48 + offset * 1.5, 1.655, 1.05);
+      turntableGroup.add(speedBtn);
+    });
 
-    const switchBaseGeom = new THREE.BoxGeometry(0.15, 0.03, 0.35);
-    const switchBase = new THREE.Mesh(switchBaseGeom, darkGoldMat);
-    speedSwitchGroup.add(switchBase);
+    const pitchGroup = new THREE.Group();
+    pitchGroup.position.set(1.68, 1.655, 0.45);
+    const pitchPlate = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.02, 0.70), antiqueGoldMat);
+    pitchGroup.add(pitchPlate);
+    const pitchSlot = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.022, 0.52),
+      new THREE.MeshStandardMaterial({ color: 0x050508, roughness: 0.9 })
+    );
+    pitchGroup.add(pitchSlot);
+    const pitchKnob = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 0.06), royalGoldMat);
+    pitchKnob.position.set(0, 0.04, 0.06);
+    pitchGroup.add(pitchKnob);
+    turntableGroup.add(pitchGroup);
 
-    const switchLeverGeom = new THREE.CylinderGeometry(0.02, 0.025, 0.16, 12);
-    const switchLever = new THREE.Mesh(switchLeverGeom, brassMat);
-    switchLever.position.set(0, 0.08, -0.04);
-    switchLever.rotation.x = 0.25;
-    speedSwitchGroup.add(switchLever);
-    gramophoneGroup.add(speedSwitchGroup);
-
-    // 3. Đèn rọi kim Stylus (Stylus Target Light Tower)
+    // Trụ đèn rọi kim Stylus Target Light
     const targetLightGroup = new THREE.Group();
-    targetLightGroup.position.set(-1.58, 1.56, -0.25);
-
-    const lightPillarGeom = new THREE.CylinderGeometry(0.06, 0.075, 0.38, 16);
-    const lightPillar = new THREE.Mesh(lightPillarGeom, darkGoldMat);
-    lightPillar.position.y = 0.19;
+    targetLightGroup.position.set(-1.62, 1.65, -0.32);
+    const lightPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.08, 0.42, 16), antiqueGoldMat);
+    lightPillar.position.y = 0.21;
     targetLightGroup.add(lightPillar);
-
-    const lightHeadGeom = new THREE.CylinderGeometry(0.08, 0.06, 0.12, 16);
-    lightHeadGeom.rotateX(Math.PI / 4);
-    const lightHead = new THREE.Mesh(lightHeadGeom, brassMat);
-    lightHead.position.set(0.03, 0.39, 0.03);
+    const lightHead = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.065, 0.14, 16), royalGoldMat);
+    lightHead.position.set(0.03, 0.44, 0.03);
+    lightHead.rotateX(Math.PI / 4);
     targetLightGroup.add(lightHead);
-
-    // Đèn LED nhỏ chiếu rọi vào đầu kim
-    const stylusSpot = new THREE.SpotLight(0xffedd5, 1.8, 4, Math.PI / 6, 0.5);
-    stylusSpot.position.set(0.03, 0.42, 0.03);
-    stylusSpot.target.position.set(0.58, 1.67, -0.05);
+    const stylusSpot = new THREE.SpotLight(0xffedd5, 2.4, 4.5, Math.PI / 5, 0.4);
+    stylusSpot.position.set(0.03, 0.46, 0.03);
+    stylusSpot.target.position.set(0.55, 1.70, -0.05);
     targetLightGroup.add(stylusSpot);
     targetLightGroup.add(stylusSpot.target);
-    gramophoneGroup.add(targetLightGroup);
+    turntableGroup.add(targetLightGroup);
 
-    // ========================================================
-    // D. CỤM CẦN KIM AUDIOPHILE CƠ HỌC SIÊU CHI TIẾT (TONEARM ASSEMBLY)
-    // ========================================================
+    // =========================================================================
+    // 4. CỤM CẦN KIM HOÀNG GIA (KHỚP NỐI CƠ KHÍ LIỀN MẠCH 100%)
+    // =========================================================================
     const tonearmAssembly = new THREE.Group();
-    tonearmAssembly.position.set(1.42, 1.56, 0.95);
-    gramophoneGroup.add(tonearmAssembly);
+    tonearmAssembly.position.set(1.42, 1.65, 1.05);
+    turntableGroup.add(tonearmAssembly);
 
-    // 1. Chân đế Gimbal Base nhiều tầng giật cấp
-    const armBaseTier1 = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.32, 0.35, 0.06, 32),
-      darkGoldMat
-    );
-    armBaseTier1.position.y = 0.03;
-    tonearmAssembly.add(armBaseTier1);
+    // Bệ chân xoay cần kim vững chãi gắn chặt vào mặt máy
+    const armBase = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.08, 32), royalGoldMat);
+    armBase.position.y = 0.04;
+    tonearmAssembly.add(armBase);
 
-    const armBaseTier2 = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.24, 0.28, 0.14, 32),
-      brassMat
-    );
-    armBaseTier2.position.y = 0.13;
-    tonearmAssembly.add(armBaseTier2);
+    // Trụ cột dọc nối liền bệ chân với cụm Gimbal (loại bỏ hoàn toàn khe hở lơ lửng)
+    const armPedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.28, 24), antiqueGoldMat);
+    armPedestal.position.y = 0.18;
+    tonearmAssembly.add(armPedestal);
 
-    // Trụ trục Gimbal thẳng đứng
-    const gimbalPillar = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.12, 0.24, 20),
-      darkGoldMat
-    );
-    gimbalPillar.position.y = 0.28;
-    tonearmAssembly.add(gimbalPillar);
+    // Vòng ren điều chỉnh chiều cao Azimuth
+    const azimuthCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.06, 24), royalGoldMat);
+    azimuthCollar.position.y = 0.26;
+    tonearmAssembly.add(azimuthCollar);
 
-    // 2. Vòng khuyên Gimbal Bearing kép
-    const gimbalRingGeom = new THREE.TorusGeometry(0.16, 0.032, 16, 32);
-    const gimbalRing = new THREE.Mesh(gimbalRingGeom, brassMat);
-    gimbalRing.position.y = 0.36;
-    tonearmAssembly.add(gimbalRing);
+    // Cụm xoay trục Gimbal 4 chiều chuyển động linh hoạt (Mechanical Swivel Pivot)
+    const tonearmSwivelGroup = new THREE.Group();
+    tonearmSwivelGroup.position.set(0, 0.35, 0);
+    tonearmAssembly.add(tonearmSwivelGroup);
 
-    // 3. TẠ ĐỐI TRỌNG CÂN BẰNG PHÍA SAU (AUDIOPHILE COUNTERWEIGHT)
-    const counterweightGroup = new THREE.Group();
-    counterweightGroup.position.set(0.22, 0.36, 0.24);
+    // Khối đế xoay Gimbal
+    const gimbalBlock = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.14, 0.18), antiqueGoldMat);
+    tonearmSwivelGroup.add(gimbalBlock);
 
-    // Trục sau đỡ tạ
-    const weightStemGeom = new THREE.CylinderGeometry(0.04, 0.04, 0.40, 16);
-    weightStemGeom.rotateX(Math.PI / 4);
-    const weightStem = new THREE.Mesh(weightStemGeom, darkGoldMat);
-    counterweightGroup.add(weightStem);
+    // Vòng khuyên Gimbal ngoài
+    const gimbalRing = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.03, 16, 32), royalGoldMat);
+    tonearmSwivelGroup.add(gimbalRing);
 
-    // Khối tạ đối trọng chính bằng đồng nặng
-    const weightBodyGeom = new THREE.CylinderGeometry(0.19, 0.19, 0.22, 32);
-    weightBodyGeom.rotateX(Math.PI / 4);
-    const weightBody = new THREE.Mesh(weightBodyGeom, darkGoldMat);
-    weightBody.position.set(0, 0.08, 0.08);
-    counterweightGroup.add(weightBody);
+    // Chốt ốc xoay bi chrome hai bên
+    [-0.17, 0.17].forEach((sideX) => {
+      const pivotPin = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.06, 12), chromeMat);
+      pivotPin.position.set(sideX, 0, 0);
+      pivotPin.rotation.z = Math.PI / 2;
+      tonearmSwivelGroup.add(pivotPin);
+    });
 
-    // Vòng chia vạch số lực tì kim (Gram Tracking Force Ring)
-    const weightDialGeom = new THREE.CylinderGeometry(0.195, 0.195, 0.06, 32);
-    weightDialGeom.rotateX(Math.PI / 4);
-    const weightDial = new THREE.Mesh(weightDialGeom, rubberMat);
-    weightDial.position.set(0, 0.03, 0.03);
-    counterweightGroup.add(weightDial);
+    // Trục sau gắn tạ đối trọng vươn thẳng từ tâm Gimbal
+    const weightStem = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.40, 16), chromeMat);
+    weightStem.position.set(0.18, 0, 0.18);
+    weightStem.rotation.set(0, Math.PI / 4, 0);
+    weightStem.rotation.x = Math.PI / 2;
+    tonearmSwivelGroup.add(weightStem);
 
-    tonearmAssembly.add(counterweightGroup);
+    // Cục tạ đối trọng bọc quanh trục sau
+    const weightBody = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.20, 0.20, 32), antiqueGoldMat);
+    weightBody.position.set(0.18, 0, 0.18);
+    weightBody.rotation.set(0, Math.PI / 4, 0);
+    weightBody.rotation.x = Math.PI / 2;
+    tonearmSwivelGroup.add(weightBody);
 
-    // 4. Cần gạt nâng hạ kim (Cueing / Arm-Lift Lever)
-    const cueingLeverGroup = new THREE.Group();
-    cueingLeverGroup.position.set(-0.16, 0.28, 0.08);
+    // Khuyên chia độ lực kim (Tracking Force Ring)
+    const forceRing = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.205, 0.05, 32), royalGoldMat);
+    forceRing.position.set(0.11, 0, 0.11);
+    forceRing.rotation.set(0, Math.PI / 4, 0);
+    forceRing.rotation.x = Math.PI / 2;
+    tonearmSwivelGroup.add(forceRing);
 
-    const cueingStem = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.016, 0.016, 0.18, 12),
-      brassMat
-    );
-    cueingStem.rotation.z = -0.35;
-    cueingLeverGroup.add(cueingStem);
+    // Cần gạt nâng hạ kim thủy lực (Cueing Lever) đỡ ngay dưới cần kim
+    const cueLeverGroup = new THREE.Group();
+    cueLeverGroup.position.set(-0.16, 0.18, -0.12);
+    const cueBase = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.14, 12), chromeMat);
+    cueLeverGroup.add(cueBase);
+    const cueHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.18, 12), antiqueGoldMat);
+    cueHandle.position.set(0, 0.10, -0.06);
+    cueHandle.rotation.x = -0.35;
+    cueLeverGroup.add(cueHandle);
+    tonearmAssembly.add(cueLeverGroup);
 
-    const cueingKnob = new THREE.Mesh(
-      new THREE.SphereGeometry(0.032, 12, 12),
-      rubberMat
-    );
-    cueingKnob.position.set(-0.04, 0.09, 0);
-    cueingLeverGroup.add(cueingKnob);
-    tonearmAssembly.add(cueingLeverGroup);
+    // Bệ đỡ cần có chốt khóa an toàn (gắn cố định trên mặt máy)
+    const armrestGroup = new THREE.Group();
+    armrestGroup.position.set(-0.25, 0.15, -0.38);
+    const armrestPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.22, 12), chromeMat);
+    armrestGroup.add(armrestPillar);
+    const armrestU = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.014, 12, 16, Math.PI), bordeauxVelvetMat);
+    armrestU.position.set(0, 0.11, 0);
+    armrestU.rotation.x = Math.PI / 2;
+    armrestGroup.add(armrestU);
+    tonearmAssembly.add(armrestGroup);
 
-    // 5. Gá đỡ cần kim chữ U (Tonearm Rest & Clip)
-    const restGroup = new THREE.Group();
-    restGroup.position.set(-0.35, 0.06, -0.32);
-
-    const restPost = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.03, 0.03, 0.28, 12),
-      darkGoldMat
-    );
-    restPost.position.y = 0.14;
-    restGroup.add(restPost);
-
-    const restFork = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, 0.06, 0.06),
-      darkGoldMat
-    );
-    restFork.position.y = 0.28;
-    restGroup.add(restFork);
-    tonearmAssembly.add(restGroup);
-
-    // 6. Cần kim uốn cong chữ S chuẩn Hi-Fi (Classic S-shaped Tonearm Tube)
+    // Cần kim chữ S uốn lượn mượt mà xuất phát trực tiếp từ khối Gimbal
     const armCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, 0.36, 0),
-      new THREE.Vector3(-0.25, 0.38, -0.35),
-      new THREE.Vector3(-0.55, 0.32, -0.75),
-      new THREE.Vector3(-0.84, 0.23, -1.00)
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(-0.28, 0.01, -0.38),
+      new THREE.Vector3(-0.58, -0.04, -0.80),
+      new THREE.Vector3(-0.88, -0.13, -1.08)
     ]);
-    const tonearmGeom = new THREE.TubeGeometry(armCurve, 36, 0.036, 16, false);
-    const tonearm = new THREE.Mesh(tonearmGeom, brassMat);
+    const tonearm = new THREE.Mesh(new THREE.TubeGeometry(armCurve, 48, 0.038, 16, false), royalGoldMat);
     tonearm.castShadow = true;
-    tonearmAssembly.add(tonearm);
+    tonearmSwivelGroup.add(tonearm);
 
-    // 7. Đầu máng kim Headshell & Hộp kim Cartridge
+    // Máng kim Head-shell, Hộp kim Cartridge & Mũi kim Cantilever
     const headshellGroup = new THREE.Group();
-    headshellGroup.position.set(-0.84, 0.23, -1.00);
+    headshellGroup.position.set(-0.88, -0.13, -1.08);
     headshellGroup.rotation.set(0.12, 0.38, -0.08);
 
-    // Máng kim đục lỗ tản trọng lượng
-    const headshellPlateGeom = new THREE.BoxGeometry(0.13, 0.03, 0.26);
-    const headshellPlate = new THREE.Mesh(headshellPlateGeom, darkGoldMat);
-    headshellPlate.position.z = -0.10;
-    headshellGroup.add(headshellPlate);
-
-    // Cần nâng ngón tay (Finger Lift Hook)
-    const fingerLiftGeom = new THREE.CylinderGeometry(0.012, 0.012, 0.12, 8);
-    const fingerLift = new THREE.Mesh(fingerLiftGeom, brassMat);
-    fingerLift.position.set(0.07, 0.02, -0.16);
+    const headshellBody = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.03, 0.24), royalGoldMat);
+    headshellGroup.add(headshellBody);
+    const fingerLift = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.12, 10), chromeMat);
+    fingerLift.position.set(0.08, 0.04, -0.02);
     fingerLift.rotation.z = Math.PI / 3;
     headshellGroup.add(fingerLift);
 
-    // Hộp kim Cartridge (Audiophile Moving Magnet Cartridge)
-    const cartridgeGeom = new THREE.BoxGeometry(0.11, 0.09, 0.16);
-    const cartridgeMat = new THREE.MeshStandardMaterial({
-      color: 0x991b1b, // Đỏ thẫm sang trọng phong cách Ortofon
-      roughness: 0.3,
-      metalness: 0.2
-    });
-    const cartridge = new THREE.Mesh(cartridgeGeom, cartridgeMat);
-    cartridge.position.set(0, -0.05, -0.10);
+    const cartridge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.10, 0.085, 0.16),
+      new THREE.MeshStandardMaterial({ color: 0x6b1d2f, roughness: 0.3, metalness: 0.3 })
+    );
+    cartridge.position.set(0, -0.05, -0.04);
     headshellGroup.add(cartridge);
 
-    // Mũi kim Stylus kim cương nhọn hoắt
-    const stylusGeom = new THREE.ConeGeometry(0.014, 0.07, 10);
-    const stylus = new THREE.Mesh(stylusGeom, darkGoldMat);
-    stylus.position.set(0, -0.11, -0.13);
-    stylus.rotation.x = Math.PI;
-    headshellGroup.add(stylus);
+    const cantilever = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.06, 8), chromeMat);
+    cantilever.position.set(0, -0.09, -0.08);
+    cantilever.rotation.x = 0.5;
+    headshellGroup.add(cantilever);
+    const diamondTip = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.03, 8), chromeMat);
+    diamondTip.position.set(0, -0.115, -0.10);
+    diamondTip.rotation.x = Math.PI;
+    headshellGroup.add(diamondTip);
 
-    tonearmAssembly.add(headshellGroup);
+    // Điểm sáng lấp lánh quang học tại rãnh kim (Diamond Stylus Specular Sparkle)
+    const stylusSparkleGeom = new THREE.SphereGeometry(0.018, 10, 10);
+    const stylusSparkleMat = new THREE.MeshBasicMaterial({
+      color: 0xfff6dd,
+      transparent: true,
+      opacity: 0.95
+    });
+    const stylusSparkle = new THREE.Mesh(stylusSparkleGeom, stylusSparkleMat);
+    stylusSparkle.position.set(0, -0.125, -0.10);
+    headshellGroup.add(stylusSparkle);
 
-    // ========================================================
-    // E. LOA KÈN HOA MUỐNG BIỂN 12 MÚI ĐỒNG THAU UỐN LƯỢN
-    // ========================================================
+    tonearmSwivelGroup.add(headshellGroup);
+
+    // =========================================================================
+    // 5. LOA KÈN HOÀNG GIA (KHỚP NỐI KHÔNG TỲ VẾT - 100% GAPLESS CONTINUOUS FIT)
+    // =========================================================================
     const hornGroup = new THREE.Group();
-    gramophoneGroup.add(hornGroup);
+    turntableGroup.add(hornGroup);
 
-    const elbowCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(-1.15, 1.55, -0.75),
-      new THREE.Vector3(-1.18, 1.95, -0.75),
-      new THREE.Vector3(-1.10, 2.45, -0.60),
-      new THREE.Vector3(-0.85, 2.95, -0.25)
+    // Bệ đúc đồng gắn chặt cần cổ loa kèn vào mặt thùng máy
+    const hornBaseBracket = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.24, 0.28, 0.12, 24),
+      antiqueGoldMat
+    );
+    hornBaseBracket.position.set(-1.18, 1.66, -0.78);
+    hornGroup.add(hornBaseBracket);
+
+    const hornBaseMolding = new THREE.Mesh(
+      new THREE.TorusGeometry(0.22, 0.04, 16, 24),
+      royalGoldMat
+    );
+    hornBaseMolding.position.set(-1.18, 1.72, -0.78);
+    hornBaseMolding.rotation.x = Math.PI / 2;
+    hornGroup.add(hornBaseMolding);
+
+    // Đường cong cổ thiên nga (Swan-Neck Tube) xuất phát từ bệ gắn
+    const swanCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-1.18, 1.72, -0.78),
+      new THREE.Vector3(-1.26, 2.15, -0.78),
+      new THREE.Vector3(-1.16, 2.65, -0.62),
+      new THREE.Vector3(-0.92, 3.08, -0.38),
+      new THREE.Vector3(-0.64, 3.42, -0.12)
     ]);
-    const elbowGeom = new THREE.TubeGeometry(elbowCurve, 36, 0.11, 16, false);
-    const elbow = new THREE.Mesh(elbowGeom, brassMat);
-    elbow.castShadow = true;
-    hornGroup.add(elbow);
+    const swanTube = new THREE.Mesh(
+      new THREE.TubeGeometry(swanCurve, 48, 0.13, 24, false),
+      royalGoldMat
+    );
+    swanTube.castShadow = true;
+    hornGroup.add(swanTube);
+
+    // Tọa độ điểm cuối ống dẫn và vector tiếp tuyến chuẩn xác
+    const hornThroatPos = new THREE.Vector3(-0.64, 3.42, -0.12);
+    const hornTangent = swanCurve.getTangent(1.0).normalize();
+
+    // Vòng khuyên khớp nối hoàng gia bọc ngoài điểm tiếp giáp
+    const couplingCollar = new THREE.Group();
+    couplingCollar.position.copy(hornThroatPos);
+    couplingCollar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), hornTangent);
+
+    const collarBody = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.20, 0.14, 32), antiqueGoldMat);
+    couplingCollar.add(collarBody);
+    const collarRing = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.03, 16, 32), royalGoldMat);
+    couplingCollar.add(collarRing);
+    hornGroup.add(couplingCollar);
+
+    // Nhóm Loa Kèn Hoa Hoàng Gia 12 Múi (Khớp chuẩn 100% theo vector tiếp tuyến)
+    const bellGroup = new THREE.Group();
+    bellGroup.position.copy(hornThroatPos);
+    bellGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), hornTangent);
+    hornGroup.add(bellGroup);
 
     const petals = 12;
     const radialSegs = petals * 4;
@@ -827,20 +979,17 @@ export default function IntroLandingPage() {
 
     for (let y = 0; y <= heightSegs; y++) {
       const v = y / heightSegs;
-      const heightVal = 1.95 * Math.pow(v, 1.15);
-      const baseRadius = 0.12 + 1.85 * Math.pow(v, 2.5);
+      // Chiều cao dọc theo hướng mở của loa kèn
+      const heightVal = 2.10 * Math.pow(v, 1.15);
+      // Bán kính khởi đầu tại y=0 đúng bằng bán kính ống dẫn 0.13 (Khớp tuyệt đối)
+      const baseRadius = 0.13 + 1.95 * Math.pow(v, 2.45);
       const petalWave = 0.22 * Math.pow(v, 2.8);
 
       for (let x = 0; x <= radialSegs; x++) {
         const u = x / radialSegs;
         const angle = u * Math.PI * 2;
         const radius = baseRadius + Math.sin(angle * petals) * petalWave;
-
-        const vx = Math.cos(angle) * radius;
-        const vy = heightVal;
-        const vz = Math.sin(angle) * radius;
-
-        vertices.push(vx, vy, vz);
+        vertices.push(Math.cos(angle) * radius, heightVal, Math.sin(angle) * radius);
         uvs.push(u, v);
       }
     }
@@ -861,72 +1010,172 @@ export default function IntroLandingPage() {
     hornBellGeom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     hornBellGeom.computeVertexNormals();
 
-    const hornBellMesh = new THREE.Mesh(hornBellGeom, brassMat);
-    hornBellMesh.position.set(-0.85, 2.95, -0.25);
-    hornBellMesh.rotation.set(0.18, -0.48, 0.22);
-    hornBellMesh.castShadow = true;
-    hornGroup.add(hornBellMesh);
+    const hornGoldMat = new THREE.MeshPhysicalMaterial({
+      color: 0xd4af37,
+      metalness: 0.94,
+      roughness: 0.16,
+      clearcoat: 0.75,
+      clearcoatRoughness: 0.12,
+      side: THREE.DoubleSide
+    });
 
-    // Bóng đổ tiếp xúc tỏa tròn dưới đáy thùng máy
-    const shadowGeom = new THREE.PlaneGeometry(7.2, 7.2);
-    const shadowMat = new THREE.MeshBasicMaterial({
-      map: shadowTexture,
+    const hornBellMesh = new THREE.Mesh(hornBellGeom, hornGoldMat);
+    hornBellMesh.castShadow = true;
+    hornBellMesh.receiveShadow = true;
+    bellGroup.add(hornBellMesh);
+
+    // Vành cuộn tròn gờ mép miệng loa (Rolled Brass Rim Bead chống cạnh sắc đa giác)
+    const rimPoints = [];
+    const rimSamples = 96;
+    for (let s = 0; s <= rimSamples; s++) {
+      const u = s / rimSamples;
+      const angle = u * Math.PI * 2;
+      const r = 0.13 + 1.95 + Math.sin(angle * petals) * 0.22;
+      rimPoints.push(new THREE.Vector3(Math.cos(angle) * r, 2.10, Math.sin(angle) * r));
+    }
+    const rimCurve = new THREE.CatmullRomCurve3(rimPoints, true);
+    const hornRimMesh = new THREE.Mesh(
+      new THREE.TubeGeometry(rimCurve, rimSamples, 0.024, 12, true),
+      antiqueGoldMat
+    );
+    hornRimMesh.castShadow = true;
+    bellGroup.add(hornRimMesh);
+
+    // 12 Đường gân đồng dập nổi gia cường dọc theo các múi hoa (12 Fluted Rib Seams)
+    for (let p = 0; p < petals; p++) {
+      const ribAngle = (p / petals) * Math.PI * 2;
+      const ribPoints = [];
+      const ribSteps = 16;
+      for (let r = 0; r <= ribSteps; r++) {
+        const v = 0.05 + (r / ribSteps) * 0.95;
+        const hVal = 2.10 * Math.pow(v, 1.15);
+        const bRad = 0.13 + 1.95 * Math.pow(v, 2.45);
+        const pWave = 0.22 * Math.pow(v, 2.8);
+        const rad = bRad + Math.sin(ribAngle * petals) * pWave + 0.012;
+        ribPoints.push(new THREE.Vector3(Math.cos(ribAngle) * rad, hVal, Math.sin(ribAngle) * rad));
+      }
+      const ribCurve = new THREE.CatmullRomCurve3(ribPoints, false);
+      const ribMesh = new THREE.Mesh(
+        new THREE.TubeGeometry(ribCurve, 20, 0.013, 8, false),
+        antiqueGoldMat
+      );
+      ribMesh.castShadow = true;
+      bellGroup.add(ribMesh);
+    }
+
+    // Vòng sóng âm học hoàng gia lan tỏa khi phát nhạc (Acoustic Pressure Wave)
+    const acousticWaveGeom = new THREE.RingGeometry(2.05, 2.18, 48);
+    const acousticWaveMat = new THREE.MeshBasicMaterial({
+      color: 0xd4af37,
       transparent: true,
+      opacity: 0.0,
+      side: THREE.DoubleSide,
       depthWrite: false
     });
-    const contactShadow = new THREE.Mesh(shadowGeom, shadowMat);
+    const acousticWave = new THREE.Mesh(acousticWaveGeom, acousticWaveMat);
+    acousticWave.position.set(0, 2.11, 0);
+    acousticWave.rotation.x = Math.PI / 2;
+    bellGroup.add(acousticWave);
+
+    // Bóng đổ tiếp xúc tròn mờ dưới đáy
+    const contactShadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(7.4, 7.4),
+      new THREE.MeshBasicMaterial({ map: shadowTexture, transparent: true, depthWrite: false })
+    );
     contactShadow.rotation.x = -Math.PI / 2;
     contactShadow.position.set(0, 0.005, 0);
-    gramophoneGroup.add(contactShadow);
+    turntableGroup.add(contactShadow);
 
-    // Hạt bụi nắng hoàng hôn lơ lửng không gian 3D (Floating Dust Motes)
-    const particleCount = 75;
-    const particleGeom = new THREE.BufferGeometry();
-    const particlePositions = new Float32Array(particleCount * 3);
-    for (let p = 0; p < particleCount * 3; p += 3) {
-      particlePositions[p] = (Math.random() - 0.5) * 12;
-      particlePositions[p + 1] = Math.random() * 8;
-      particlePositions[p + 2] = (Math.random() - 0.5) * 12;
+    // 6. Trường hạt bụi nắng vàng hoàng gia ấm áp (Golden Dust Motes)
+    const dustCount = 260;
+    const dustGeometry = new THREE.BufferGeometry();
+    const dustPositions = new Float32Array(dustCount * 3);
+    for (let i = 0; i < dustCount * 3; i += 3) {
+      dustPositions[i] = (Math.random() - 0.5) * 12;
+      dustPositions[i + 1] = Math.random() * 8;
+      dustPositions[i + 2] = (Math.random() - 0.5) * 12;
     }
-    particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-    const particleMat = new THREE.PointsMaterial({
-      color: 0xfef3c7,
-      size: 0.055,
+    dustGeometry.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+    const dustMaterial = new THREE.PointsMaterial({
+      color: 0xd4af37,
+      size: 0.045,
       transparent: true,
-      opacity: 0.65
+      opacity: 0.55
     });
-    const particles = new THREE.Points(particleGeom, particleMat);
-    scene.add(particles);
+    const dustPoints = new THREE.Points(dustGeometry, dustMaterial);
+    scene.add(dustPoints);
 
-    // Vòng hạt sóng âm lan tỏa từ miệng loa kèn (Acoustic Wave Particles)
-    const waveCount = 36;
-    const waveGeom = new THREE.BufferGeometry();
-    const wavePositions = new Float32Array(waveCount * 3);
-    for (let w = 0; w < waveCount * 3; w += 3) {
-      wavePositions[w] = -0.85 + (Math.random() - 0.5) * 0.5;
-      wavePositions[w + 1] = 4.2 + (Math.random() - 0.5) * 0.5;
-      wavePositions[w + 2] = 0.5 + Math.random() * 2.0;
-    }
-    waveGeom.setAttribute('position', new THREE.BufferAttribute(wavePositions, 3));
-    const waveMat = new THREE.PointsMaterial({
-      color: 0xf59e0b,
-      size: 0.08,
-      transparent: true,
-      opacity: 0.4
-    });
-    const waveParticles = new THREE.Points(waveGeom, waveMat);
-    scene.add(waveParticles);
+    // =========================================================================
+    // ĐƯỜNG CONG MÁY QUAY ĐIỆN ẢNH LIÊN TỤC (CATMULL-ROM CAMERA CHOREOGRAPHY)
+    // Tối ưu góc máy để KHÔNG BỊ CHÈN CHỮ: Nhường trọn không gian cho nội dung
+    // =========================================================================
+    const cameraSpline = new THREE.CatmullRomCurve3(
+      [
+        new THREE.Vector3(0, 3.0, 10.4),      // 0.00: Hero (Toàn cảnh 3/4 mặt trước)
+        new THREE.Vector3(0.5, 3.4, 7.6),     // 0.20: Chuyển tiếp vào Deck
+        new THREE.Vector3(0.8, 3.5, 5.2),     // 0.38: Deck (Đẩy nhẹ sang phải để nhường lề trái)
+        new THREE.Vector3(1.6, 3.8, 5.8),     // 0.58: Acoustics (Đưa mâm đĩa và loa sang PHẢI, để bảng specs ở BÊN TRÁI)
+        new THREE.Vector3(-1.4, 3.0, 4.6),    // 0.78: Capabilities (Cận cảnh cần kim ở góc đối diện)
+        new THREE.Vector3(0, 6.2, 7.4)        // 1.00: Heritage (Zen Elevation góc nhìn cao)
+      ],
+      false,
+      'catmullrom',
+      0.5
+    );
 
-    // ========================================================
-    // CINEMATIC SCROLL & STEADICAM CONTROLLER
-    // ========================================================
+    const lookAtSpline = new THREE.CatmullRomCurve3(
+      [
+        new THREE.Vector3(0, 1.1, 0),         // 0.00: Hero
+        new THREE.Vector3(0, 1.4, 0),         // 0.20
+        new THREE.Vector3(0.3, 1.7, 0),       // 0.38: Deck
+        new THREE.Vector3(0.5, 2.6, 0),       // 0.58: Acoustics
+        new THREE.Vector3(-0.2, 1.68, 0),     // 0.78: Capabilities
+        new THREE.Vector3(0, 1.1, 0)          // 1.00: Heritage
+      ],
+      false,
+      'catmullrom',
+      0.5
+    );
+
+    // Mỏ neo 3D cho các điểm ghim kỹ thuật HUD thời gian thực
+    const pinAnchors = [
+      { id: '01', pos: new THREE.Vector3(1.42, 1.85, 1.05), ref: pin1Ref },
+      { id: '02', pos: new THREE.Vector3(0, 1.78, 1.85), ref: pin2Ref },
+      { id: '03', pos: new THREE.Vector3(0, 2.10, 0), ref: pin3Ref },
+      { id: '04', pos: new THREE.Vector3(1.68, 1.72, 0.45), ref: pin4Ref }
+    ];
+
     let mouseX = 0;
     let mouseY = 0;
+    let isDragging = false;
+    let prevPointerX = 0;
+    let userOrbitAngle = 0;
+
     const handleMouseMove = (e) => {
       mouseX = (e.clientX / window.innerWidth) * 2 - 1;
       mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      if (isDragging) {
+        const deltaX = e.clientX - prevPointerX;
+        userOrbitAngle += deltaX * 0.008;
+        prevPointerX = e.clientX;
+      }
     };
+
+    const handlePointerDown = (e) => {
+      if (window.scrollY < window.innerHeight * 0.8) {
+        isDragging = true;
+        prevPointerX = e.clientX;
+      }
+    };
+
+    const handlePointerUp = () => {
+      isDragging = false;
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('pointerup', handlePointerUp);
 
     const handleResize = () => {
       width = window.innerWidth;
@@ -937,75 +1186,152 @@ export default function IntroLandingPage() {
     };
     window.addEventListener('resize', handleResize);
 
-    const targetCamPos = new THREE.Vector3(0, 3.6, 11.2);
-    const currentCamPos = new THREE.Vector3(0, 3.6, 11.2);
-    const targetLookAt = new THREE.Vector3(0, 1.2, 0);
-    const currentLookAt = new THREE.Vector3(0, 1.2, 0);
-    const targetRot = { x: 0.02, y: 0.35 };
+    const currentCamPos = new THREE.Vector3(0, 3.0, 10.4);
+    const currentLookAt = new THREE.Vector3(0, 1.1, 0);
 
     let animId;
     let clock = new THREE.Clock();
+
+    // Biến trạng thái điều khiển cơ khí cần kim & cần gạt thủy lực
+    let currentTonearmYaw = 0.26;
+    let currentTonearmLift = 0.05;
+    let currentCueLeverAngle = -0.40;
 
     const animateLoop = () => {
       animId = requestAnimationFrame(animateLoop);
       const elapsedTime = clock.getElapsedTime();
 
-      // Đĩa than tự quay 33⅓ RPM
-      vinylGroup.rotation.y += 0.012;
+      // Mâm đĩa than & Platter tự quay 33⅓ RPM với độ mượt tự nhiên
+      if (!prefersReducedMotion) {
+        vinylGroup.rotation.y += 0.020;
+        platterGroup.rotation.y += 0.020;
 
-      // Tính toán tiến trình cuộn trang
+        const posAttr = dustGeometry.attributes.position;
+        for (let i = 1; i < dustCount * 3; i += 3) {
+          posAttr.array[i] += Math.sin(elapsedTime * 0.5 + i) * 0.002;
+        }
+        posAttr.needsUpdate = true;
+
+        // Loa kèn rung động âm học đồng bộ toàn cụm hoa đồng (Bell + Ribs + Bead)
+        const hornPulse = 1.0 + Math.sin(elapsedTime * 2.2) * 0.012;
+        bellGroup.scale.set(hornPulse, 1.0, hornPulse);
+      }
+
+      if (isPlayingRef.current) {
+        stylusSpot.intensity = 2.4 + Math.sin(elapsedTime * 5) * 0.6;
+      } else {
+        stylusSpot.intensity = 2.4;
+      }
+
+      if (!isDragging) {
+        userOrbitAngle *= 0.95;
+      }
+
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
       const scrollProgress = docHeight > 0 ? Math.max(0, Math.min(1, window.scrollY / docHeight)) : 0;
 
-      if (scrollProgress < 0.2) setCurrentChapter(0);
-      else if (scrollProgress < 0.45) setCurrentChapter(1);
-      else if (scrollProgress < 0.7) setCurrentChapter(2);
-      else if (scrollProgress < 0.9) setCurrentChapter(3);
-      else setCurrentChapter(4);
+      // =====================================================================
+      // ĐIỀU KHIỂN CƠ KHÍ CẦN KIM ĐIỆN ẢNH (HYDRAULIC CUEING & GROOVE TRACKING)
+      // =====================================================================
+      let targetTonearmYaw = 0.26;
+      let targetTonearmLift = 0.05;
+      let targetCueLever = -0.40;
 
-      interpolateCinematicCamera(scrollProgress, targetCamPos, targetLookAt, targetRot);
+      if (scrollProgress >= 0.10 && scrollProgress <= 0.94) {
+        // Trạng thái phát nhạc: Cần gạt hạ xuống, cần kim nhấc khỏi giá, xoay vào đĩa và hạ kim
+        targetCueLever = -0.12;
+        const playProgress = Math.min(1, Math.max(0, (scrollProgress - 0.10) / 0.84));
+        // Lướt từ rãnh ngoài (0.0 rad) dần vào rãnh trong (-0.12 rad)
+        targetTonearmYaw = -playProgress * 0.12;
+        targetTonearmLift = 0.0;
+      } else {
+        // Trạng thái đậu nghỉ an toàn trên bệ đỡ (Resting)
+        targetCueLever = -0.40;
+        targetTonearmYaw = 0.26;
+        targetTonearmLift = 0.05;
+      }
 
-      // Thở nhẹ của máy quay Steadicam điện ảnh
-      const breathing = Math.sin(elapsedTime * 0.75) * 0.06;
-      targetCamPos.y += breathing;
+      // Giảm chấn thủy lực làm mượt chuyển động cơ học (Hydraulic Damping)
+      currentTonearmYaw += (targetTonearmYaw - currentTonearmYaw) * 0.045;
+      currentTonearmLift += (targetTonearmLift - currentTonearmLift) * 0.045;
+      currentCueLeverAngle += (targetCueLever - currentCueLeverAngle) * 0.05;
 
-      // Chuột Parallax
-      const mouseParallaxX = mouseX * 0.45;
-      const mouseParallaxY = mouseY * 0.3;
-      targetCamPos.x += mouseParallaxX;
-      targetCamPos.y += mouseParallaxY;
+      cueHandle.rotation.x = currentCueLeverAngle;
 
-      // Làm mịn chuyển động
-      currentCamPos.lerp(targetCamPos, 0.045);
-      currentLookAt.lerp(targetLookAt, 0.045);
+      // Dao động vi mô tiếp xúc rãnh đĩa khi mũi kim chạm đĩa (Micro-groove compliance)
+      const isNeedleOnRecord = currentTonearmLift < 0.015;
+      const needleWobble = isNeedleOnRecord
+        ? Math.sin(elapsedTime * 7.2) * 0.0016 + (isPlayingRef.current ? Math.sin(elapsedTime * 24.0) * 0.0008 : 0)
+        : 0;
+
+      tonearmSwivelGroup.rotation.y = currentTonearmYaw;
+      tonearmSwivelGroup.rotation.x = currentTonearmLift + needleWobble;
+
+      // Điểm sáng quang học lấp lánh rãnh kim khi mũi kim tiếp xúc đĩa than
+      if (isNeedleOnRecord) {
+        stylusSparkle.visible = true;
+        const sparkleScale = 0.8 + Math.sin(elapsedTime * 18.0) * 0.35 + (isPlayingRef.current ? Math.sin(elapsedTime * 38.0) * 0.45 : 0);
+        stylusSparkle.scale.setScalar(Math.max(0.2, sparkleScale));
+        stylusSparkleMat.opacity = 0.5 + Math.sin(elapsedTime * 22.0) * 0.35;
+      } else {
+        stylusSparkle.visible = false;
+      }
+
+      // Sóng âm học loa kèn lan tỏa nhịp nhàng khi có âm thanh phát
+      if (isPlayingRef.current) {
+        const wave = (elapsedTime * 1.8) % 1.0;
+        acousticWave.scale.setScalar(1.0 + wave * 0.28);
+        acousticWaveMat.opacity = (1.0 - wave) * 0.5;
+      } else {
+        acousticWaveMat.opacity = 0;
+      }
+
+      // Cần gạt Pitch trượt nhẹ nhàng theo hành trình điều chỉnh
+      const pitchTargetZ = 0.06 + Math.sin(scrollProgress * Math.PI * 3) * 0.06;
+      pitchKnob.position.z = THREE.MathUtils.lerp(pitchKnob.position.z, pitchTargetZ, 0.035);
+
+      // =====================================================================
+      // MÁY QUAY ĐIỆN ẢNH VỚI GÓC NGHIÊNG BANKING & NHỊP THỞ HANDHELD HỮU CƠ
+      // =====================================================================
+      const splineTargetCam = cameraSpline.getPointAt(scrollProgress);
+      const splineTargetLook = lookAtSpline.getPointAt(scrollProgress);
+
+      const organicBreathX = Math.sin(elapsedTime * 0.65) * 0.025;
+      const organicBreathY = Math.cos(elapsedTime * 0.45) * 0.020;
+      splineTargetCam.x += mouseX * 0.35 + organicBreathX;
+      splineTargetCam.y += mouseY * 0.20 + organicBreathY;
+
+      turntableGroup.rotation.y = 0.35 + scrollProgress * 0.95 + userOrbitAngle;
+      turntableGroup.updateMatrixWorld(true);
+
+      currentCamPos.lerp(splineTargetCam, 0.055);
+      currentLookAt.lerp(splineTargetLook, 0.055);
 
       camera.position.copy(currentCamPos);
       camera.lookAt(currentLookAt);
 
-      gramophoneGroup.rotation.y += (targetRot.y + mouseX * 0.15 - gramophoneGroup.rotation.y) * 0.045;
-      gramophoneGroup.rotation.x += (targetRot.x - mouseY * 0.1 - gramophoneGroup.rotation.x) * 0.045;
+      // Góc nghiêng máy quay điện ảnh theo đường cong (Cinematic Banking Roll)
+      const targetRoll = Math.sin(scrollProgress * Math.PI * 1.8) * 0.035 - mouseX * 0.015;
+      camera.rotation.z = THREE.MathUtils.lerp(camera.rotation.z, targetRoll, 0.05);
 
-      // Nhịp thở âm học của loa kèn
-      const hornPulse = 1.0 + Math.sin(elapsedTime * 2.2) * 0.015;
-      hornBellMesh.scale.set(hornPulse, 1.0, hornPulse);
-
-      // Hạt bụi nắng
-      const pos = particleGeom.attributes.position.array;
-      for (let i = 1; i < particleCount * 3; i += 3) {
-        pos[i] += 0.0035;
-        if (pos[i] > 8) pos[i] = 0;
-      }
-      particleGeom.attributes.position.needsUpdate = true;
-
-      // Sóng âm loa kèn
-      const wavePos = waveGeom.attributes.position.array;
-      for (let w = 2; w < waveCount * 3; w += 3) {
-        wavePos[w] += 0.018;
-        if (wavePos[w] > 5.5) {
-          wavePos[w] = 0.5;
+      // Chiếu tọa độ các điểm ghim 3D HUD
+      const isPinVisibleSection = scrollProgress > 0.18 && scrollProgress < 0.92;
+      pinAnchors.forEach((pin) => {
+        if (pin.ref.current) {
+          const worldPos = pin.pos.clone().applyMatrix4(turntableGroup.matrixWorld);
+          const screenPos = worldPos.project(camera);
+          if (screenPos.z > 1.0 || !isPinVisibleSection) {
+            pin.ref.current.style.opacity = '0';
+            pin.ref.current.style.pointerEvents = 'none';
+          } else {
+            const screenX = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+            const screenY = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+            pin.ref.current.style.transform = `translate3d(${screenX}px, ${screenY}px, 0)`;
+            pin.ref.current.style.opacity = '1';
+            pin.ref.current.style.pointerEvents = 'auto';
+          }
         }
-      }
-      waveGeom.attributes.position.needsUpdate = true;
+      });
 
       renderer.render(scene, camera);
     };
@@ -1015,403 +1341,868 @@ export default function IntroLandingPage() {
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('resize', handleResize);
+
+      scene.traverse((obj) => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          if (Array.isArray(obj.material)) {
+            obj.material.forEach((m) => m.dispose());
+          } else {
+            obj.material.dispose();
+          }
+        }
+      });
+
+      shadowTexture.dispose();
+      woodTexture.dispose();
+      grooveTexture.dispose();
+      nameplateTexture.dispose();
+      roomEnvTexture.dispose();
+      renderer.dispose();
+      renderer.forceContextLoss();
+
       if (container && renderer.domElement) {
         container.removeChild(renderer.domElement);
       }
-      renderer.dispose();
-      scene.clear();
     };
   }, []);
 
-  // Xử lý nghe thử âm thanh môi trường tương tác
-  const toggleAmbientSound = (key) => {
-    playHapticClick();
-    if (activeAmbient === key) {
-      setAmbientVolume(key, 0);
-      setActiveAmbient(null);
-    } else {
-      if (activeAmbient) {
-        setAmbientVolume(activeAmbient, 0);
-      }
-      setAmbientVolume(key, 0.7);
-      setActiveAmbient(key);
-
-      animate(`#sound-pad-${key}`, {
-        scale: [1, 1.05, 1],
-        duration: 400,
-        ease: 'outBack'
-      });
-    }
-  };
-
-  // Nghe thử âm thanh hạ kim đĩa than (ASMR)
-  const triggerVinylPreview = () => {
-    playHapticClick();
-    setIsPlayingVinylPreview(true);
-    playNeedleDropEffect({ duration: 3.5 });
-    setTimeout(() => {
-      setIsPlayingVinylPreview(false);
-    }, 3500);
-  };
-
-  // Chuyển cảnh điện ảnh vào ứng dụng
-  const handleCinematicEnterApp = () => {
-    playHapticClick();
-    playNeedleDropEffect({ duration: 2.0 });
-    setIsTransitioningToApp(true);
-
-    setTimeout(() => {
-      navigate('/app');
-    }, 750);
-  };
-
   return (
-    <div className="min-h-screen bg-[#07090e] text-slate-100 selection:bg-amber-400 selection:text-black overflow-x-hidden font-sans relative">
-      {/* 1. CINEMATIC FULLSCREEN THREE.JS BACKDROP */}
+    <div className="min-h-screen bg-[#FAF8F5] text-[#1E293B] font-serif selection:bg-[#D4AF37] selection:text-white overflow-x-hidden relative">
+      {/* ========================================================
+          0. CON TRỎ CHUỘT QUÁN TÍNH NAM CHÂM HOÀNG GIA (MAGNETIC BRASS CURSOR)
+          ======================================================== */}
+      {!isTouchDevice && (
+        <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
+          {/* Tâm chấm vàng rực rỡ */}
+          <div
+            ref={cursorDotRef}
+            className="fixed top-0 left-0 -ml-1 -mt-1 w-2 h-2 rounded-full bg-[#D4AF37] shadow-[0_0_8px_rgba(212,175,55,0.9)] will-change-transform"
+          />
+          {/* Vòng hào quang mạ vàng chuyển động quán tính lò xo */}
+          <div
+            ref={cursorRingRef}
+            className="fixed top-0 left-0 -ml-4 -mt-4 w-8 h-8 rounded-full border border-[#D4AF37]/60 shadow-[0_0_12px_rgba(212,175,55,0.3)] will-change-transform"
+          />
+        </div>
+      )}
+
+      {/* ========================================================
+          0.5. THƯỚC ĐO CHƯƠNG HỒI HOÀNG GIA (ROYAL CHRONOMETER RAIL)
+          ======================================================== */}
+      <aside className="fixed right-6 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col items-center select-none pointer-events-auto">
+        <div className="relative py-4 flex flex-col items-center">
+          {/* Trục ray đồng thau mạ vàng */}
+          <div className="w-[1.5px] h-72 bg-gradient-to-b from-[#D4AF37]/15 via-[#D4AF37]/50 to-[#D4AF37]/15 relative rounded-full">
+            {/* Kim chỉ thị hành trình lướt dọc ray theo tiến độ cuộn trang */}
+            <div
+              className="absolute -left-[5px] w-3 h-3 rotate-45 bg-[#D4AF37] border border-[#FAF8F5] shadow-[0_0_10px_rgba(212,175,55,0.8)] transition-all duration-150 ease-out"
+              style={{ top: `${Math.min(96, Math.max(2, scrollProgressRatio * 100))}%` }}
+            />
+          </div>
+
+          {/* Các mốc số La Mã phân đoạn */}
+          <div className="absolute inset-y-0 flex flex-col justify-between items-center py-1 pointer-events-auto">
+            {CHAPTERS.map((ch) => {
+              const isActive = scrollProgressRatio >= ch.min && scrollProgressRatio <= ch.max;
+              return (
+                <div
+                  key={ch.id}
+                  className="relative group"
+                  onMouseEnter={() => setHoveredChapter(ch.id)}
+                  onMouseLeave={() => setHoveredChapter(null)}
+                >
+                  <a
+                    href={ch.target}
+                    onClick={() => playHapticClick()}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-[10px] font-bold transition-all duration-200 cursor-pointer ${
+                      isActive
+                        ? 'bg-[#1E293B] text-[#D4AF37] border border-[#D4AF37] shadow-lg scale-125'
+                        : 'text-[#1E293B]/45 hover:text-[#D4AF37] hover:scale-110 bg-[#FAF8F5]/85 border border-[#D4AF37]/20'
+                    }`}
+                  >
+                    {ch.id}
+                  </a>
+
+                  {/* Tooltip tên chương hiển thị khi rê chuột */}
+                  {hoveredChapter === ch.id && (
+                    <div className="absolute right-9 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-xl bg-[#1E293B]/95 text-white border border-[#D4AF37]/50 shadow-xl whitespace-nowrap font-serif text-xs z-50 animate-[fadeInScale_150ms_ease-out]">
+                      {ch.label}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </aside>
+
+      {/* ========================================================
+          1. PRELOADER & CURTAIN REVEAL (EDITORIAL LOADER)
+          ======================================================== */}
+      <div
+        className={`fixed inset-0 z-50 bg-[#FAF8F5] flex items-center justify-center transition-transform duration-700 ease-[cubic-bezier(0.77,0,0.175,1)] ${
+          isLoaded ? '-translate-y-full pointer-events-none' : 'translate-y-0'
+        }`}
+      >
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="text-3xl text-[#D4AF37] font-serif">◎</div>
+          <div className="font-mono text-xs uppercase tracking-[0.25em] text-[#C5A059]">
+            AuraLofi • Analog Audio Sanctuary
+          </div>
+          <div className="font-serif text-5xl font-light tracking-tight text-[#1E293B]">
+            {loaderProgress}%
+          </div>
+          <div className="w-56 h-0.5 bg-[#D4AF37]/20 overflow-hidden relative">
+            <div
+              className="h-full bg-[#D4AF37] transition-all duration-150"
+              style={{ width: `${loaderProgress}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================
+          2. FIXED 3D CANVAS STAGE (FULLSCREEN WEBGL BACKDROP)
+          ======================================================== */}
       <div
         ref={canvasMountRef}
         className="fixed inset-0 z-0 pointer-events-none w-screen h-screen overflow-hidden"
       />
 
-      {/* 2. CINEMATIC VIGNETTE & FILM OVERLAY */}
-      <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,rgba(7,9,14,0.85)_100%)]" />
+      {/* ========================================================
+          2.5. REAL-TIME 3D PROJECTED HUD PINS (PRECISION HARDWARE ANCHORS)
+          ======================================================== */}
+      <div className="fixed inset-0 z-30 pointer-events-none overflow-hidden">
+        {[
+          {
+            id: '01',
+            ref: pin1Ref,
+            label: 'Cần Kim Gimbal Hợp Kim Đồng',
+            desc: 'Ổ bi 4 chiều chuẩn Thụy Sĩ, tạ đối trọng chia độ 0-3g, núm Anti-Skate và cần gạt hạ kim thủy lực êm ái.'
+          },
+          {
+            id: '02',
+            ref: pin2Ref,
+            label: 'Mâm Đồng Thau & Vành Strobe 33⅓ RPM',
+            desc: 'Mâm đồng thau đúc nguyên khối nặng 2.2kg, 4 hàng mắt phản quang vi mô kiểm định tốc độ góc chuẩn xác.'
+          },
+          {
+            id: '03',
+            ref: pin3Ref,
+            label: 'Cục Chặn Đĩa Cân Bằng Thủy Chuẩn',
+            desc: 'Cục chặn đĩa 400g gia công khía rãnh knurled, đỉnh đính mắt bọt thủy ngọc lục bảo cân bằng thăng bằng.'
+          },
+          {
+            id: '04',
+            ref: pin4Ref,
+            label: 'Thước Trượt Pitch Control ±8%',
+            desc: 'Cần trượt nhôm đồng phay xước điều tốc ±8% với cơ chế hãm trung tâm Quartz Lock chính xác.'
+          }
+        ].map((pin) => (
+          <div
+            key={pin.id}
+            ref={pin.ref}
+            className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 transition-[opacity,transform] duration-200 ease-out pointer-events-auto"
+            style={{ opacity: 0 }}
+          >
+            <div className="relative group">
+              <button
+                type="button"
+                onClick={() => {
+                  playHapticClick();
+                  setActive3DPin(active3DPin === pin.id ? null : pin.id);
+                }}
+                className="w-8 h-8 rounded-full bg-[#1E293B] text-[#D4AF37] font-mono text-[11px] font-bold flex items-center justify-center shadow-xl hover:scale-125 active:scale-95 transition-transform duration-150 ease-out cursor-pointer border-2 border-[#D4AF37]"
+              >
+                {pin.id}
+              </button>
 
-      {/* 3. CINEMATIC TRANSITION OVERLAY (FADE TO BLACK KHI VÀO APP) */}
-      <div
-        className={`fixed inset-0 z-50 bg-black pointer-events-none transition-opacity duration-700 ease-in-out ${
-          isTransitioningToApp ? 'opacity-100' : 'opacity-0'
-        }`}
-      />
-
-      {/* 4. TOP NAVIGATION BAR */}
-      <header className="fixed top-0 inset-x-0 z-40 bg-[#07090e]/60 backdrop-blur-md border-b border-white/[0.06]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-amber-500/40 via-amber-300/30 to-amber-200/50 border border-amber-300/40 flex items-center justify-center shadow-lg shadow-amber-500/15">
-              <Disc3 className="w-5 h-5 text-amber-300 animate-[spin_8s_linear_infinite]" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-extrabold text-base tracking-wider bg-gradient-to-r from-amber-100 via-amber-300 to-amber-100 bg-clip-text text-transparent">
-                AuraLofi
-              </span>
-              <span className="text-[10px] font-mono tracking-widest text-white/50 uppercase -mt-0.5">
-                3D VINYL & MINDFUL SANCTUARY
-              </span>
+              {/* Pin Detail Overlay Card */}
+              {active3DPin === pin.id && (
+                <div className="absolute top-10 left-1/2 -translate-x-1/2 w-80 p-5 rounded-2xl bg-[#1E293B]/95 backdrop-blur-md text-white border border-[#D4AF37]/40 shadow-2xl font-sans text-left z-50 transform-gpu animate-[fadeInScale_180ms_cubic-bezier(0.16,1,0.3,1)]">
+                  <div className="flex items-center justify-between border-b border-[#D4AF37]/30 pb-2 mb-2.5">
+                    <span className="font-mono text-[11px] text-[#D4AF37] tracking-wider uppercase font-semibold">
+                      CHI TIẾT KỸ THUẬT #{pin.id}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        playHapticClick();
+                        setActive3DPin(null);
+                      }}
+                      className="text-xs text-white/50 hover:text-white cursor-pointer px-1"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="font-serif text-sm font-medium mb-1.5 text-white">{pin.label}</div>
+                  <p className="text-xs text-white/80 font-light leading-relaxed">{pin.desc}</p>
+                </div>
+              )}
             </div>
           </div>
+        ))}
+      </div>
 
-          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-slate-300">
-            <a
-              href="#chuong-1"
-              className={`transition-colors ${currentChapter === 1 ? 'text-amber-300 font-bold' : 'hover:text-amber-300'}`}
-            >
-              I. Nghi Thức Analog
+      {/* ========================================================
+          3. FIXED SITE NAVIGATION BAR (#site-nav)
+          ======================================================== */}
+      <header className="fixed top-0 inset-x-0 z-40 bg-[#FAF8F5]/90 backdrop-blur-md border-b border-[#D4AF37]/25">
+        <div className="max-w-[1720px] mx-auto px-6 h-[76px] grid grid-cols-12 items-center">
+          {/* Logo & Tagline */}
+          <div className="col-span-6 flex items-center gap-4">
+            <a href="#hero" className="flex items-center gap-2 cursor-pointer group">
+              <div className="w-8 h-8 rounded-full bg-[#1E293B] border border-[#D4AF37]/60 flex items-center justify-center text-[#D4AF37] font-serif text-sm transition-transform duration-150 group-hover:scale-105">
+                ◎
+              </div>
+              <span className="font-serif text-xl tracking-tight text-[#1E293B] font-bold">auralofi</span>
             </a>
-            <a
-              href="#chuong-2"
-              className={`transition-colors ${currentChapter === 2 ? 'text-amber-300 font-bold' : 'hover:text-amber-300'}`}
-            >
-              II. Liệu Pháp Âm Học
-            </a>
-            <a
-              href="#chuong-3"
-              className={`transition-colors ${currentChapter === 3 ? 'text-amber-300 font-bold' : 'hover:text-amber-300'}`}
-            >
-              III. Di Sản & Nghệ Thuật
-            </a>
-          </nav>
+            <div className="hidden sm:block w-1 h-1 bg-[#D4AF37]" />
+            <span className="hidden sm:inline text-[#C5A059] text-xs font-mono tracking-wider uppercase">
+              Analog Vinyl & Ambient Sanctuary
+            </span>
+          </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleCinematicEnterApp}
-              className="group inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-amber-500/25 via-amber-400/35 to-amber-500/25 hover:from-amber-500/40 hover:to-amber-400/50 border border-amber-300/50 hover:border-amber-200 text-xs font-bold text-amber-200 hover:text-white transition-all shadow-lg shadow-amber-500/15 cursor-pointer"
+          {/* Center Brand Note & Live Audio Reactive Indicator */}
+          <div className="hidden lg:flex col-span-3 items-center gap-2">
+            <span className="text-[#1E293B]/70 text-xs font-mono">
+              Âm thanh mộc cho <strong className="text-[#1E293B] underline decoration-[#D4AF37]">tâm trí tĩnh lặng</strong>
+            </span>
+            {isAmbientPlaying && (
+              <span className="flex items-center gap-1 font-mono text-[10px] text-[#B45309] bg-amber-100/60 px-2 py-0.5 rounded-full border border-[#D4AF37]/40 animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
+                ĐANG PHÁT ÂM THANH MỘC
+              </span>
+            )}
+          </div>
+
+          {/* Right Navigation & App Link */}
+          <div className="col-span-6 lg:col-span-3 flex items-center justify-end gap-5">
+            <nav className="hidden md:flex items-center gap-6 text-xs font-mono uppercase text-[#1E293B]/70">
+              <a href="#deck" className="hover:text-[#D4AF37] transition-colors duration-150">Deck</a>
+              <a href="#acoustics" className="hover:text-[#D4AF37] transition-colors duration-150">Acoustics</a>
+              <a href="#capabilities" className="hover:text-[#D4AF37] transition-colors duration-150">Capabilities</a>
+              <a href="#heritage" className="hover:text-[#D4AF37] transition-colors duration-150">Heritage</a>
+            </nav>
+
+            <Link
+              to="/app"
+              onClick={() => playHapticClick()}
+              className="px-4 py-2 rounded-full bg-[#1E293B] text-[#D4AF37] hover:bg-[#0f172a] border border-[#D4AF37]/60 font-mono text-xs uppercase tracking-wider transition-colors duration-150 active:scale-95 shadow-sm"
             >
-              <span>Mở Trình Phát Đĩa Than</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </button>
+              Mở Trình Phát →
+            </Link>
           </div>
         </div>
       </header>
 
-      {/* ==========================================
-          SCROLLYTELLING CHAPTERS (CÁC CHƯƠNG ĐIỆN ẢNH)
-          ========================================== */}
-      <main className="relative z-10 pt-20">
-        {/* HERO CHAPTER: MÀN MỞ ĐẦU HOÀI NIỆM */}
-        <section className="min-h-screen flex flex-col justify-center max-w-7xl mx-auto px-4 sm:px-8 py-16 relative">
-          <div className="max-w-2xl text-left">
-            <div className="anime-entrance-badge inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-400/10 border border-amber-300/30 text-amber-300 text-xs font-semibold mb-6 shadow-sm backdrop-blur-sm">
-              <Sparkles className="w-3.5 h-3.5 animate-pulse text-amber-300" />
-              <span>Ốc Đảo Tĩnh Lặng Kỹ Thuật Số Giữa Thời Đại Quá Tải</span>
+      {/* ========================================================
+          4. HERO SECTION (#hero)
+          ======================================================== */}
+      <section
+        id="hero"
+        className="relative z-10 min-h-screen flex flex-col justify-between pt-[76px] pb-10 px-6 max-w-[1720px] mx-auto pointer-events-none"
+      >
+        <div className="absolute inset-0 flex items-center justify-center opacity-[0.035] pointer-events-none select-none">
+          <span className="text-[26vw] font-serif font-black tracking-tighter uppercase leading-none text-[#1E293B]">
+            SANCTUARY
+          </span>
+        </div>
+
+        <div className="pt-20 max-w-2xl text-left pointer-events-auto">
+          <div className="font-mono text-xs uppercase tracking-widest text-[#C5A059] mb-4 flex items-center gap-2">
+            <span>AuraLofi Hi-Fi Experience • 33⅓ RPM</span>
+          </div>
+
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-light tracking-tight leading-[1.08] text-[#1E293B] mb-6">
+            Lắng nghe nhịp điệu của sự tĩnh lặng.{' '}
+            <span className="text-[#1E293B]/50 italic">
+              Những vòng quay analog mộc mạc xoa dịu tâm trí.
+            </span>
+          </h1>
+
+          <div className="inline-flex items-center gap-2 font-mono text-[11px] text-[#B45309] bg-[#D4AF37]/10 px-3.5 py-1.5 rounded-full border border-[#D4AF37]/30">
+            <span>Kéo chuột ngang để xoay ngắm mâm đĩa 3D • Cuộn trang để trải nghiệm</span>
+          </div>
+        </div>
+
+        {/* Bottom Hero Bar with Scroll Indicator */}
+        <div className="flex items-end justify-between border-t border-[#D4AF37]/25 pt-6 pointer-events-auto">
+          <div className="font-mono text-xs uppercase text-[#C5A059]">
+            Mâm đĩa gỗ thủ công • Loa kèn đồng thau 12 múi hoa
+          </div>
+
+          <a
+            href="#intro-section"
+            onClick={() => playHapticClick()}
+            className="flex items-center gap-3 text-xs font-mono uppercase tracking-widest text-[#1E293B] hover:text-[#D4AF37] transition-colors duration-150"
+          >
+            <span>Bắt đầu</span>
+            <div className="w-6 h-6 rounded-full border border-[#D4AF37] flex items-center justify-center text-[#D4AF37] animate-bounce">
+              ↓
+            </div>
+          </a>
+        </div>
+      </section>
+
+      {/* ========================================================
+          5. INTRO STATEMENT SECTION (#intro-section)
+          ======================================================== */}
+      <section
+        id="intro-section"
+        className="relative z-10 bg-[#FAF8F5] border-y border-[#D4AF37]/25 py-28 px-6"
+      >
+        <div className="max-w-[1720px] mx-auto grid grid-cols-12 gap-10 items-center">
+          <div className="col-span-12 lg:col-span-8">
+            <h2 className="text-3xl sm:text-5xl lg:text-6xl font-light tracking-tight leading-[1.18] text-[#1E293B]">
+              Tìm lại <span className="underline decoration-[#D4AF37] decoration-2 underline-offset-8">nghi thức sống chậm</span>,{' '}
+              <span className="underline decoration-[#D4AF37] decoration-2 underline-offset-8">cơ khí tinh xảo</span> và{' '}
+              <span className="underline decoration-[#D4AF37] decoration-2 underline-offset-8">chất âm mộc mạc nguyên bản</span>{' '}
+              giữa kỷ nguyên kỹ thuật số vội vã.
+            </h2>
+          </div>
+
+          <div className="col-span-12 lg:col-span-4 flex flex-col justify-end lg:pl-12 border-l border-[#D4AF37]/25">
+            <span className="font-mono text-xs uppercase tracking-widest text-[#C5A059] mb-3">
+              Khoảng lặng tâm trí
+            </span>
+            <p className="text-base text-[#1E293B]/80 leading-relaxed font-sans font-light">
+              Giữa nhịp sống số hối hả, AuraLofi mang lại nghi thức hạ cần kim mộc mạc, tiếng nổ đĩa than lách tách dịu êm và những thanh âm tự nhiên giúp bạn tái tạo sự tĩnh lặng nội tại.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================
+          6. DECK & THE VINYL GROOVE ARC SECTION (#deck)
+          ======================================================== */}
+      <section id="deck" className="relative z-10 pt-28 pb-16 px-6 max-w-[1720px] mx-auto">
+        <div className="grid grid-cols-12 gap-8 items-start">
+          {/* Cột trái 7 cột: Thẻ chứa toàn bộ kiến trúc & thông số đĩa than */}
+          <div className="col-span-12 lg:col-span-7 bg-[#FAF8F5]/85 backdrop-blur-xl border border-[#D4AF37]/35 rounded-3xl p-8 sm:p-12 shadow-2xl relative z-20">
+            <div className="flex items-start justify-between border-b border-[#D4AF37]/25 pb-6 mb-8">
+              <div>
+                <span className="font-mono text-xs uppercase tracking-widest text-[#C5A059] block mb-2">
+                  Chương III • Cơ khí mộc
+                </span>
+                <h2 className="text-5xl sm:text-7xl font-light leading-none tracking-tight text-[#1E293B]">
+                  The Deck
+                </h2>
+              </div>
+              <div className="border border-[#D4AF37] px-5 h-9 rounded-full flex items-center justify-center font-mono text-sm text-[#D4AF37]">
+                III
+              </div>
             </div>
 
-            <h1 className="anime-entrance-title text-4xl sm:text-6xl font-black tracking-tight leading-[1.1] mb-6 drop-shadow-md">
-              Chạm vào <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-amber-100 bg-clip-text text-transparent">hoài niệm</span>.<br />
-              Lắng đọng <span className="underline decoration-amber-400/50 decoration-wavy underline-offset-8">tâm hồn</span>.
-            </h1>
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="font-mono text-xs uppercase tracking-widest text-[#C5A059]">
+                  Gỗ óc chó & mâm đồng đúc nguyên khối
+                </span>
+              </div>
+              <p className="text-lg sm:text-xl font-light text-[#1E293B] leading-relaxed">
+                Thiết kế xoay quanh âm học analog thuần khiết. Thân máy chế tác từ <strong>gỗ óc chó tự nhiên đánh vecni mờ</strong>, mâm đồng thau đúc 2.2kg cân bằng động học, và cục chặn đĩa cân bằng vi mô chống rung chấn.
+              </p>
+            </div>
 
-            <p className="anime-entrance-desc text-slate-300 text-base sm:text-lg leading-relaxed mb-8 max-w-xl font-normal drop-shadow">
-              Giữa thế giới số ngập tràn thông báo và áp lực vô hình, <strong>AuraLofi</strong> đưa bạn trở về với nghi thức nghe nhạc chậm rãi: tiếng nổ lách tách vi mô của mâm đĩa than cổ thập niên 1920, âm thanh thiên nhiên êm dịu và những tình khúc bất hủ giúp bạn học tập, làm việc sâu và tìm lại sự an yên.
+            {/* VÒM RÃNH ĐĨA THAN TRONG THẺ */}
+            <div className="relative w-full flex flex-col items-center justify-center my-6 py-4 border-y border-[#D4AF37]/20">
+              <div className="relative w-full max-w-[560px] aspect-[954/477] pointer-events-none">
+                <svg
+                  viewBox="0 0 954 477"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-full h-full"
+                >
+                  <path
+                    d="M0.5 477 A 476.5 476.5 0 0 1 953.5 477"
+                    stroke="#D4AF37"
+                    strokeOpacity="0.45"
+                    strokeWidth="1.5"
+                  />
+                  <circle
+                    cx="477"
+                    cy="477"
+                    r="380"
+                    stroke="#D4AF37"
+                    strokeOpacity="0.25"
+                    strokeWidth="1"
+                    strokeDasharray="4 8"
+                  />
+                  <circle
+                    cx="477"
+                    cy="477"
+                    r="260"
+                    stroke="#C5A059"
+                    strokeOpacity="0.20"
+                    strokeWidth="1"
+                  />
+                  {[0, 30, 60, 90, 120, 150, 180].map((deg, idx) => {
+                    const rad = (deg * Math.PI) / 180;
+                    const x1 = 477 - Math.cos(rad) * 477;
+                    const y1 = 477 - Math.sin(rad) * 477;
+                    const x2 = 477 - Math.cos(rad) * 455;
+                    const y2 = 477 - Math.sin(rad) * 455;
+                    return (
+                      <line
+                        key={idx}
+                        x1={x1}
+                        y1={y1}
+                        x2={x2}
+                        y2={y2}
+                        stroke="#D4AF37"
+                        strokeOpacity="0.60"
+                        strokeWidth="1.8"
+                      />
+                    );
+                  })}
+                </svg>
+
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#FAF8F5] border border-[#D4AF37] rounded-full px-4 py-1.5 font-mono text-[11px] uppercase tracking-widest text-[#1E293B] shadow-sm flex items-center gap-2">
+                  <span>Tốc độ chuẩn 33⅓ RPM</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3 Thẻ Huy Hiệu Thông Số Viền Chỉ Vàng */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+              <div className="p-4 rounded-2xl bg-[#FAF8F5]/90 border border-[#D4AF37]/30 flex flex-col items-center justify-center">
+                <span className="text-3xl sm:text-4xl font-light tracking-tight text-[#1E293B] mb-1 font-serif">
+                  33⅓ RPM
+                </span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-[#C5A059]">
+                  Vận tốc xoay đĩa
+                </span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#FAF8F5]/90 border border-[#D4AF37]/30 flex flex-col items-center justify-center">
+                <span className="text-3xl sm:text-4xl font-light tracking-tight text-[#1E293B] mb-1 font-serif">
+                  528 Hz
+                </span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-[#C5A059]">
+                  Chuông thiền định
+                </span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#FAF8F5]/90 border border-[#D4AF37]/30 flex flex-col items-center justify-center">
+                <span className="text-3xl sm:text-4xl font-light tracking-tight text-[#1E293B] mb-1 font-serif">
+                  0 KB
+                </span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-[#C5A059]">
+                  Âm thanh mộc Web Audio
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Cột phải 5 cột để trống hoàn toàn để nhường trọn không gian cho mâm đĩa than 3D */}
+          <div className="hidden lg:block col-span-5 pointer-events-none" />
+        </div>
+      </section>
+
+      {/* ========================================================
+          7. ACOUSTICS SECTION (#acoustics) - TỔ CHỨC BỐ CỤC LỆCH BÊN TRÁNH CHÈN MODEL 3D
+          ======================================================== */}
+      {/* ========================================================
+          7. ACOUSTICS SECTION (#acoustics)
+          ======================================================== */}
+      <section id="acoustics" className="relative z-10 py-28 px-6 max-w-[1720px] mx-auto">
+        <div className="grid grid-cols-12 gap-8 items-start">
+          {/* Cột trái: Thẻ chứa nội dung âm học & bộ chọn cảnh */}
+          <div className="col-span-12 lg:col-span-7 bg-[#FAF8F5]/85 backdrop-blur-xl border border-[#D4AF37]/35 rounded-3xl p-8 sm:p-12 shadow-2xl relative z-20">
+            <div className="flex items-center justify-between border-b border-[#D4AF37]/20 pb-4 mb-8">
+              <div>
+                <span className="font-mono text-xs uppercase tracking-widest text-[#C5A059] block mb-1">
+                  Chương IV • Âm thanh mộc
+                </span>
+                <h2 className="text-4xl sm:text-6xl font-light tracking-tight text-[#1E293B]">
+                  Acoustics
+                </h2>
+              </div>
+              <div className="border border-[#D4AF37] px-4 py-1 rounded-full font-mono text-xs text-[#D4AF37]">
+                IV
+              </div>
+            </div>
+
+            {/* Bộ chuyển đổi 4 cảnh âm thanh */}
+            <div className="flex items-center gap-6 border-b border-[#D4AF37]/20 pb-3 mb-8 overflow-x-auto">
+              {[
+                { id: 'rain', label: 'Mưa Rơi Bên Ô Kính' },
+                { id: 'cafe', label: 'Quán Cà Phê Đêm' },
+                { id: 'fireplace', label: 'Lò Sưởi Ấm Cúng' },
+                { id: 'wind', label: 'Gió Đêm Qua Kẽ Lá' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => toggleAmbientSound(tab.id)}
+                  className={`text-lg sm:text-xl font-serif tracking-tight transition-colors duration-150 cursor-pointer relative py-1.5 whitespace-nowrap ${
+                    activeAmbientTab === tab.id ? 'text-[#1E293B] font-bold' : 'text-[#1E293B]/40 hover:text-[#D4AF37]'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  {activeAmbientTab === tab.id && (
+                    <div className="absolute bottom-0 inset-x-0 h-0.5 bg-[#D4AF37]" />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-base sm:text-lg text-[#1E293B]/80 font-sans font-light leading-relaxed mb-8">
+              Bộ trộn âm thanh 4 kênh được tổng hợp theo thời gian thực trực tiếp trên trình duyệt, không cần tải bất kỳ tệp âm thanh nào từ máy chủ. Giúp cô lập tạp âm bên ngoài và đưa tâm trí vào trạng thái an yên tĩnh lặng.
             </p>
 
-            <div className="anime-entrance-cta flex flex-wrap items-center gap-4 mb-10">
+            <div className="flex flex-wrap items-center gap-4 mb-10">
               <button
                 type="button"
-                onClick={handleCinematicEnterApp}
-                className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-sm tracking-wide shadow-2xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                onClick={() => toggleAmbientSound(activeAmbientTab)}
+                className="px-6 py-3 rounded-full bg-[#1E293B] text-[#D4AF37] font-mono text-xs uppercase tracking-wider hover:bg-[#0f172a] active:scale-95 transition-all duration-150 border border-[#D4AF37] cursor-pointer shadow-md"
               >
-                <Headphones className="w-4 h-4" />
-                <span>BƯỚC VÀO KHÔNG GIAN NGHE NHẠC</span>
-                <ArrowRight className="w-4 h-4" />
+                {isAmbientPlaying ? '■ TẮT ÂM THANH MÔI TRƯỜNG' : '▶ NGHE THỬ NGAY'}
               </button>
 
               <button
                 type="button"
-                onClick={triggerVinylPreview}
-                className={`inline-flex items-center gap-2.5 px-5 py-3.5 rounded-2xl border text-xs font-semibold backdrop-blur-md transition-all cursor-pointer ${
-                  isPlayingVinylPreview
-                    ? 'bg-amber-400/25 border-amber-300 text-amber-200 shadow-lg shadow-amber-500/20'
-                    : 'bg-black/40 hover:bg-black/60 border-white/20 text-slate-200 hover:text-white'
-                }`}
+                onClick={() => {
+                  playHapticClick();
+                  playZenBellChime();
+                }}
+                className="px-6 py-3 rounded-full border border-[#D4AF37] text-[#1E293B] font-mono text-xs uppercase tracking-wider hover:bg-[#D4AF37]/10 active:scale-95 transition-all duration-150 cursor-pointer"
               >
-                <Disc3 className={`w-4 h-4 text-amber-300 ${isPlayingVinylPreview ? 'animate-spin' : ''}`} />
-                <span>{isPlayingVinylPreview ? 'Đang hạ cần kim...' : 'Nghe Thử Kim Đĩa Than (ASMR)'}</span>
+                🔔 CHUÔNG THIỀN 528HZ
               </button>
             </div>
 
-            {/* Thông số cốt lõi */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-xl">
-              <div className="anime-stat-pill p-3 rounded-xl bg-black/40 backdrop-blur-md border border-white/10 flex flex-col">
-                <span className="text-xl font-black text-amber-300 font-mono">33⅓ RPM</span>
-                <span className="text-[11px] text-slate-400">Vòng quay kim đĩa</span>
+            {/* 4 Không gian âm thanh mộc */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left font-sans">
+              <div className="p-4 rounded-2xl bg-[#FAF8F5]/90 border border-[#D4AF37]/25">
+                <div className="font-serif text-sm font-semibold text-[#1E293B] mb-1">Mưa Rơi Bên Ô Kính</div>
+                <p className="text-xs text-[#1E293B]/70 font-light leading-relaxed">Tiếng ồn hồng dịu êm mô phỏng hạt mưa gõ vào ô kính, giúp xoa dịu áp lực tâm lý.</p>
               </div>
-              <div className="anime-stat-pill p-3 rounded-xl bg-black/40 backdrop-blur-md border border-white/10 flex flex-col">
-                <span className="text-xl font-black text-amber-300 font-mono">528 Hz</span>
-                <span className="text-[11px] text-slate-400">Chuông Solfeggio</span>
+              <div className="p-4 rounded-2xl bg-[#FAF8F5]/90 border border-[#D4AF37]/25">
+                <div className="font-serif text-sm font-semibold text-[#1E293B] mb-1">Quán Cà Phê Đêm</div>
+                <p className="text-xs text-[#1E293B]/70 font-light leading-relaxed">Âm hưởng mờ ảo của góc quán quen, tạo cảm giác có người đồng hành khi làm việc khuya.</p>
               </div>
-              <div className="anime-stat-pill p-3 rounded-xl bg-black/40 backdrop-blur-md border border-white/10 flex flex-col">
-                <span className="text-xl font-black text-amber-300 font-mono">0 KB</span>
-                <span className="text-[11px] text-slate-400">Web Audio Synth</span>
+              <div className="p-4 rounded-2xl bg-[#FAF8F5]/90 border border-[#D4AF37]/25">
+                <div className="font-serif text-sm font-semibold text-[#1E293B] mb-1">Lò Sưởi Ấm Cúng</div>
+                <p className="text-xs text-[#1E293B]/70 font-light leading-relaxed">Xung nổ lách tách ấm áp của gỗ thông bén lửa, sưởi ấm những buổi tối một mình.</p>
               </div>
-              <div className="anime-stat-pill p-3 rounded-xl bg-black/40 backdrop-blur-md border border-white/10 flex flex-col">
-                <span className="text-xl font-black text-amber-300 font-mono">Audiophile</span>
-                <span className="text-[11px] text-slate-400">Chi tiết cơ khí cao cấp</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="absolute bottom-6 inset-x-0 flex flex-col items-center justify-center text-center text-slate-400 text-xs font-mono pointer-events-none">
-            <span className="tracking-widest uppercase mb-1 opacity-75">Cuộn chuột để bắt đầu hành trình điện ảnh</span>
-            <ChevronDown className="w-4 h-4 text-amber-300 animate-bounce" />
-          </div>
-        </section>
-
-        {/* CHƯƠNG 1: XÚC GIÁC HOÀI NIỆM & CẬN CẢNH CẦN KIM AUDIOPHILE */}
-        <section id="chuong-1" className="min-h-screen flex items-center max-w-7xl mx-auto px-4 sm:px-8 py-24">
-          <div className="w-full lg:w-1/2 p-8 sm:p-12 rounded-3xl bg-black/50 backdrop-blur-xl border border-white/10 shadow-2xl">
-            <div className="flex items-center gap-2 text-xs font-mono font-bold tracking-widest text-amber-400 uppercase mb-3">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-              <span>CHƯƠNG I • NGHI THỨC ANALOG</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-6">
-              Xúc Giác Của Âm Thanh Trong Thời Đại Vô Hình
-            </h2>
-            <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-6 font-normal">
-              Ngày nay, âm nhạc đã trở thành những tệp dữ liệu vô hình được tiêu thụ chớp nhoáng trên các thuật toán gợi ý vô tận. Chúng ta bấm nhảy bài trong 5 giây mà hiếm khi lắng nghe trọn vẹn.
-            </p>
-            <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-8 font-normal">
-              AuraLofi tái hiện lại <strong>nghi thức chậm rãi</strong>: chiếc mâm đĩa than gỗ óc chó đánh vec-ni thủ công, cụm cần kim đồng thau trang bị tạ đối trọng chia độ, trục xoay Gimbal Ring kép và cục chặn đĩa kim loại nặng ổn định rãnh đĩa. Bạn có thể tương tác vật lý (Vinyl Scratching) bằng chuột để tự mình trải nghiệm xúc giác cơ học chân thực.
-            </p>
-
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-300 flex-shrink-0">
-                  <Sliders className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white">Chà Đĩa Tương Tác</h4>
-                  <p className="text-[11px] text-slate-400">Kéo đĩa đổi tốc độ playbackRate tự nhiên</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-300 flex-shrink-0">
-                  <Compass className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white">Tua Kim Trực Quan</h4>
-                  <p className="text-[11px] text-slate-400">Nhấc cần kim định vị vị trí bài hát</p>
-                </div>
+              <div className="p-4 rounded-2xl bg-[#FAF8F5]/90 border border-[#D4AF37]/25">
+                <div className="font-serif text-sm font-semibold text-[#1E293B] mb-1">Gió Đêm Qua Kẽ Lá</div>
+                <p className="text-xs text-[#1E293B]/70 font-light leading-relaxed">Tiếng ồn nâu sâu lắng như làn gió luồn qua rèm cửa, hỗ trợ giấc ngủ và thiền định.</p>
               </div>
             </div>
           </div>
-        </section>
 
-        {/* CHƯƠNG 2: LIỆU PHÁP ÂM HỌC & LOA KÈN ĐỒNG THAU */}
-        <section id="chuong-2" className="min-h-screen flex items-center justify-end max-w-7xl mx-auto px-4 sm:px-8 py-24">
-          <div className="w-full lg:w-1/2 p-8 sm:p-12 rounded-3xl bg-black/50 backdrop-blur-xl border border-white/10 shadow-2xl">
-            <div className="flex items-center gap-2 text-xs font-mono font-bold tracking-widest text-amber-400 uppercase mb-3">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-              <span>CHƯƠNG II • LIỆU PHÁP ÂM HỌC</span>
+          {/* Cột phải để trống hoàn toàn để nhường trọn không gian cho mâm đĩa than và loa kèn 3D */}
+          <div className="hidden lg:block col-span-5 pointer-events-none" />
+        </div>
+      </section>
+
+      {/* ========================================================
+          8. CAPABILITIES SECTION (#capabilities)
+          ======================================================== */}
+      <section id="capabilities" className="relative z-10 py-28 px-6 max-w-[1720px] mx-auto border-t border-[#D4AF37]/25">
+        <div className="grid grid-cols-12 gap-8 items-start">
+          {/* Cột trái 7 cột: Thẻ điều khiển năng lực tương tác */}
+          <div className="col-span-12 lg:col-span-7 bg-[#FAF8F5]/85 backdrop-blur-xl border border-[#D4AF37]/35 rounded-3xl p-8 sm:p-12 shadow-2xl relative z-20">
+            <div className="flex items-start justify-between border-b border-[#D4AF37]/25 pb-6 mb-8">
+              <div>
+                <span className="font-mono text-xs uppercase tracking-widest text-[#C5A059] block mb-1">
+                  Chương V • Tương tác
+                </span>
+                <h2 className="text-4xl sm:text-6xl font-light leading-none tracking-tight text-[#1E293B]">
+                  Capabilities
+                </h2>
+              </div>
+              <div className="border border-[#D4AF37] px-4 py-1 rounded-full font-mono text-xs text-[#D4AF37]">
+                V
+              </div>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-6">
-              Lắng Nghe Nhịp Thở Căn Phòng Của Bạn
-            </h2>
-            <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-6 font-normal">
-              Chiếc loa kèn hoa muống biển 12 múi đồng thau không chỉ là tác phẩm điêu khắc 3D, mà là biểu tượng của âm học khuếch đại tự nhiên. AuraLofi tích hợp bộ trộn âm thanh môi trường 4 kênh được tổng hợp bằng thuật toán toán học <strong>0KB file tải</strong> kết hợp chuông thiền Solfeggio 528Hz.
-            </p>
 
-            <div className="mb-6">
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-3">
-                Nghe Thử Trực Tiếp Trên Trình Duyệt:
-              </span>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  id="sound-pad-rain"
-                  onClick={() => toggleAmbientSound('rain')}
-                  className={`p-3.5 rounded-2xl border text-left flex items-center gap-3 transition-all cursor-pointer ${
-                    activeAmbient === 'rain'
-                      ? 'bg-sky-500/25 border-sky-300 text-sky-200 shadow-lg shadow-sky-500/20'
-                      : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200'
-                  }`}
-                >
-                  <CloudRain className="w-5 h-5 text-sky-300 flex-shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold">Mưa Rơi Bên Cửa Sổ</div>
-                    <div className="text-[10px] text-slate-400 font-mono">
-                      {activeAmbient === 'rain' ? 'Đang phát...' : 'Bấm để nghe'}
-                    </div>
-                  </div>
-                </button>
+            <div className="font-mono text-xs uppercase tracking-widest text-[#C5A059] mb-4">
+              Trải nghiệm cơ học thời gian thực
+            </div>
 
-                <button
-                  type="button"
-                  id="sound-pad-cafe"
-                  onClick={() => toggleAmbientSound('cafe')}
-                  className={`p-3.5 rounded-2xl border text-left flex items-center gap-3 transition-all cursor-pointer ${
-                    activeAmbient === 'cafe'
-                      ? 'bg-amber-500/25 border-amber-300 text-amber-200 shadow-lg shadow-amber-500/20'
-                      : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200'
-                  }`}
-                >
-                  <Coffee className="w-5 h-5 text-amber-300 flex-shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold">Quán Cà Phê Đêm</div>
-                    <div className="text-[10px] text-slate-400 font-mono">
-                      {activeAmbient === 'cafe' ? 'Đang phát...' : 'Bấm để nghe'}
-                    </div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  id="sound-pad-fireplace"
-                  onClick={() => toggleAmbientSound('fireplace')}
-                  className={`p-3.5 rounded-2xl border text-left flex items-center gap-3 transition-all cursor-pointer ${
-                    activeAmbient === 'fireplace'
-                      ? 'bg-rose-500/25 border-rose-300 text-rose-200 shadow-lg shadow-rose-500/20'
-                      : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200'
-                  }`}
-                >
-                  <Flame className="w-5 h-5 text-rose-300 flex-shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold">Lò Sưởi Ấm Cúng</div>
-                    <div className="text-[10px] text-slate-400 font-mono">
-                      {activeAmbient === 'fireplace' ? 'Đang phát...' : 'Bấm để nghe'}
-                    </div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
+            {/* 3 Thẻ Chọn Năng Lực */}
+            <div className="flex flex-col gap-4 mb-8">
+              {[
+                {
+                  id: 'Tactile',
+                  label: 'Tactile Vinyl Scratching',
+                  badge: 'Chà đĩa',
+                  desc: 'Chạm chuột chà đĩa than thời gian thực. Tốc độ quay và cao độ biến đổi vật lý kèm âm thanh cọ xát rãnh đĩa ASMR sống động.'
+                },
+                {
+                  id: 'Acoustic',
+                  label: 'Hydraulic Tonearm Cueing',
+                  badge: 'Hạ kim',
+                  desc: 'Cần gạt nâng hạ kim thủy lực mượt mà, đưa đầu kim kim cương tiếp xúc rãnh đĩa êm ái mà không gây xước mặt đĩa.'
+                },
+                {
+                  id: 'Sanctuary',
+                  label: 'Zen Sanctuary Minimalist',
+                  badge: 'Tối giản',
+                  desc: 'Giao diện tự động ẩn các thanh công cụ sau 3 giây không di chuột, nhường toàn bộ thị giác cho đĩa than và âm thanh.'
+                }
+              ].map((cap) => (
+                <div
+                  key={cap.id}
                   onClick={() => {
                     playHapticClick();
-                    playZenBellChime();
+                    setActiveCapability(cap.id);
                   }}
-                  className="p-3.5 rounded-2xl border bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200 text-left flex items-center gap-3 transition-all cursor-pointer"
+                  className={`p-5 rounded-2xl border transition-all duration-150 cursor-pointer ${
+                    activeCapability === cap.id
+                      ? 'border-[#D4AF37] bg-[#D4AF37]/15 shadow-md ring-1 ring-[#D4AF37]/40'
+                      : 'border-[#D4AF37]/25 hover:border-[#D4AF37]/60 bg-[#FAF8F5]/60'
+                  }`}
                 >
-                  <Bell className="w-5 h-5 text-amber-300 flex-shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold">Chuông Thiền 528Hz</div>
-                    <div className="text-[10px] text-slate-400 font-mono">Gõ chuông Solfeggio</div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span
+                      className={`text-xl sm:text-2xl font-serif tracking-tight ${
+                        activeCapability === cap.id ? 'text-[#1E293B] font-bold' : 'text-[#1E293B]/50'
+                      }`}
+                    >
+                      {cap.label}
+                    </span>
+                    <span className="font-mono text-[10px] uppercase px-2.5 py-0.5 rounded-full border border-[#D4AF37]/40 text-[#B45309] bg-amber-50">
+                      {cap.badge}
+                    </span>
                   </div>
-                </button>
+                  <p className="text-sm font-sans font-light text-[#1E293B]/80 leading-relaxed">
+                    {cap.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Khối Trải Nghiệm Tương Tác ASMR Nhanh */}
+            <div className="p-6 rounded-2xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-left">
+                <div className="font-serif text-base font-medium text-[#1E293B]">
+                  {activeCapability === 'Tactile' && 'Trải nghiệm chạm chà đĩa than vật lý'}
+                  {activeCapability === 'Acoustic' && 'Âm học tiếp xúc rãnh đĩa vi mô'}
+                  {activeCapability === 'Sanctuary' && 'Không gian tập trung tâm trí 528Hz'}
+                </div>
+                <div className="font-mono text-xs text-[#C5A059]">
+                  Lắng nghe xung âm học thực tế khi đầu kim chạm rãnh nhựa
+                </div>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs font-mono text-amber-300/90 pt-3 border-t border-white/10">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>100% Thuần Web Audio • 0KB Băng thông mạng • Không nén méo tiếng</span>
-            </div>
-          </div>
-        </section>
-
-        {/* CHƯƠNG 3: DI SẢN NHẠC TRỊNH & NGHỆ THUẬT CHẾ TÁC */}
-        <section id="chuong-3" className="min-h-screen flex items-center max-w-7xl mx-auto px-4 sm:px-8 py-24">
-          <div className="w-full lg:w-1/2 p-8 sm:p-12 rounded-3xl bg-black/50 backdrop-blur-xl border border-white/10 shadow-2xl">
-            <div className="flex items-center gap-2 text-xs font-mono font-bold tracking-widest text-amber-400 uppercase mb-3">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-              <span>CHƯƠNG III • DI SẢN & TỰ HÀO VĂN HÓA</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-6">
-              Tình Khúc Trịnh Công Sơn Trong Làn Sóng Lofi
-            </h2>
-            <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-6 font-normal">
-              Những kiệt tác như <em>Diễm Xưa</em>, <em>Hạ Trắng</em>, <em>Biển Nhớ</em>, <em>Còn Tuổi Nào Cho Em</em> không chỉ là âm nhạc, mà là di sản tâm hồn của nhiều thế hệ người Việt.
-            </p>
-            <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-8 font-normal">
-              AuraLofi khoác lên những giai điệu bất hủ ấy chiếc áo mới: phối khí Lofi Chillhop mộc mạc, guitar acoustic ấm áp, đĩa than cổ điển và tiếng mưa rơi bên thềm. Đây là cầu nối để thế hệ trẻ tìm lại chiều sâu và tự hào về di sản nghệ thuật nước nhà.
-            </p>
-
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
-              <div className="flex items-center gap-3">
-                <Heart className="w-5 h-5 text-rose-400" />
-                <span className="text-xs font-medium text-slate-200">Tuyển tập nhạc Việt chọn lọc</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Palette className="w-5 h-5 text-amber-300" />
-                <span className="text-xs font-medium text-slate-200">Studio xuất video 60 FPS</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CHƯƠNG 4: LỜI MỜI GỌI ĐIỆN ẢNH (CALL TO ACTION FINALE) */}
-        <section className="min-h-screen flex flex-col justify-center items-center max-w-5xl mx-auto px-4 sm:px-8 py-24 text-center">
-          <div className="w-full p-10 sm:p-16 rounded-3xl bg-black/60 backdrop-blur-2xl border border-amber-300/30 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-amber-400/10 blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 rounded-full bg-rose-400/10 blur-3xl pointer-events-none" />
-
-            <div className="relative z-10 flex flex-col items-center">
-              <span className="text-xs font-mono font-bold tracking-widest text-amber-300 uppercase mb-3">
-                KHÔNG GIAN CỦA RIÊNG BẠN
-              </span>
-              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-6">
-                Chiếc Đĩa Than Đang Chờ Đón Bạn.
-              </h2>
-              <p className="text-slate-300 text-sm sm:text-base max-w-xl mx-auto mb-10 font-normal leading-relaxed">
-                Hãy cắm tai nghe, hít thở một hơi thật sâu và gác lại những xô bồ bên ngoài cánh cửa. Một không gian tĩnh lặng, ấm áp và đong đầy cảm xúc đã sẵn sàng.
-              </p>
 
               <button
                 type="button"
-                onClick={handleCinematicEnterApp}
-                className="inline-flex items-center gap-3 px-10 py-5 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:from-amber-300 hover:to-amber-200 text-slate-950 font-black text-sm tracking-wider shadow-2xl shadow-amber-400/30 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                onClick={() => {
+                  playHapticClick();
+                  playNeedleDropEffect({ duration: 2.5 });
+                }}
+                className="px-6 py-3 rounded-full bg-[#1E293B] text-[#D4AF37] font-mono text-xs uppercase tracking-wider hover:bg-[#0f172a] active:scale-95 transition-all duration-150 border border-[#D4AF37] cursor-pointer shadow-md whitespace-nowrap"
               >
-                <span>BƯỚC VÀO TRÌNH PHÁT AURALOFI</span>
-                <ArrowRight className="w-4 h-4" />
+                ▶ TIẾNG HẠ KIM (ASMR)
               </button>
             </div>
           </div>
 
-          <footer className="mt-16 text-xs text-slate-500 font-mono flex flex-col sm:flex-row items-center justify-between w-full max-w-5xl px-4 gap-4">
-            <span>AuraLofi © 2026 • Nghệ thuật chế tác 3D Three.js & Web Audio API</span>
-            <span>Phím tắt hỗ trợ: Space • G • T • M • H</span>
-          </footer>
-        </section>
-      </main>
+          {/* Cột phải 5 cột để trống hoàn toàn để nhường trọn không gian cho cận cảnh cần kim 3D */}
+          <div className="hidden lg:block col-span-5 pointer-events-none" />
+        </div>
+      </section>
+
+      {/* ========================================================
+          9. HERITAGE & CURATED VINYL TRACKS SECTION (#heritage)
+          ======================================================== */}
+      {/* ========================================================
+          9. HERITAGE & CURATED VINYL TRACKS SECTION (#heritage)
+          ======================================================== */}
+      <section id="heritage" className="relative z-10 py-28 px-6 max-w-[1720px] mx-auto border-t border-[#D4AF37]/25">
+        <div className="flex items-start justify-between border-b border-[#D4AF37]/25 pb-8 mb-16">
+          <div>
+            <span className="font-mono text-xs uppercase tracking-widest text-[#C5A059] block mb-1">
+              Chương VI • Di sản âm nhạc Việt Nam
+            </span>
+            <h2 className="text-6xl sm:text-8xl lg:text-9xl font-light leading-none tracking-tight text-[#1E293B]">
+              Heritage
+            </h2>
+          </div>
+          <div className="border border-[#D4AF37] px-6 h-9 rounded-full flex items-center justify-center font-mono text-sm text-[#D4AF37]">
+            VI
+          </div>
+        </div>
+
+        <div className="grid grid-cols-12 gap-8 mb-12">
+          <div className="col-span-12 lg:col-span-4 flex items-center gap-2">
+            <span className="font-mono text-xs uppercase tracking-widest text-[#C5A059]">
+              Tuyển tập đĩa than Trịnh Công Sơn
+            </span>
+          </div>
+
+          <div className="col-span-12 lg:col-span-8">
+            <p className="text-xl sm:text-2xl font-light text-[#1E293B] leading-relaxed">
+              Những giai điệu bất hủ của cố nhạc sĩ <strong>Trịnh Công Sơn</strong> (Diễm Xưa, Hạ Trắng, Biển Nhớ) được phối khí mộc mạc phong cách Lofi Chillhop, hòa cùng tiếng nổ đĩa than analog đưa bạn về miền ký ức sâu lắng.
+            </p>
+          </div>
+        </div>
+
+        {/* Bản Đồ Di Sản Âm Nhạc (Editorial Audio Map) */}
+        <div className="relative w-full h-[540px] sm:h-[620px] rounded-3xl bg-gradient-to-br from-[#FCF9F3] via-[#F6EFE2] to-[#EFE4D2] border border-[#D4AF37]/40 overflow-hidden shadow-2xl flex items-center justify-center text-[#1E293B]">
+          {/* Lớp vân nền giấy da & đường đồng mức nhẹ nhàng */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_45%,rgba(212,175,55,0.08)_100%)] pointer-events-none" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(212,175,55,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(212,175,55,0.08)_1px,transparent_1px)] bg-[size:44px_44px] pointer-events-none" />
+
+          {/* Thanh Tiêu Đề Bản Đồ */}
+          <div className="absolute top-6 inset-x-8 flex items-center justify-between font-mono text-xs text-[#B45309] border-b border-[#D4AF37]/30 pb-3 pointer-events-none">
+            <span className="flex items-center gap-2">
+              <span>AuraLofi Archive • Các bản thu âm mộc</span>
+            </span>
+            <span className="hidden sm:inline">Chuẩn âm thanh: 33⅓ RPM Stereo</span>
+          </div>
+
+          {/* Các Điểm Ghim Bản Thu */}
+          {[
+            {
+              id: '01',
+              title: 'Diễm Xưa (Lofi Acoustic Mix)',
+              artist: 'Trịnh Công Sơn • Lofi Session',
+              x: '28%',
+              y: '42%',
+              mood: 'Mưa Hoài Niệm',
+              desc: 'Giai điệu mưa bay Tháp Mười phối cùng tiếng guitar mộc và tiếng nổ đĩa than analog cổ kính.'
+            },
+            {
+              id: '02',
+              title: 'Hạ Trắng (Warm Rhodes & Vinyl Crackle)',
+              artist: 'Trịnh Công Sơn • Chillhop Session',
+              x: '58%',
+              y: '58%',
+              mood: 'Buổi Chiều Ấm Áp',
+              desc: 'Tiếng đàn Rhodes ấm áp hòa quyện cùng nhịp thở lofi dịu êm cho phiên làm việc sâu.'
+            },
+            {
+              id: '03',
+              title: 'Biển Nhớ (Raindrop & Solfeggio 528Hz)',
+              artist: 'Trịnh Công Sơn • Thiền Định Thư Thái',
+              x: '76%',
+              y: '36%',
+              mood: 'Tâm Tĩnh Tại',
+              desc: 'Tần số Solfeggio 528Hz phục hồi năng lượng tinh thần, đưa bạn vào trạng thái an nhiên.'
+            }
+          ].map((pin) => (
+            <div
+              key={pin.id}
+              style={{ left: pin.x, top: pin.y }}
+              className="absolute -translate-x-1/2 -translate-y-1/2 z-20"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  playHapticClick();
+                  setActiveHotspot(activeHotspot === pin.id ? null : pin.id);
+                }}
+                className="w-10 h-10 rounded-full bg-[#1E293B] text-[#D4AF37] border border-[#D4AF37] font-mono text-xs font-bold flex items-center justify-center hover:scale-125 active:scale-95 transition-transform duration-150 shadow-xl cursor-pointer ring-4 ring-[#D4AF37]/20"
+              >
+                {pin.id}
+              </button>
+
+              {activeHotspot === pin.id && (
+                <div className="absolute top-14 left-1/2 -translate-x-1/2 w-84 p-6 rounded-2xl bg-[#FAF8F5]/95 backdrop-blur-xl border border-[#D4AF37]/60 shadow-2xl text-left font-sans text-[#1E293B] z-50 animate-[fadeInScale_180ms_cubic-bezier(0.16,1,0.3,1)]">
+                  <div className="flex items-center justify-between border-b border-[#D4AF37]/30 pb-2 mb-3">
+                    <span className="font-mono text-xs text-[#B45309] font-bold">Bản ghi #{pin.id}</span>
+                    <span className="font-mono text-[11px] px-2.5 py-0.5 rounded-full bg-[#D4AF37]/20 text-[#854D0E] border border-[#D4AF37]/40">
+                      {pin.mood}
+                    </span>
+                  </div>
+                  <h4 className="text-base font-medium text-[#1E293B] mb-1 font-serif">{pin.title}</h4>
+                  <div className="text-xs text-[#C5A059] mb-3 font-mono">{pin.artist}</div>
+                  <p className="text-xs text-[#1E293B]/80 font-light leading-relaxed mb-4">{pin.desc}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playHapticClick();
+                      playNeedleDropEffect({ duration: 2.0 });
+                    }}
+                    className="w-full py-2 rounded-xl bg-[#1E293B] text-[#D4AF37] font-mono text-[11px] uppercase tracking-wider hover:bg-[#0f172a] active:scale-95 transition-all duration-150 border border-[#D4AF37]/60 cursor-pointer"
+                  >
+                    ▶ NGHE THỬ TIẾNG ĐĨA THAN
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+
+          <div className="absolute bottom-6 inset-x-0 text-center font-mono text-xs text-[#B45309]/70 pointer-events-none">
+            Chạm vào các điểm tròn 01 • 02 • 03 để lắng nghe trích đoạn âm nhạc
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================
+          10. LANDING & FOOTER SECTION (#landing-section)
+          ======================================================== */}
+      <footer id="landing-section" className="relative z-10 border-t border-[#D4AF37]/25 pt-20 pb-12 px-6 max-w-[1720px] mx-auto">
+        <div className="grid grid-cols-12 gap-12 pb-16 border-b border-[#D4AF37]/25">
+          <div className="col-span-12 lg:col-span-6 flex flex-col justify-between">
+            <div>
+              <div className="text-2xl text-[#D4AF37] mb-3 font-serif">◎</div>
+              <span className="font-mono text-xs uppercase tracking-widest text-[#C5A059] mb-3 block">
+                Không gian dành riêng cho bạn
+              </span>
+              <h3 className="text-4xl sm:text-5xl font-light text-[#1E293B] leading-tight mb-6">
+                Chiếc đĩa than đã sẵn sàng quay.<br />
+                Hãy bước vào không gian của bạn.
+              </h3>
+              <p className="text-base text-[#1E293B]/70 font-sans font-light max-w-md mb-8">
+                Cắm tai nghe, hít thở một hơi thật sâu và gác lại những xô bồ bên ngoài cánh cửa. Một không gian tĩnh lặng, ấm áp đang chờ đón bạn.
+              </p>
+            </div>
+
+            <Link
+              to="/app"
+              onClick={() => playHapticClick()}
+              className="inline-flex items-center justify-center px-8 py-4 rounded-full bg-[#1E293B] text-[#D4AF37] font-mono text-xs uppercase tracking-widest hover:bg-[#0f172a] active:scale-95 transition-all duration-150 self-start cursor-pointer border border-[#D4AF37] shadow-lg"
+            >
+              Vào Trình Phát AuraLofi →
+            </Link>
+          </div>
+
+          <div className="col-span-12 lg:col-span-6 grid grid-cols-2 gap-8 font-mono text-xs text-[#1E293B]/70">
+            <div>
+              <span className="uppercase text-[#1E293B] font-bold block mb-4 border-b border-[#D4AF37]/30 pb-2">
+                AuraLofi Features
+              </span>
+              <ul className="space-y-2">
+                <li>• 3D Tactile Vinyl Scratching</li>
+                <li>• Procedural Ambient Synth (0KB)</li>
+                <li>• Solfeggio 528Hz Meditation</li>
+                <li>• Pomodoro Focus Notes</li>
+                <li>• 60 FPS Video Visualizer Studio</li>
+              </ul>
+            </div>
+            <div>
+              <span className="uppercase text-[#1E293B] font-bold block mb-4 border-b border-[#D4AF37]/30 pb-2">
+                Tech Architecture
+              </span>
+              <ul className="space-y-2">
+                <li>• Three.js PBR Graphics</li>
+                <li>• Web Audio API Synthesizer</li>
+                <li>• Scrollytelling Choreography</li>
+                <li>• Tailwind CSS & React</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-between pt-6 font-mono text-[11px] text-[#1E293B]/50 gap-4">
+          <span>
+            AuraLofi © 2026 • Trải nghiệm đĩa than analog & âm thanh môi trường tĩnh lặng.
+          </span>
+          <span>Phím tắt: Space (Play) • G (Cảnh) • T (Pomodoro) • H (Trợ giúp)</span>
+        </div>
+      </footer>
     </div>
   );
 }

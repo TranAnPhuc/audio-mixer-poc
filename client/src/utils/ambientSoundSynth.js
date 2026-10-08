@@ -74,7 +74,28 @@ function createNoiseBuffer(ctx, duration = 3.0) {
 }
 
 /**
- * Khởi động kênh âm thanh tiếng Mưa (Rain)
+ * Tạo StereoPannerNode an toàn với fallback khi môi trường/trình duyệt không hỗ trợ
+ */
+function createStereoPannerSafe(ctx, panValue = 0) {
+  if (ctx && typeof ctx.createStereoPanner === 'function') {
+    try {
+      const panner = ctx.createStereoPanner();
+      panner.pan.setValueAtTime(panValue, ctx.currentTime);
+      return panner;
+    } catch (e) {}
+  }
+  return null;
+}
+
+export const AMBIENT_SPATIAL_POSITIONS = {
+  rain: { pan: -0.65, label: 'Cửa sổ bên trái (-65%)' },
+  cafe: { pan: -0.20, label: 'Không gian góc quán (-20%)' },
+  fireplace: { pan: 0.60, label: 'Lò sưởi góc phòng (+60%)' },
+  wind: { pan: 'LFO ±0.55', label: 'Gió lướt 3D đa chiều' }
+};
+
+/**
+ * Khởi động kênh âm thanh tiếng Mưa (Rain) — Panned Trái (-0.65)
  */
 function startRainChannel(ctx, masterGain) {
   const noiseBuffer = createNoiseBuffer(ctx, 3.5);
@@ -88,8 +109,16 @@ function startRainChannel(ctx, masterGain) {
   rainFilter.frequency.setValueAtTime(1100, ctx.currentTime);
   rainFilter.Q.setValueAtTime(0.8, ctx.currentTime);
 
+  // Định vị không gian: Âm mưa bên ô cửa kính góc trái phòng
+  const rainPanner = createStereoPannerSafe(ctx, -0.65);
+
   noiseSource.connect(rainFilter);
-  rainFilter.connect(masterGain);
+  if (rainPanner) {
+    rainFilter.connect(rainPanner);
+    rainPanner.connect(masterGain);
+  } else {
+    rainFilter.connect(masterGain);
+  }
   noiseSource.start();
 
   return () => {
@@ -97,12 +126,13 @@ function startRainChannel(ctx, masterGain) {
       noiseSource.stop();
       noiseSource.disconnect();
       rainFilter.disconnect();
+      if (rainPanner) rainPanner.disconnect();
     } catch (e) {}
   };
 }
 
 /**
- * Khởi động kênh âm thanh Quán Cà Phê (Cozy Cafe)
+ * Khởi động kênh âm thanh Quán Cà Phê (Cozy Cafe) — Panned Hơi Lệch Trái (-0.20)
  */
 function startCafeChannel(ctx, masterGain) {
   const noiseBuffer = createNoiseBuffer(ctx, 4.0);
@@ -116,8 +146,15 @@ function startCafeChannel(ctx, masterGain) {
   cafeFilter.frequency.setValueAtTime(550, ctx.currentTime);
   cafeFilter.Q.setValueAtTime(1.8, ctx.currentTime);
 
+  const cafePanner = createStereoPannerSafe(ctx, -0.20);
+
   murmurSource.connect(cafeFilter);
-  cafeFilter.connect(masterGain);
+  if (cafePanner) {
+    cafeFilter.connect(cafePanner);
+    cafePanner.connect(masterGain);
+  } else {
+    cafeFilter.connect(masterGain);
+  }
   murmurSource.start();
 
   return () => {
@@ -125,12 +162,13 @@ function startCafeChannel(ctx, masterGain) {
       murmurSource.stop();
       murmurSource.disconnect();
       cafeFilter.disconnect();
+      if (cafePanner) cafePanner.disconnect();
     } catch (e) {}
   };
 }
 
 /**
- * Khởi động kênh âm thanh Lò Sưởi (Fireplace Crackle & Warmth)
+ * Khởi động kênh âm thanh Lò Sưởi (Fireplace Crackle & Warmth) — Panned Phải (+0.60)
  */
 function startFireplaceChannel(ctx, masterGain) {
   const sampleRate = ctx.sampleRate;
@@ -162,8 +200,16 @@ function startFireplaceChannel(ctx, masterGain) {
   fireFilter.type = 'lowpass';
   fireFilter.frequency.setValueAtTime(1600, ctx.currentTime);
 
+  // Định vị không gian: Lò sưởi ấm cúng góc phòng bên phải
+  const firePanner = createStereoPannerSafe(ctx, 0.60);
+
   fireSource.connect(fireFilter);
-  fireFilter.connect(masterGain);
+  if (firePanner) {
+    fireFilter.connect(firePanner);
+    firePanner.connect(masterGain);
+  } else {
+    fireFilter.connect(masterGain);
+  }
   fireSource.start();
 
   return () => {
@@ -171,12 +217,13 @@ function startFireplaceChannel(ctx, masterGain) {
       fireSource.stop();
       fireSource.disconnect();
       fireFilter.disconnect();
+      if (firePanner) firePanner.disconnect();
     } catch (e) {}
   };
 }
 
 /**
- * Khởi động kênh âm thanh Gió Đêm (Night Wind) với LFO quét tần số
+ * Khởi động kênh âm thanh Gió Đêm (Night Wind) với LFO quét tần số & LFO Panning 3D
  */
 function startWindChannel(ctx, masterGain) {
   const noiseBuffer = createNoiseBuffer(ctx, 4.0);
@@ -198,8 +245,32 @@ function startWindChannel(ctx, masterGain) {
   lfo.connect(lfoGain);
   lfoGain.connect(windFilter.frequency);
 
+  // LFO 3D Spatial Panning: Gió lướt nhẹ nhàng từ trái sang phải và ngược lại
+  const windPanner = createStereoPannerSafe(ctx, 0);
+  let panLfo = null;
+  let panLfoGain = null;
+  if (windPanner && typeof ctx.createOscillator === 'function' && typeof ctx.createGain === 'function') {
+    try {
+      panLfo = ctx.createOscillator();
+      panLfoGain = ctx.createGain();
+      panLfo.frequency.setValueAtTime(0.07, ctx.currentTime); // Chu kỳ ~14 giây
+      panLfoGain.gain.setValueAtTime(0.55, ctx.currentTime); // Dao động [-0.55, +0.55]
+      panLfo.connect(panLfoGain);
+      panLfoGain.connect(windPanner.pan);
+      panLfo.start();
+    } catch (e) {
+      panLfo = null;
+      panLfoGain = null;
+    }
+  }
+
   windSource.connect(windFilter);
-  windFilter.connect(masterGain);
+  if (windPanner) {
+    windFilter.connect(windPanner);
+    windPanner.connect(masterGain);
+  } else {
+    windFilter.connect(masterGain);
+  }
 
   windSource.start();
   lfo.start();
@@ -212,6 +283,12 @@ function startWindChannel(ctx, masterGain) {
       lfo.disconnect();
       lfoGain.disconnect();
       windFilter.disconnect();
+      if (panLfo) {
+        panLfo.stop();
+        panLfo.disconnect();
+      }
+      if (panLfoGain) panLfoGain.disconnect();
+      if (windPanner) windPanner.disconnect();
     } catch (e) {}
   };
 }
