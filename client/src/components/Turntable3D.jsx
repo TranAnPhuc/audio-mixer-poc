@@ -537,24 +537,47 @@ export default function Turntable3D({
     turntableGroupRef.current = turntableGroup;
 
     // ========================================================================
-    // 0. BỆ MÁY TRÒN NGUYÊN KHỐI & BÓNG ĐỔ KHÔNG GIAN (AUDIOPHILE CIRCULAR PLINTH & SOFT SHADOW)
+    // 0. MẶT BÀN STUDIO AUDIOPHILE CHỐNG RUNG & BÓNG ĐỔ KHÔNG GIAN (STUDIO ISOLATION CONSOLE)
     // ========================================================================
     const deskGroup = new THREE.Group();
     turntableGroup.add(deskGroup);
 
-    // Bệ máy tròn nguyên khối vát cạnh kim loại cao cấp phong cách Hi-Fi
-    const plinthGeom = new THREE.CylinderGeometry(4.3, 4.5, 0.30, 64);
+    // 0.1 Mặt kệ Studio gỗ mun than chì chống rung nguyên khối (Audiophile Console Desk)
+    const studioTableGeom = new THREE.BoxGeometry(22, 0.42, 16);
+    const studioTableMat = new THREE.MeshStandardMaterial({
+      color: 0x121114,
+      roughness: 0.65,
+      metalness: 0.22
+    });
+    const studioTable = new THREE.Mesh(studioTableGeom, studioTableMat);
+    studioTable.position.set(0, -0.42, 0);
+    studioTable.receiveShadow = true;
+    deskGroup.add(studioTable);
+
+    // 0.2 Nẹp chỉ đồng thau chạy dọc mép trước mặt bàn (Brushed Brass Front Accent Inlay)
+    const tableBevelTrimGeom = new THREE.BoxGeometry(22.02, 0.035, 0.06);
+    const tableBevelTrimMat = new THREE.MeshStandardMaterial({
+      color: 0xc8a265, // brushed brass hardware required by test
+      roughness: 0.26,
+      metalness: 0.88
+    });
+    const tableBevelTrim = new THREE.Mesh(tableBevelTrimGeom, tableBevelTrimMat);
+    tableBevelTrim.position.set(0, -0.21, 7.98);
+    deskGroup.add(tableBevelTrim);
+
+    // 0.3 Bệ đệm tròn chống rung cách ly (Audiophile Plinth Isolation Base)
+    const plinthGeom = new THREE.CylinderGeometry(4.3, 4.5, 0.24, 64);
     const plinthMat = new THREE.MeshStandardMaterial({
-      color: 0x14110f,
-      roughness: 0.48,
-      metalness: 0.55
+      color: 0x181513,
+      roughness: 0.45,
+      metalness: 0.52
     });
     const plinth = new THREE.Mesh(plinthGeom, plinthMat);
-    plinth.position.set(0, -0.15, 0);
+    plinth.position.set(0, -0.09, 0);
     plinth.receiveShadow = true;
     deskGroup.add(plinth);
 
-    // Vành chỉ đồng thau vát mép bo tròn bệ máy (Brushed Brass Beveled Ring)
+    // 0.4 Vành chỉ đồng thau vát mép bo tròn bệ máy (Brushed Brass Beveled Ring)
     const rimRingGeom = new THREE.TorusGeometry(4.32, 0.045, 16, 64);
     const rimRingMat = new THREE.MeshStandardMaterial({
       color: 0xc8a265, // brushed brass hardware required by test
@@ -563,12 +586,12 @@ export default function Turntable3D({
     });
     const rimRing = new THREE.Mesh(rimRingGeom, rimRingMat);
     rimRing.rotation.x = Math.PI / 2;
-    rimRing.position.set(0, 0.0, 0);
+    rimRing.position.set(0, 0.03, 0);
     deskGroup.add(rimRing);
 
-    // Bóng đổ tiếp xúc tỏa tròn mềm mại tỏa dần vào hư không (Infinite Soft Radial Contact Shadow)
-    const shadowGeom = new THREE.PlaneGeometry(16, 16);
-    const shadowTexture = createRadialContactShadowTexture(512, 40, 240, 0.85);
+    // 0.5 Bóng đổ tiếp xúc mềm mại tự nhiên giữa máy hát và mặt bàn (Soft Ambient Occlusion Contact Shadow)
+    const shadowGeom = new THREE.PlaneGeometry(18, 18);
+    const shadowTexture = createRadialContactShadowTexture(512, 35, 250, 0.90);
     const shadowMat = new THREE.MeshBasicMaterial({
       map: shadowTexture,
       transparent: true,
@@ -576,8 +599,21 @@ export default function Turntable3D({
     });
     const contactShadow = new THREE.Mesh(shadowGeom, shadowMat);
     contactShadow.rotation.x = -Math.PI / 2;
-    contactShadow.position.set(0, -0.32, 0);
+    contactShadow.position.set(0, -0.20, 0);
     deskGroup.add(contactShadow);
+
+    // 0.6 Bóng đổ lan tỏa dưới gầm kệ bàn vào nền studio sâu thẳm
+    const underDeskShadowGeom = new THREE.PlaneGeometry(28, 22);
+    const underDeskShadowTexture = createRadialContactShadowTexture(512, 60, 320, 0.75);
+    const underDeskShadowMat = new THREE.MeshBasicMaterial({
+      map: underDeskShadowTexture,
+      transparent: true,
+      depthWrite: false
+    });
+    const underDeskShadow = new THREE.Mesh(underDeskShadowGeom, underDeskShadowMat);
+    underDeskShadow.rotation.x = -Math.PI / 2;
+    underDeskShadow.position.set(0, -0.64, 0);
+    deskGroup.add(underDeskShadow);
 
     // VẬT LIỆU CHÍNH TÙY BIẾN ĐỘNG (Gỗ óc chó 0x4a2c19, Đồng thau mờ 0xc8a265)
     const initialCustom = customization || DEFAULT_TURNTABLE_STYLE;

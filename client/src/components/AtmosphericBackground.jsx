@@ -234,77 +234,23 @@ export default function AtmosphericBackground({ currentScene, className = '' }) 
         );
       })}
 
-      {/* KHUNG CẢNH NỀN CĂN PHÒNG LOFI: CỬA SỔ VÒM ĐÓN NẮNG & CHIỀU SÂU KHÔNG GIAN */}
-      <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
-        {/* 1. Khung cửa sổ vòm đón nắng mai (Aesthetic Arch Studio Window) */}
-        <div className="relative w-[92vw] max-w-[820px] h-[65vh] max-h-[580px] rounded-t-[220px] border-[3px] border-white/10 bg-gradient-to-b from-white/[0.05] via-white/[0.02] to-transparent shadow-[0_0_100px_rgba(254,243,199,0.08)] flex flex-col items-center justify-between overflow-hidden">
-          {/* Cảnh trời & vệt mây xa xăm qua ô kính */}
-          <div className="absolute inset-0 opacity-40 bg-gradient-to-t from-transparent via-amber-200/10 to-sky-200/10" />
-
-          {/* Nan chia ô kính chữ thập thanh lịch kiểu Bắc Âu */}
-          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-[2px] bg-white/10" />
-          <div className="absolute inset-x-0 top-1/3 h-[2px] bg-white/10" />
-          <div className="absolute inset-x-0 top-2/3 h-[2px] bg-white/10" />
-
-          {/* Vệt ánh sáng trời chiếu rọi từ trên vòm */}
-          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[420px] h-[220px] rounded-full bg-amber-100/15 blur-3xl pointer-events-none" />
-        </div>
-
-        {/* 2. Dải luồng nắng xiên tự nhiên (Volumetric Sunbeam Light Rays) */}
-        <div
-          className="absolute -top-10 -left-20 w-[140vw] h-[120vh] pointer-events-none transform -rotate-12 opacity-80"
-          style={{
-            background:
-              'radial-gradient(ellipse at 15% 10%, rgba(254, 240, 138, 0.16) 0%, rgba(253, 230, 138, 0.06) 45%, transparent 75%)'
-          }}
-        />
-        <div
-          className="absolute top-1/4 left-1/4 w-[60vw] h-[70vh] pointer-events-none transform -rotate-25 opacity-60"
-          style={{
-            background:
-              'linear-gradient(135deg, rgba(254, 243, 199, 0.14) 0%, rgba(251, 191, 36, 0.04) 50%, transparent 80%)'
-          }}
-        />
-
-        {/* 3. Dây đèn Fairy Lights ấm cúng treo trên viền phòng */}
-        <div className="absolute top-4 inset-x-0 flex items-center justify-around px-8 sm:px-16 pointer-events-none opacity-85">
-          {[...Array(10)].map((_, i) => (
-            <div
-              key={i}
-              className="flex flex-col items-center"
-              style={{
-                transform: `translateY(${Math.sin((i / 9) * Math.PI) * 16}px)`
-              }}
-            >
-              <div className="w-[1px] h-3 bg-white/20" />
-              <div
-                className="w-2.5 h-2.5 rounded-full bg-amber-200 border border-amber-300/60 shadow-[0_0_10px_#fde68a]"
-                style={{
-                  animation: `pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite ${i * 0.35}s`
-                }}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Lớp Canvas vẽ hiệu ứng hạt procedural (Mưa rơi, Hạt bụi nắng, Bokeh cà phê, Ánh hào quang Zen) */}
+      {/* 2. Lớp Canvas vẽ hiệu ứng hạt procedural bổ trợ (Mưa rơi, Hạt bụi nắng, Bokeh cà phê mờ dịu) */}
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-700 ease-in-out"
+        className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-700 ease-in-out opacity-45"
       />
 
-      {/* Lớp Vignette viền mềm mại giúp tập trung thị giác êm ái mà không bị tối đen */}
+      {/* 3. Lớp Vignette quang học điện ảnh Audiophile Studio: Tỏa tối mềm 4 góc, dồn tiêu điểm vào mâm đĩa than */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse at center, transparent 55%, rgba(15, 23, 42, 0.22) 85%, rgba(15, 23, 42, 0.45) 100%)'
+            'radial-gradient(ellipse at 50% 45%, transparent 30%, rgba(10, 9, 8, 0.6) 70%, rgba(7, 6, 6, 0.95) 100%)'
         }}
       />
 
-      {/* Hiệu ứng tia quét ngang hoài niệm Analog Scanline */}
-      <div className="absolute inset-0 scanline-overlay opacity-25 pointer-events-none" />
+      {/* 4. Lớp hạt phim điện ảnh Analog Film Grain hoài niệm mờ dịu */}
+      <div className="absolute inset-0 scanline-overlay opacity-10 pointer-events-none" />
     </div>
   );
 }
